@@ -1,0 +1,220 @@
+// What every flow gets: dependencies, messaging that records outbound rows, approval gates, costs.
+
+import type {
+  ArtifactRef,
+  ArtifactStore,
+  BrowserPool,
+  Clock,
+  ComputerUseModel,
+  Config,
+  CrmClient,
+  CuHooks,
+  Db,
+  Decision,
+  Id,
+  Ledger,
+  Logger,
+  ModelGateway,
+  Purpose,
+  QuoteService,
+  RepProfile,
+  RunHooks,
+  SkillStore,
+  WhatsAppClient,
+} from "@dockhand/core";
+import type { Page } from "playwright";
+import type { DockhandApprovalBroker, GateDecision } from "../approvals.ts";
+import type { PortalDirectory } from "../portals.ts";
+import type { CompanyKit } from "../profile.ts";
+import type { Repos } from "../repo.ts";
+import type { CardRenderer } from "../tools/receipts.ts";
+
+/** A model for one browser page (the scripted CI model needs the page; real models ignore it). */
+export type CuModelSource =
+  | ComputerUseModel
+  | ((o: { page: Page; purpose: "cu_first_run" | "cu_repair"; runId: Id }) => ComputerUseModel);
+
+export interface FlowEnv {
+  db: Db;
+  repos: Repos;
+  clock: Clock;
+  log: Logger;
+  config: Config;
+  wa: WhatsAppClient;
+  models: ModelGateway;
+  ledger: Ledger;
+  pool: BrowserPool;
+  skills: SkillStore;
+  crm: CrmClient;
+  quotes: QuoteService;
+  artifacts: ArtifactStore;
+  approvals: DockhandApprovalBroker;
+  portals: PortalDirectory;
+  cards: CardRenderer;
+  company: () => Promise<CompanyKit>;
+  cu: CuModelSource;
+  repairCu: CuModelSource;
+  /** Marks the calling task as waiting on a person (drain() does not wait for it). */
+  park<T>(p: Promise<T>): Promise<T>;
+  /** Text answers to question gates, keyed by gate id (set before the gate resolves). */
+  textAnswers: Map<Id, string>;
+  gateTtlMs: number;
+  stepTimeoutMs: number;
+}
+
+export interface JobCtx {
+  id: Id;
+  rep: RepProfile;
+}
+
+export function modelFor(
+  source: CuModelSource,
+  o: { page: Page; purpose: "cu_first_run" | "cu_repair"; runId: Id },
+): ComputerUseModel {
+  return typeof source === "function" ? source(o) : source;
+}
+
+// ---------- messaging (every outbound message is linked to its job, so replies attach) ----------
+
+export async function sendText(env: FlowEnv, job: JobCtx, body: string): Promise<string> {
+  const waId = await env.wa.sendText(job.rep.phone, body);
+  env.repos.messages.insertOutbound({ waId, to: job.rep.phone, jobId: job.id, kind: "text", text: body });
+  return waId;
+}
+
+export async function sendImage(
+  env: FlowEnv,
+  job: JobCtx,
+  image: ArtifactRef,
+  caption?: string,
+): Promise<string> {
+  const waId = await env.wa.sendImage(job.rep.phone, image, caption);
+  env.repos.messages.insertOutbound({
+    waId,
+    to: job.rep.phone,
+    jobId: job.id,
+    kind: "image",
+    ...(caption ? { text: caption } : {}),
+  });
+  return waId;
+}
+
+export async function sendDocument(
+  env: FlowEnv,
+  job: JobCtx,
+  doc: ArtifactRef,
+  filename: string,
+  caption?: string,
+): Promise<string> {
+  const waId = await env.wa.sendDocument(job.rep.phone, doc, filename, caption);
+  env.repos.messages.insertOutbound({
+    waId,
+    to: job.rep.phone,
+    jobId: job.id,
+    kind: "document",
+    ...(caption ? { text: caption } : {}),
+  });
+  return waId;
+}
+
+/** Best effort: a failed progress or courtesy message never fails the job. */
+export async function trySend(env: FlowEnv, job: JobCtx, body: string): Promise<void> {
+  try {
+    await sendText(env, job, body);
+  } catch (err) {
+    env.log.warn("message not sent", { jobId: job.id, err });
+  }
+}
+
+// ---------- costs ----------
+
+export const INTAKE_PURPOSES: Purpose[] = ["transcribe", "extract", "understand"];
+
+export function intakeCost(env: FlowEnv, jobId: Id): number {
+  return env.ledger.totals({ jobId, purposes: INTAKE_PURPOSES }).costUsd;
+}
+
+export function runTotals(env: FlowEnv, runId: Id): { calls: number; costUsd: number } {
+  const t = env.ledger.totals({ runId });
+  return { calls: t.calls, costUsd: t.costUsd };
+}
+
+// ---------- gates ----------
+
+/** Approval hooks for a browser run: commit and safety gates in WhatsApp, with the screenshot as header. */
+export function gateHooks(
+  env: FlowEnv,
+  job: JobCtx,
+  run: { runId: Id; origin: string; portalName: string; extendLease: (ms: number) => void },
+): CuHooks & Pick<RunHooks, "askRep"> {
+  const open = async (
+    kind: "commit" | "safety" | "question",
+    body: string,
+    image: ArtifactRef,
+    buttons?: Parameters<DockhandApprovalBroker["open"]>[0]["buttons"],
+  ) => {
+    run.extendLease(env.gateTtlMs + 5 * 60_000);
+    const { gateId, decision } = await env.approvals.open({
+      jobId: job.id,
+      runId: run.runId,
+      kind,
+      to: job.rep.phone,
+      body,
+      image,
+      ttlMs: env.gateTtlMs,
+      origin: run.origin,
+      ...(buttons ? { buttons } : {}),
+    });
+    return { gateId, decision: await env.park(decision) };
+  };
+  return {
+    async approveCommit(r) {
+      const lines = (r.readback ?? []).filter((f) => f.value.trim() !== "");
+      const body = [
+        `Ready to submit on ${run.portalName}. Check the filled form:`,
+        ...lines.map((f) => `• ${f.label}: ${f.value}`),
+        "",
+        "Approve to submit. Nothing is sent until you tap.",
+      ].join("\n");
+      const { decision } = await open("commit", body, r.screenshot);
+      return asDecision(decision);
+    },
+    async approveSafety(r) {
+      const body = [
+        `${run.portalName} raised a safety check:`,
+        ...r.checks.map((c) => `• ${c.message}`),
+        "Continue?",
+      ].join("\n");
+      const { decision } = await open("safety", body, r.screenshot);
+      return asDecision(decision);
+    },
+    async askRep(q) {
+      const options = (q.options ?? []).filter((o) => o.trim() !== "");
+      const buttons =
+        options.length > 0 && options.length <= 3
+          ? options.map((o, i) => ({ id: `opt${i}` as const, title: o }))
+          : undefined;
+      const body = [
+        `${run.portalName} now asks for "${q.label}", which this skill has no value for.`,
+        options.length > 3 ? `Options: ${options.join(", ")}.` : "",
+        buttons ? "Tap one, or reply with the value." : "Reply with the value.",
+        "I'll remember it as a new param of the skill.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const { gateId, decision } = await open(
+        "question",
+        body,
+        q.screenshot,
+        buttons ?? [{ id: "reject", title: "Skip" }],
+      );
+      if (decision.startsWith("opt")) return options[Number(decision.slice(3))] ?? null;
+      if (decision === "approved") return env.textAnswers.get(gateId) ?? null;
+      return null;
+    },
+  };
+}
+
+function asDecision(d: GateDecision): Decision {
+  return d.startsWith("opt") ? "approved" : (d as Decision);
+}

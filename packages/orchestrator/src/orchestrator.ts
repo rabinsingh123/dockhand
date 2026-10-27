@@ -1,0 +1,542 @@
+// The orchestrator: one inbound message at a time per rep (keyed lock), the attach rule (§1.4), intake ->
+// understanding -> deterministic plan -> plan gate -> flows. Waiting on a person never holds the rep's lock,
+// and drain() resolves once nothing is computing (parked approvals do not count).
+
+import { join } from "node:path";
+import { renderHtml } from "@dockhand/browser";
+import {
+  type ArtifactStore,
+  type BrowserPool,
+  type Clock,
+  type CompanyProfile,
+  type Config,
+  type CrmClient,
+  createLedger,
+  type Db,
+  DockhandError,
+  type ErrorCode,
+  type Id,
+  type InboundMessage,
+  type Ledger,
+  type Logger,
+  type ModelGateway,
+  type QuoteService,
+  type SkillStore,
+  type Understanding,
+  varDir,
+  type WhatsAppClient,
+} from "@dockhand/core";
+import type { DockhandApprovalBroker, GateDecision } from "./approvals.ts";
+import { runFirstRun, runReplay } from "./flows/browser.ts";
+import { isCommand, runCommand } from "./flows/commands.ts";
+import { type CuModelSource, type FlowEnv, type JobCtx, sendText, trySend } from "./flows/env.ts";
+import { runQuote } from "./flows/quote.ts";
+import { type FlowOutcome, runTeach } from "./flows/teach.ts";
+import {
+  analyzeMedia,
+  classifyMedia,
+  downloadMedia,
+  type IntakeItem,
+  transcriptionKeywords,
+  UNSUPPORTED_MEDIA,
+} from "./intake.ts";
+import { buildPlan } from "./plan.ts";
+import type { PortalDirectory, PortalInfo } from "./portals.ts";
+import { type CompanyKit, loadCompanyKit, repProfile } from "./profile.ts";
+import { createRepos, type JobRow, type MessageRow } from "./repo.ts";
+import { createCardRenderer, type RenderHtml } from "./tools/receipts.ts";
+import { type KnownSkill, teachUnderstanding, type UnderstandInput, understand } from "./understand.ts";
+
+export interface OrchestratorDeps {
+  db: Db;
+  clock: Clock;
+  config: Config;
+  log: Logger;
+  wa: WhatsAppClient;
+  models: ModelGateway;
+  /** First-run computer use. Default: models.computerUse({ model: "muse-spark-1.3" }). */
+  cu?: CuModelSource;
+  /** Rung-3 repair. Default: models.computerUse({ model: "muse-wonder-1.0" }). */
+  repairCu?: CuModelSource;
+  pool: BrowserPool & { renderHtml?: RenderHtml };
+  skills: SkillStore;
+  crm: CrmClient;
+  quotes: QuoteService;
+  artifacts: ArtifactStore;
+  approvals: DockhandApprovalBroker;
+  portals: PortalDirectory;
+  /** Supplier profile and its documents. Default: fixtures/profile/tidewater.json. */
+  company?: CompanyKit | (() => Promise<CompanyKit>);
+  ledger?: Ledger;
+  render?: RenderHtml;
+  tmpDir?: string;
+  stepTimeoutMs?: number;
+  /** 0 disables the 30 s expiry sweep (tests call approvals.expireDue() themselves). */
+  expirySweepMs?: number;
+}
+
+export interface Orchestrator {
+  /** One inbound message, already deduplicated and allow-listed by the webhook. Serialized per rep. */
+  handle(msg: InboundMessage): Promise<void>;
+  /** Boot sweep: in-flight jobs fail with a message, their gates expire, unknown outcomes are marked. */
+  recover(): Promise<void>;
+  /** Resolves when nothing is computing (jobs parked on an approval do not count). */
+  drain(): Promise<void>;
+  close(): void;
+}
+
+export const RESTART_MESSAGE =
+  "I restarted while working on this request, so I stopped it. If it may have been submitted, check the portal or HubSpot before sending it again.";
+
+export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
+  const { db, clock, config, log, wa, models, approvals } = deps;
+  const repos = createRepos(db, clock);
+  const ledger = deps.ledger ?? createLedger(db, clock);
+  const tmpDir = deps.tmpDir ?? join(varDir(), "tmp");
+  const render: RenderHtml =
+    deps.render ??
+    (deps.pool.renderHtml
+      ? deps.pool.renderHtml.bind(deps.pool)
+      : (html, size, o) => renderHtml(html, size, o ?? {}));
+  const intakeCache = new Map<string, IntakeItem>();
+  const textAnswers = new Map<Id, string>();
+  const locks = new Map<string, Promise<void>>();
+
+  // ---- activity tracking for drain() ----
+  let active = 0;
+  const idleWaiters: (() => void)[] = [];
+  const enter = () => {
+    active++;
+  };
+  const leave = () => {
+    active--;
+    if (active === 0) for (const resolve of idleWaiters.splice(0)) resolve();
+  };
+  const run = <T>(fn: () => Promise<T>): Promise<T> => {
+    enter();
+    let p: Promise<T>;
+    try {
+      p = fn();
+    } catch (err) {
+      p = Promise.reject(err);
+    }
+    return p.finally(leave);
+  };
+  const park = <T>(p: Promise<T>): Promise<T> => {
+    leave();
+    return p.finally(enter);
+  };
+  const spawn = (what: string, fn: () => Promise<unknown>) => {
+    void run(fn).catch((err) => log.error(`${what} failed`, { err }));
+  };
+
+  let companyKit: Promise<CompanyKit> | undefined;
+  const company = (): Promise<CompanyKit> => {
+    companyKit ??= (async () => {
+      if (typeof deps.company === "function") return deps.company();
+      if (deps.company) return deps.company;
+      try {
+        return await loadCompanyKit(deps.artifacts);
+      } catch (err) {
+        log.warn("company profile not loaded; supplier onboarding is unavailable", { err });
+        return { profile: {} as CompanyProfile, files: {} };
+      }
+    })();
+    return companyKit;
+  };
+
+  const env: FlowEnv & { tmpDir: string } = {
+    db,
+    repos,
+    clock,
+    log,
+    config,
+    wa,
+    models,
+    ledger,
+    pool: deps.pool,
+    skills: deps.skills,
+    crm: deps.crm,
+    quotes: deps.quotes,
+    artifacts: deps.artifacts,
+    approvals,
+    portals: deps.portals,
+    cards: createCardRenderer({ artifacts: deps.artifacts, render }),
+    company,
+    cu: deps.cu ?? models.computerUse({ model: "muse-spark-1.3" }),
+    repairCu: deps.repairCu ?? models.computerUse({ model: "muse-wonder-1.0" }),
+    park,
+    textAnswers,
+    gateTtlMs: approvals.defaultTtlMs,
+    stepTimeoutMs: deps.stepTimeoutMs ?? 4000,
+    tmpDir,
+  };
+  const portalInfos: Record<string, PortalInfo> = Object.fromEntries(
+    Object.entries(deps.portals).map(([k, p]) => [
+      k,
+      { id: p.id, name: p.name, url: p.url, startPath: p.startPath },
+    ]),
+  );
+
+  function withRepLock(rep: string, fn: () => Promise<void>): Promise<void> {
+    const prev = locks.get(rep) ?? Promise.resolve();
+    const next = prev.then(fn, fn);
+    const tail = next.catch(() => {});
+    locks.set(rep, tail);
+    void tail.then(() => {
+      if (locks.get(rep) === tail) locks.delete(rep);
+    });
+    return next;
+  }
+
+  const jobCtx = (job: Pick<JobRow, "id" | "rep">): JobCtx => ({
+    id: job.id,
+    rep: repProfile(repos, job.rep),
+  });
+
+  // ---- routing (T1) ----
+
+  type Route =
+    | { type: "skip" | "button" | "command" | "unsupported" }
+    | { type: "new" | "input"; jobId: Id }
+    | { type: "edit" | "answer"; jobId: Id; gateId: Id };
+
+  function routeMessage(msg: InboundMessage): Route {
+    return db.tx((): Route => {
+      // The gateway already stored the row (that is its dedupe); direct callers get it stored here.
+      repos.messages.insertInbound(msg);
+      if (msg.kind === "button") return { type: "button" };
+      if (msg.kind === "text" && isCommand(msg.text)) return { type: "command" };
+      if (msg.kind === "unsupported") return { type: "unsupported" };
+      if (msg.kind !== "text") {
+        if (classifyMedia(msg) === "unsupported") return { type: "unsupported" };
+        return newJob(msg);
+      }
+      const replied = msg.replyTo ? repos.messages.get(msg.replyTo)?.jobId : null;
+      const target =
+        (replied ? attachable(repos.jobs.get(replied)) : undefined) ?? repos.jobs.attachableFor(msg.from);
+      if (!target) return newJob(msg);
+      repos.messages.linkJob(msg.waId, target.id);
+      if (target.status === "awaiting_input") {
+        repos.jobs.apply(target.id, { type: "input", waId: msg.waId });
+        return { type: "input", jobId: target.id };
+      }
+      const gate = repos.gates
+        .pendingForJob(target.id)
+        .find((g) => g.kind === "plan" || g.kind === "question");
+      if (!gate) return newJob(msg);
+      return { type: gate.kind === "plan" ? "edit" : "answer", jobId: target.id, gateId: gate.id };
+    });
+  }
+
+  function attachable(job: JobRow | undefined): JobRow | undefined {
+    if (!job) return undefined;
+    if (job.status === "awaiting_input") return job;
+    if (job.status !== "awaiting_approval") return undefined;
+    return repos.gates.pendingForJob(job.id).some((g) => g.kind === "plan" || g.kind === "question")
+      ? job
+      : undefined;
+  }
+
+  function newJob(msg: InboundMessage): Route {
+    const job = repos.jobs.create(msg.from);
+    repos.messages.linkJob(msg.waId, job.id);
+    repos.jobs.apply(job.id, { type: "start" });
+    return { type: "new", jobId: job.id };
+  }
+
+  async function process(msg: InboundMessage): Promise<void> {
+    if (!config.reps.allowlist.includes(msg.from)) {
+      log.warn("message from a number outside REP_ALLOWLIST ignored", { from: msg.from });
+      return;
+    }
+    const route = routeMessage(msg);
+    void wa.markRead(msg.waId).catch(() => {});
+    switch (route.type) {
+      case "button": {
+        const status = approvals.resolveFromButton(msg.button?.id ?? "", msg.from, msg.waId);
+        if (status === "unknown")
+          await wa.sendText(msg.from, "That button is no longer active. Nothing changed.");
+        return;
+      }
+      case "command": {
+        const body = runCommand(msg.text ?? "", { skills: deps.skills, repos, ledger });
+        const waId = await wa.sendText(msg.from, body);
+        repos.messages.insertOutbound({ waId, to: msg.from, jobId: null, kind: "text", text: body });
+        return;
+      }
+      case "unsupported":
+        await wa.sendText(msg.from, UNSUPPORTED_MEDIA);
+        return;
+      case "skip":
+        return;
+      case "answer":
+        textAnswers.set(route.gateId, (msg.text ?? "").trim());
+        if (approvals.resolve(route.gateId, "approved", msg.from, msg.waId) !== "resolved")
+          textAnswers.delete(route.gateId);
+        return;
+      case "edit": {
+        if (approvals.resolve(route.gateId, "edit", msg.from, msg.waId) !== "resolved") return;
+        repos.jobs.apply(route.jobId, { type: "input", waId: msg.waId });
+        await understandJob(route.jobId, msg);
+        return;
+      }
+      case "new":
+      case "input":
+        await understandJob(route.jobId, msg);
+        return;
+    }
+  }
+
+  // ---- intake + understanding + plan ----
+
+  async function intakeItem(
+    row: MessageRow,
+    msg: InboundMessage | undefined,
+    job: JobCtx,
+  ): Promise<IntakeItem> {
+    const cached = intakeCache.get(row.waId);
+    if (cached) return cached;
+    let item: IntakeItem;
+    if (msg?.waId === row.waId && msg.media) {
+      const kind = classifyMedia(msg);
+      const media = await downloadMedia(msg, job.id, { wa, artifacts: deps.artifacts });
+      repos.messages.setMedia(row.waId, media.id);
+      item = { waId: row.waId, kind, media, ...(msg.text ? { text: msg.text } : {}) };
+    } else if (row.mediaArtifactId) {
+      const media = deps.artifacts.get(row.mediaArtifactId);
+      item = {
+        waId: row.waId,
+        kind: classifyMedia({ kind: "document", media: { mediaId: "", mime: media.mime } }),
+        media,
+        ...(row.text ? { text: row.text } : {}),
+      };
+    } else {
+      item = { waId: row.waId, kind: "text", ...(row.text ? { text: row.text } : {}) };
+    }
+    if (item.kind === "voice" || item.kind === "photo" || item.kind === "pdf") {
+      item = await analyzeMedia(
+        item,
+        { jobId: job.id, rep: job.rep, keywords: keywords() },
+        { wa, artifacts: deps.artifacts, models, log, ffmpegPath: config.ffmpegPath, tmpDir },
+      );
+    }
+    intakeCache.set(row.waId, item);
+    return item;
+  }
+
+  function keywords(): string[] {
+    const examples: string[] = [];
+    for (const s of deps.skills.list()) {
+      for (const p of deps.skills.active(s.name)?.params ?? []) {
+        if (p.example && (p.type === "string" || p.type === "enum")) examples.push(p.example);
+        for (const v of p.enumValues ?? []) examples.push(v);
+      }
+    }
+    return transcriptionKeywords({ companies: repos.jobs.recentCompanies(20), skillExamples: examples });
+  }
+
+  function knownSkills(): KnownSkill[] {
+    return deps.skills.list().flatMap((row) => {
+      const s = deps.skills.active(row.name);
+      return s
+        ? [
+            {
+              name: s.name,
+              title: s.title,
+              params: s.params.map(({ name, type, required, description }) => ({
+                name,
+                type,
+                required,
+                description,
+              })),
+            },
+          ]
+        : [];
+    });
+  }
+
+  function inputsOf(items: IntakeItem[]): UnderstandInput[] {
+    return items.flatMap((i): UnderstandInput[] => {
+      if (i.kind === "voice") return i.transcript ? [{ kind: "voice", text: i.transcript.text }] : [];
+      if ((i.kind === "photo" || i.kind === "pdf") && i.extraction) {
+        return [
+          { kind: "document", source: i.kind === "photo" ? "photo" : "pdf", extraction: i.extraction },
+          ...(i.text ? [{ kind: "caption" as const, text: i.text }] : []),
+        ];
+      }
+      return i.text ? [{ kind: i.kind === "text" ? "text" : "caption", text: i.text }] : [];
+    });
+  }
+
+  async function understandJob(jobId: Id, msg: InboundMessage): Promise<void> {
+    const row = repos.jobs.get(jobId);
+    if (!row) return;
+    const job = jobCtx(row);
+    try {
+      const items: IntakeItem[] = [];
+      for (const m of repos.messages.inboundForJob(jobId)) items.push(await intakeItem(m, msg, job));
+      const video = items.find((i) => i.kind === "video");
+      const u: Understanding = video
+        ? teachUnderstanding(video.text)
+        : await understand(
+            models,
+            { rep: job.rep, nowMs: clock.now(), inputs: inputsOf(items), skills: knownSkills() },
+            { jobId, timeoutMs: 45_000 },
+          );
+      repos.jobs.update(jobId, { understanding: u, intent: u.intent, language: u.language });
+      const kit = await company();
+      const outcome = buildPlan(u, {
+        jobId,
+        skills: deps.skills,
+        rep: job.rep,
+        company: kit.profile,
+        companyFiles: kit.files,
+        attachments: items.flatMap((i) => (i.media ? [i.media] : [])),
+        clock,
+        portals: portalInfos,
+      });
+      if (outcome.type === "ask") {
+        repos.jobs.apply(jobId, { type: "understood", missing: outcome.missing, writes: false });
+        await sendText(env, job, outcome.question);
+        return;
+      }
+      if (outcome.type === "reply") {
+        repos.jobs.apply(jobId, { type: "understood", missing: [], writes: false });
+        await sendText(env, job, outcome.text);
+        finish(jobId, { ok: true });
+        return;
+      }
+      const plan = outcome.plan;
+      repos.jobs.update(jobId, { plan });
+      if (!plan.writes) {
+        repos.jobs.apply(jobId, { type: "understood", missing: [], writes: false });
+        spawn("execute", () => execute(jobId, video?.text));
+        return;
+      }
+      repos.jobs.apply(jobId, { type: "understood", missing: [], writes: true });
+      const { decision } = await approvals.open({
+        jobId,
+        kind: "plan",
+        to: job.rep.phone,
+        body: plan.approvalText,
+        ttlMs: approvals.defaultTtlMs,
+      });
+      spawn("plan gate", () => afterPlanGate(jobId, decision));
+    } catch (err) {
+      log.error("understanding failed", { jobId, err });
+      const code = codeOf(err);
+      repos.jobs.update(jobId, { error: { code, message: messageOf(err) } });
+      repos.jobs.apply(jobId, { type: "finished", ok: false, errorCode: code });
+      await trySend(env, job, `Sorry, I couldn't process that (${messageOf(err)}). Nothing was written.`);
+    }
+  }
+
+  async function afterPlanGate(jobId: Id, decision: Promise<GateDecision>): Promise<void> {
+    const d = await park(decision);
+    const row = repos.jobs.get(jobId);
+    if (!row) return;
+    if (d === "approved") return execute(jobId);
+    // The job's status says why the gate closed (a boot sweep fails the job and has already told the rep).
+    if (d === "rejected" && row.status === "cancelled")
+      await trySend(env, jobCtx(row), "Cancelled. Nothing was written.");
+    if (d === "expired" && row.status === "expired")
+      await trySend(env, jobCtx(row), "This request expired. Send it again to retry.");
+    // "edit": the text that edited it re-plans the job in handle().
+  }
+
+  // ---- execution ----
+
+  async function execute(jobId: Id, caption?: string): Promise<void> {
+    const row = repos.jobs.get(jobId);
+    if (!row?.plan) return;
+    const job = jobCtx(row);
+    const plan = row.plan;
+    let outcome: FlowOutcome = { ok: true };
+    try {
+      if (plan.intent === "quote") outcome = await runQuote(env, job, plan, row.understanding);
+      else {
+        for (const action of plan.actions) {
+          if (action.kind === "skill_replay") outcome = await runReplay(env, job, action);
+          else if (action.kind === "computer_use") outcome = await runFirstRun(env, job, action);
+          else if (action.kind === "teach") outcome = await runTeach(env, job, action, caption);
+          else throw new DockhandError("TOOL_ERROR", `no flow runs ${action.kind} outside a quote`);
+          if (!outcome.ok) break;
+        }
+      }
+    } catch (err) {
+      log.error("execution failed", { jobId, err });
+      outcome = { ok: false, errorCode: codeOf(err) };
+      repos.jobs.update(jobId, { error: { code: codeOf(err), message: messageOf(err) } });
+      await trySend(env, job, `Something went wrong: ${messageOf(err)}. Nothing else was submitted.`);
+    }
+    finish(jobId, outcome);
+  }
+
+  /** `finished` applies only while executing: a rejected or expired gate already ended the job. */
+  function finish(jobId: Id, o: FlowOutcome): void {
+    if (repos.jobs.get(jobId)?.status !== "executing") return;
+    repos.jobs.apply(jobId, {
+      type: "finished",
+      ok: o.ok,
+      ...(o.errorCode ? { errorCode: o.errorCode } : {}),
+    });
+  }
+
+  // ---- lifecycle ----
+
+  let sweep: ReturnType<typeof setInterval> | undefined;
+
+  return {
+    handle(msg) {
+      return run(() => withRepLock(msg.from, () => process(msg)));
+    },
+
+    async recover() {
+      for (const job of repos.jobs.inFlight()) {
+        repos.jobs.update(job.id, { error: { code: "CRASH_RECOVERED", message: "process restarted" } });
+        repos.jobs.apply(job.id, { type: "crash_recovered" });
+        approvals.expireForJob(job.id);
+        await trySend(env, jobCtx(job), RESTART_MESSAGE);
+      }
+      const unknown = repos.toolCalls.markStartedUnknown();
+      if (unknown.length > 0)
+        log.warn("tool calls with unknown outcome after restart", { keys: unknown.map((u) => u.idemKey) });
+      repos.runs.markUnfinished();
+      approvals.expireDue();
+      const every = deps.expirySweepMs ?? 30_000;
+      if (every > 0 && !sweep) {
+        sweep = setInterval(() => {
+          try {
+            approvals.expireDue();
+          } catch (err) {
+            log.error("expiry sweep failed", { err });
+          }
+        }, every);
+        sweep.unref?.();
+      }
+    },
+
+    async drain() {
+      for (;;) {
+        if (active > 0) await new Promise<void>((resolve) => idleWaiters.push(resolve));
+        await new Promise((resolve) => setImmediate(resolve)); // let tasks resumed by a gate re-enter
+        await approvals.flush();
+        if (active === 0) return;
+      }
+    },
+
+    close() {
+      if (sweep) clearInterval(sweep);
+      sweep = undefined;
+    },
+  };
+}
+
+function codeOf(err: unknown): ErrorCode {
+  return err instanceof DockhandError ? err.code : "TOOL_ERROR";
+}
+
+function messageOf(err: unknown): string {
+  return (err instanceof Error ? err.message : String(err)).slice(0, 300);
+}
