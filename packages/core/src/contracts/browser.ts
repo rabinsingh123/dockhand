@@ -1,6 +1,6 @@
 import type { Page } from "playwright";
 import { z } from "zod";
-import type { ArtifactRef, Id } from "./base.ts";
+import type { ArtifactRef, ArtifactStore, Id } from "./base.ts";
 import type { CallCtx, ComputerUseModel, CuAction, SafetyCheck } from "./models.ts";
 
 /** Fixed for every run so coordinates and screenshots stay meaningful. Device scale factor is always 1. */
@@ -126,6 +126,8 @@ export interface CuRunInput {
   limits: { maxActions: number; maxWallMs: number; maxCostUsd: number; rolloverAfterImages: number };
   /** Ledger total for this run so far (checked against maxCostUsd after every turn). */
   costSoFar?: () => number;
+  /** Where screenshots and the final page image are stored. */
+  artifacts: ArtifactStore;
 }
 
 /** Every interactive element currently on the page, described like a trace target (for similarity and rung 2). */
