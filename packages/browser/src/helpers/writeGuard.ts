@@ -1,0 +1,98 @@
+// Network backstop for the commit gate: mutating requests to the portal origins are held until a token exists.
+
+import type { WriteGuardConfig } from "@dockhand/core";
+import type { Page, Route } from "playwright";
+
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+export interface WriteGuard {
+  /** Adds approval tokens; each releases one held (or future) write. */
+  grant(n?: number): void;
+  /** Writes currently held. */
+  pending(): number;
+  /** Removes the route; held writes are aborted. */
+  dispose(): Promise<void>;
+  /** Unused tokens. */
+  tokens(): number;
+  /** Writes let through by a token so far. */
+  released(): number;
+}
+
+interface Held {
+  route: Route;
+  done: boolean;
+}
+
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Holds POST/PUT/PATCH/DELETE to `cfg.origins` (URLs containing an `cfg.allow` substring pass) until a token is
+ * granted. A held write is also reported to `onWrite`: "allow" lets it through without a token, "block" aborts
+ * it; whichever of grant / onWrite comes first decides.
+ */
+export async function installWriteGuard(
+  page: Page,
+  cfg: WriteGuardConfig,
+  onWrite: (req: { method: string; url: string }) => Promise<"allow" | "block">,
+): Promise<WriteGuard> {
+  const origins = new Set(cfg.origins.map(originOf).filter((o): o is string => o !== null));
+  const held: Held[] = [];
+  let tokens = 0;
+  let released = 0;
+
+  const settle = (h: Held, how: "continue" | "abort") => {
+    if (h.done) return;
+    h.done = true;
+    const i = held.indexOf(h);
+    if (i >= 0) held.splice(i, 1);
+    // Fallback (not continue) so later-registered handlers, such as an idempotency-key injector, still run.
+    const p = how === "continue" ? h.route.fallback() : h.route.abort("blockedbyclient");
+    p.catch(() => {});
+  };
+
+  const matches = (url: URL) => origins.has(url.origin);
+  const handler = async (route: Route) => {
+    const req = route.request();
+    const method = req.method().toUpperCase();
+    const url = req.url();
+    if (!WRITE_METHODS.has(method) || cfg.allow.some((s) => url.includes(s))) return route.fallback();
+    if (tokens > 0) {
+      tokens--;
+      released++;
+      return route.fallback();
+    }
+    const h: Held = { route, done: false };
+    held.push(h);
+    // Not awaited: Playwright waits for the handler to return as well as for fallback()/abort(), so a handler
+    // parked on the decision would keep a later grant() from releasing the request.
+    onWrite({ method, url }).then(
+      (decision) => settle(h, decision === "allow" ? "continue" : "abort"),
+      () => settle(h, "abort"),
+    );
+  };
+
+  await page.route(matches, handler);
+  return {
+    grant(n = 1) {
+      tokens += n;
+      while (tokens > 0 && held.length > 0) {
+        tokens--;
+        released++;
+        settle(held[0] as Held, "continue");
+      }
+    },
+    pending: () => held.length,
+    tokens: () => tokens,
+    released: () => released,
+    async dispose() {
+      await page.unroute(matches, handler).catch(() => {});
+      for (const h of [...held]) settle(h, "abort");
+    },
+  };
+}
