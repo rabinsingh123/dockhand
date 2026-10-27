@@ -1,0 +1,3 @@
+{ "name": "@dockhand/orchestrator", "private": true, "type": "module", "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@dockhand/core": "workspace:*", "@dockhand/browser": "workspace:*", "@dockhand/skills": "workspace:*", "playwright": "1.64.1", "pdf-lib": "^1", "zod": "^4" },
+  "devDependencies": { "@dockhand/portals": "workspace:*", "@dockhand/whatsapp": "workspace:*" } }

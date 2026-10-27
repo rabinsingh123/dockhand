@@ -1,0 +1,2 @@
+{ "name": "@dockhand/gateway", "private": true, "type": "module", "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@dockhand/core": "workspace:*", "@dockhand/whatsapp": "workspace:*", "@dockhand/meta": "workspace:*", "@dockhand/browser": "workspace:*", "@dockhand/skills": "workspace:*", "@dockhand/orchestrator": "workspace:*", "@dockhand/portals": "workspace:*", "@hono/node-server": "^1", "hono": "^4" } }

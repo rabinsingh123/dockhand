@@ -1,0 +1,2 @@
+{ "name": "@dockhand/whatsapp", "private": true, "type": "module", "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@dockhand/core": "workspace:*", "hono": "^4", "zod": "^4" } }
