@@ -10,3 +10,12 @@ playwright-report/
 .playwright-mcp/
 *.log
 .DS_Store
+
+# Internal working docs: never in the public repo (application text, strategy, reviews, agent instructions)
+CLAUDE.md
+CLAUDE.local.md
+docs/SUBMISSION.md
+docs/DRAFT_ARCHITECTURE.md
+docs/internal/
+docs/reviews/
+docs/research/participant-guide-copy.md
