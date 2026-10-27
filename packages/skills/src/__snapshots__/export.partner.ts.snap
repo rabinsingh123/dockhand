@@ -1,0 +1,189 @@
+// Register a deal on Caravela Partner Hub
+// Dockhand skill register_partner_deal v1 for portal "partner", exported from the compiled program.
+// The runner adds what this file does not: healing, read-back before the commit, and the approval gate.
+import type { Locator, Page } from "playwright";
+
+export interface RegisterPartnerDealParams {
+  /** End customer's legal company name */
+  company: string;
+  /** End customer's website */
+  website?: string;
+  /** End customer's country */
+  country: string;
+  /** End customer's city */
+  city: string;
+  /** Customer contact's full name */
+  contact_name: string;
+  /** Customer contact's email */
+  contact_email: string;
+  /** Customer contact's phone */
+  contact_phone?: string;
+  /** Tidewater Cloud product */
+  product: string;
+  /** Number of seats */
+  seats: number;
+  /** Estimated deal value in USD */
+  est_value?: number;
+  /** Expected close date */
+  close_date: string;
+  /** Notes for Caravela */
+  notes?: string;
+}
+
+/** First candidate that matches exactly one element, in the stored rank order. */
+async function pick(...candidates: Locator[]): Promise<Locator> {
+  for (const c of candidates) if ((await c.count()) === 1) return c;
+  throw new Error("no candidate matched exactly one element");
+}
+
+function fmtDate(iso: string, format: "DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD"): string {
+  const [y = "", m = "", d = ""] = iso.slice(0, 10).split("-");
+  if (format === "DD/MM/YYYY") return `${d}/${m}/${y}`;
+  if (format === "MM/DD/YYYY") return `${m}/${d}/${y}`;
+  return `${y}-${m}-${d}`;
+}
+
+export async function registerPartnerDeal(page: Page, p: RegisterPartnerDealParams): Promise<Record<string, string>> {
+  const extracted: Record<string, string> = {};
+  // s1: Open /deals
+  await page.goto("http://127.0.0.1:4100/deals");
+  // s2: Click 'Register a deal'
+  await (
+    await pick(
+      page.getByTestId("nw-register-deal"),
+      page.getByRole("button", { name: "Register a deal", exact: true }),
+    )
+  ).click();
+  // s3: Wait for /deals/new
+  await page.waitForURL((url) => url.href.includes("/deals/new"));
+  // s4: Fill 'End customer company'
+  await (
+    await pick(
+      page.getByTestId("nw-company-name"),
+      page.getByRole("textbox", { name: "End customer company", exact: true }),
+      page.getByLabel("End customer company", { exact: true }),
+      page.locator("#company-name"),
+    )
+  ).fill(String(p.company));
+  // s5: Fill 'Company website'
+  await (
+    await pick(
+      page.getByTestId("nw-company-website"),
+      page.getByRole("textbox", { name: "Company website", exact: true }),
+      page.getByLabel("Company website", { exact: true }),
+      page.locator("#company-website"),
+    )
+  ).fill(String(p.website));
+  // s6: Select 'Country'
+  await (
+    await pick(
+      page.getByTestId("nw-country"),
+      page.getByRole("combobox", { name: "Country", exact: true }),
+      page.locator("#country"),
+    )
+  ).click();
+  await page.getByRole("option", { name: String(p.country), exact: true }).click();
+  // s7: Fill 'City'
+  await (
+    await pick(
+      page.getByTestId("nw-city"),
+      page.getByRole("textbox", { name: "City", exact: true }),
+      page.getByLabel("City", { exact: true }),
+      page.locator("#city"),
+    )
+  ).fill(String(p.city));
+  // s8: Fill 'Contact full name'
+  await (
+    await pick(
+      page.getByTestId("nw-contact-name"),
+      page.getByRole("textbox", { name: "Contact full name", exact: true }),
+      page.getByLabel("Contact full name", { exact: true }),
+      page.locator("#contact-name"),
+    )
+  ).fill(String(p.contact_name));
+  // s9: Fill 'Contact email'
+  await (
+    await pick(
+      page.getByTestId("nw-contact-email"),
+      page.getByRole("textbox", { name: "Contact email", exact: true }),
+      page.getByLabel("Contact email", { exact: true }),
+      page.locator("#contact-email"),
+    )
+  ).fill(String(p.contact_email));
+  // s10: Fill 'Contact phone'
+  await (
+    await pick(
+      page.getByTestId("nw-contact-phone"),
+      page.getByRole("textbox", { name: "Contact phone", exact: true }),
+      page.getByLabel("Contact phone", { exact: true }),
+      page.locator("#contact-phone"),
+    )
+  ).fill(String(p.contact_phone));
+  // s11: Select 'Product'
+  await (
+    await pick(
+      page.getByTestId("nw-product"),
+      page.getByRole("combobox", { name: "Product", exact: true }),
+      page.locator("#product"),
+    )
+  ).click();
+  await page.getByRole("option", { name: String(p.product), exact: true }).click();
+  // s12: Fill 'Seats'
+  await (
+    await pick(
+      page.getByTestId("nw-seats"),
+      page.getByRole("textbox", { name: "Seats", exact: true }),
+      page.getByLabel("Seats", { exact: true }),
+      page.locator("#seats"),
+    )
+  ).fill(String(p.seats));
+  // s13: Fill 'Estimated value (USD)'
+  await (
+    await pick(
+      page.getByTestId("nw-estimated-value"),
+      page.getByRole("textbox", { name: "Estimated value (USD)", exact: true }),
+      page.getByLabel("Estimated value (USD)", { exact: true }),
+      page.locator("#estimated-value"),
+    )
+  ).fill(String(p.est_value));
+  // s14: Fill 'Expected close date'
+  await (
+    await pick(
+      page.getByTestId("nw-close-date"),
+      page.getByRole("textbox", { name: "Expected close date", exact: true }),
+      page.getByLabel("Expected close date", { exact: true }),
+      page.locator("#close-date"),
+    )
+  ).fill(fmtDate(p.close_date, "DD/MM/YYYY"));
+  // s15: Fill 'Notes'
+  await (
+    await pick(
+      page.getByTestId("nw-notes"),
+      page.getByRole("textbox", { name: "Notes", exact: true }),
+      page.getByLabel("Notes", { exact: true }),
+      page.locator("#notes"),
+    )
+  ).fill(String(p.notes));
+  // s16: Check 'The end customer agreed to be contacted by Caravela'
+  await (
+    await pick(
+      page.getByTestId("nw-consent"),
+      page.getByRole("checkbox", { name: "The end customer agreed to be contacted by Caravela", exact: true }),
+      page.getByLabel("The end customer agreed to be contacted by Caravela", { exact: true }),
+      page.locator("#consent"),
+    )
+  ).setChecked(true);
+  // s17: Click 'Submit registration' (commit: Dockhand asks the rep before this click)
+  await (
+    await pick(
+      page.getByTestId("nw-submit"),
+      page.getByRole("button", { name: "Submit registration", exact: true }),
+    )
+  ).click();
+  // Success check
+  await page.waitForURL((url) => url.href.includes("/deals/NW-REG-"));
+  await page.getByText(new RegExp("NW-REG-\\d{5}")).first().waitFor();
+  const text = await page.locator("body").innerText();
+  extracted["confirmation_id"] = text.match(new RegExp("NW-REG-\\d{5}"))?.[0] ?? "";
+  return extracted;
+}
