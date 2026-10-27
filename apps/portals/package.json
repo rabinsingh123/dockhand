@@ -1,0 +1,25 @@
+{
+  "name": "@dockhand/portals",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts both",
+    "dev:partner": "tsx src/cli.ts partner",
+    "dev:supplier": "tsx src/cli.ts supplier",
+    "screenshots": "tsx src/dev/screenshots.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "esbuild": "^0.28.2",
+    "hono": "^4.13.14",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  }
+}
