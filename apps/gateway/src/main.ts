@@ -1,16 +1,30 @@
-// `pnpm dev`: the single dev process (gateway + emulator in emulator mode + both mock portals).
-// Routes are listed in dev-process.ts. To plug in the orchestrator, build it from `dev` (db, whatsapp,
-// artifacts, config, log, clock) right after startDevProcess() and call `dev.wire(orchestratorHandler)`.
+// `pnpm dev`: the single dev process (gateway + emulator in emulator mode + both mock portals + orchestrator).
+// Routes are listed in dev-process.ts.
 
-import { loadConfig, modeBanner } from "@dockhand/core";
+import { createLedger, loadConfig, modeBanner } from "@dockhand/core";
+import { createModelGateway } from "@dockhand/meta";
+import { createOrchestratorFromDev, type Wired } from "@dockhand/orchestrator";
 import { type DevProcess, startDevProcess } from "./dev-process.ts";
 
 async function main(): Promise<void> {
   let dev: DevProcess;
+  let wired: Wired;
   try {
     const config = loadConfig();
     process.stdout.write(`${modeBanner(config)}\n`);
     dev = await startDevProcess({ config });
+    const models = createModelGateway({
+      config,
+      ledger: createLedger(dev.db),
+      artifacts: dev.artifacts,
+      clock: dev.clock,
+      log: dev.log,
+    });
+    wired = createOrchestratorFromDev(dev, { models, firstRunModel: process.env.FIRST_RUN_MODEL });
+    await wired.orchestrator.recover();
+    dev.wire(async (messages) => {
+      for (const m of messages) await wired.orchestrator.handle(m);
+    });
   } catch (err) {
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
@@ -38,6 +52,7 @@ async function main(): Promise<void> {
     stopping = true;
     dev.log.info("shutting down", { signal });
     setTimeout(() => process.exit(1), 10_000).unref();
+    await wired.close();
     await dev.close();
     process.exit(0);
   };
