@@ -1,0 +1,73 @@
+{
+  "fixture": "fixtures/inbound/referral-cafe-aurora.jpg",
+  "synthetic": true,
+  "kind": "partner_referral_form",
+  "description": "Phone photo of a signed Tidewater Cloud partner referral form, filled in by hand by Rota Consultoria.",
+  "asWritten": {
+    "referralPartner": "Rota Consultoria",
+    "partnerContact": "Marcos Tavares",
+    "companyName": "Café Aurora Ltda.",
+    "companyWebsite": "cafeaurora.example",
+    "city": "São Paulo",
+    "country": "Brasil",
+    "contactName": "Júlia Prado",
+    "contactEmail": "julia@cafeaurora.example",
+    "contactPhone": "+55 11 99999-0142",
+    "product": "Tidewater Cloud Business",
+    "seats": "25",
+    "estimatedValue": "R$ 90.000,00",
+    "expectedCloseDate": "29/01/2027",
+    "notes": "6 lojas. Decisão dos sócios em janeiro.",
+    "consent": "ticked",
+    "signedBy": "Marcos Tavares",
+    "signedOn": "26/10/2026",
+    "signature": "present"
+  },
+  "estimatedValue": {
+    "amount": 90000,
+    "currency": "BRL"
+  },
+  "partnerPortalSubmission": {
+    "companyName": "Café Aurora Ltda.",
+    "companyWebsite": "cafeaurora.example",
+    "country": "Brazil",
+    "city": "São Paulo",
+    "contactName": "Júlia Prado",
+    "contactEmail": "julia@cafeaurora.example",
+    "contactPhone": "+55 11 99999-0142",
+    "product": "Tidewater Cloud Business",
+    "seats": 25,
+    "expectedCloseDate": "2027-01-29",
+    "referralPartner": "Rota Consultoria",
+    "notes": "6 lojas. Decisão dos sócios em janeiro.",
+    "consent": true
+  },
+  "understanding": {
+    "intent": "register_deal",
+    "language": "pt",
+    "company": "Café Aurora Ltda.",
+    "city": "São Paulo",
+    "country": "Brazil",
+    "seats": 25,
+    "startDate": null,
+    "contactName": "Júlia Prado",
+    "contactEmail": "julia@cafeaurora.example",
+    "contactPhone": "+55 11 99999-0142",
+    "product": "Tidewater Cloud Business",
+    "estValue": 90000,
+    "closeDate": "2027-01-29",
+    "website": "cafeaurora.example",
+    "referralPartner": "Rota Consultoria",
+    "notes": "6 lojas. Decisão dos sócios em janeiro.",
+    "portalUrl": null,
+    "tenant": null,
+    "inviteCode": null,
+    "buyerName": null,
+    "missing": [],
+    "summaryForRep": "Registrar Café Aurora Ltda. (São Paulo) na Caravela: 25 seats do Tidewater Cloud Business, fechamento em 29/01/2027, contato Júlia Prado. Indicação da Rota Consultoria."
+  },
+  "freeTextFields": [
+    "understanding.summaryForRep",
+    "understanding.notes"
+  ]
+}

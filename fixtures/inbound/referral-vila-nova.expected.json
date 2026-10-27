@@ -1,0 +1,73 @@
+{
+  "fixture": "fixtures/inbound/referral-vila-nova.jpg",
+  "synthetic": true,
+  "kind": "partner_referral_form",
+  "description": "Phone photo of a signed Tidewater Cloud partner referral form, filled in by hand by Rota Consultoria.",
+  "asWritten": {
+    "referralPartner": "Rota Consultoria",
+    "partnerContact": "Marcos Tavares",
+    "companyName": "Vila Nova Logística Ltda.",
+    "companyWebsite": "vilanovalog.example",
+    "city": "Curitiba",
+    "country": "Brasil",
+    "contactName": "Helena Kowalski",
+    "contactEmail": "helena@vilanovalog.example",
+    "contactPhone": "+55 41 99999-0187",
+    "product": "Tidewater Cloud Business",
+    "seats": "40",
+    "estimatedValue": "R$ 144.000,00",
+    "expectedCloseDate": "26/02/2027",
+    "notes": "3 centros de distribuição. Integração com ERP.",
+    "consent": "ticked",
+    "signedBy": "Marcos Tavares",
+    "signedOn": "23/10/2026",
+    "signature": "present"
+  },
+  "estimatedValue": {
+    "amount": 144000,
+    "currency": "BRL"
+  },
+  "partnerPortalSubmission": {
+    "companyName": "Vila Nova Logística Ltda.",
+    "companyWebsite": "vilanovalog.example",
+    "country": "Brazil",
+    "city": "Curitiba",
+    "contactName": "Helena Kowalski",
+    "contactEmail": "helena@vilanovalog.example",
+    "contactPhone": "+55 41 99999-0187",
+    "product": "Tidewater Cloud Business",
+    "seats": 40,
+    "expectedCloseDate": "2027-02-26",
+    "referralPartner": "Rota Consultoria",
+    "notes": "3 centros de distribuição. Integração com ERP.",
+    "consent": true
+  },
+  "understanding": {
+    "intent": "register_deal",
+    "language": "pt",
+    "company": "Vila Nova Logística Ltda.",
+    "city": "Curitiba",
+    "country": "Brazil",
+    "seats": 40,
+    "startDate": null,
+    "contactName": "Helena Kowalski",
+    "contactEmail": "helena@vilanovalog.example",
+    "contactPhone": "+55 41 99999-0187",
+    "product": "Tidewater Cloud Business",
+    "estValue": 144000,
+    "closeDate": "2027-02-26",
+    "website": "vilanovalog.example",
+    "referralPartner": "Rota Consultoria",
+    "notes": "3 centros de distribuição. Integração com ERP.",
+    "portalUrl": null,
+    "tenant": null,
+    "inviteCode": null,
+    "buyerName": null,
+    "missing": [],
+    "summaryForRep": "Registrar Vila Nova Logística Ltda. (Curitiba) na Caravela: 40 seats do Tidewater Cloud Business, fechamento em 26/02/2027, contato Helena Kowalski. Indicação da Rota Consultoria."
+  },
+  "freeTextFields": [
+    "understanding.summaryForRep",
+    "understanding.notes"
+  ]
+}

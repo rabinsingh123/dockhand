@@ -1,0 +1,67 @@
+{
+  "fixture": "fixtures/inbound/acme-supplier-invitation.pdf",
+  "synthetic": true,
+  "kind": "supplier_registration_invitation",
+  "language": "en",
+  "buyer": "Acme Group",
+  "tenant": "acme",
+  "inviteCode": "ACME-7731",
+  "portalUrl": "http://localhost:5102/t/acme/invite/ACME-7731",
+  "deadline": "2026-11-15",
+  "deadlineAsWritten": "15/11/2026",
+  "reference": "ACME-SUP-2026-0458",
+  "documentsRequested": [
+    "W-9 form",
+    "Certificate of insurance"
+  ],
+  "documentsRequestedCanonical": [
+    "w9File",
+    "coiFile"
+  ],
+  "sender": {
+    "name": "Laura Bennett",
+    "title": "Supplier Onboarding Lead, Acme Group Procurement",
+    "email": "supplier.onboarding@acme-group.example",
+    "team": "Acme Group Procurement"
+  },
+  "addressedTo": {
+    "company": "Tidewater Cloud Ltda.",
+    "person": "Ana Ribeiro"
+  },
+  "understanding": {
+    "intent": "supplier_onboarding",
+    "language": "en",
+    "company": "Acme Group",
+    "city": null,
+    "country": null,
+    "seats": null,
+    "startDate": null,
+    "contactName": "Laura Bennett",
+    "contactEmail": "supplier.onboarding@acme-group.example",
+    "contactPhone": null,
+    "product": null,
+    "estValue": null,
+    "closeDate": null,
+    "website": null,
+    "referralPartner": null,
+    "notes": "Deadline 15/11/2026. Documents: W-9 form, Certificate of insurance. Ref. ACME-SUP-2026-0458.",
+    "portalUrl": "http://localhost:5102/t/acme/invite/ACME-7731",
+    "tenant": "acme",
+    "inviteCode": "ACME-7731",
+    "buyerName": "Acme Group",
+    "missing": [],
+    "summaryForRep": "A Acme Group pede o cadastro da Tidewater Cloud como fornecedora no portal (ACME-7731) até 15/11/2026. Precisa do W-9 e do certificado de seguro."
+  },
+  "gradedUnderstandingFields": [
+    "intent",
+    "language",
+    "portalUrl",
+    "tenant",
+    "inviteCode",
+    "buyerName"
+  ],
+  "freeTextFields": [
+    "understanding.summaryForRep",
+    "understanding.notes"
+  ]
+}

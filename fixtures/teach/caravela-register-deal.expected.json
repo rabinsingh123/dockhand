@@ -1,0 +1,321 @@
+{
+  "fixture": "fixtures/teach/caravela-register-deal.mp4",
+  "synthetic": true,
+  "recording": {
+    "portal": "Caravela Partner Hub",
+    "portalVersion": "v1",
+    "mutation": null,
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "signedInAs": "ana.ribeiro",
+    "startsOn": "/deals",
+    "cursorOverlay": "an arrow drawn into the page moves to each target before the click; clicks show a ring",
+    "addressBar": "not visible (viewport-only recording), so startUrl comes from the portal config, not the video",
+    "maxDurationSeconds": 60
+  },
+  "draft": {
+    "name": "register_partner_deal",
+    "title": "Register a partner deal on Caravela Partner Hub",
+    "portalId": "caravela",
+    "startUrl": "http://localhost:5101/deals/new",
+    "goal": "Register an end customer's opportunity with Caravela so Tidewater Cloud gets protected partner pricing, and return the registration ID.",
+    "steps": [
+      "On Deal registrations, click Register a deal.",
+      "Type {{company_name}} into End customer company.",
+      "Type {{company_website}} into Company website.",
+      "Open the Country combobox, type the first letters of {{country}} and pick {{country}}.",
+      "Type {{city}} into City.",
+      "Type {{contact_name}} into Contact full name.",
+      "Type {{contact_email}} into Contact email.",
+      "Type {{contact_phone}} into Contact phone.",
+      "Open the Product combobox and pick {{product}}.",
+      "Type {{seats}} into Seats.",
+      "Type {{estimated_value_usd}} into Estimated value (USD).",
+      "Type {{expected_close_date}} into Expected close date as DD/MM/YYYY.",
+      "Type {{referral_partner}} into Referral partner.",
+      "Type {{notes}} into Notes.",
+      "Tick 'The end customer agreed to be contacted by Caravela'.",
+      "Click Submit registration.",
+      "Wait for 'Registration received' and read the Registration ID."
+    ],
+    "params": [
+      {
+        "name": "company_name",
+        "type": "string",
+        "required": true,
+        "description": "End customer's legal company name."
+      },
+      {
+        "name": "company_website",
+        "type": "string",
+        "required": false,
+        "description": "End customer's website, without https://."
+      },
+      {
+        "name": "country",
+        "type": "enum",
+        "required": true,
+        "description": "End customer's country, picked from the Country combobox.",
+        "enumValues": [
+          "Argentina",
+          "Brazil",
+          "Chile",
+          "Colombia",
+          "India",
+          "Indonesia",
+          "Mexico",
+          "Peru",
+          "Philippines",
+          "Portugal",
+          "Spain",
+          "United States",
+          "Vietnam"
+        ]
+      },
+      {
+        "name": "city",
+        "type": "string",
+        "required": true,
+        "description": "End customer's city."
+      },
+      {
+        "name": "contact_name",
+        "type": "string",
+        "required": true,
+        "description": "Full name of the contact at the end customer."
+      },
+      {
+        "name": "contact_email",
+        "type": "email",
+        "required": true,
+        "description": "Email of the contact at the end customer."
+      },
+      {
+        "name": "contact_phone",
+        "type": "phone",
+        "required": false,
+        "description": "Phone of the contact, with country code."
+      },
+      {
+        "name": "product",
+        "type": "enum",
+        "required": true,
+        "description": "Tidewater Cloud plan, picked from the Product combobox.",
+        "enumValues": [
+          "Tidewater Cloud Starter",
+          "Tidewater Cloud Business",
+          "Tidewater Cloud Enterprise"
+        ]
+      },
+      {
+        "name": "seats",
+        "type": "number",
+        "required": true,
+        "description": "Number of seats, a whole number."
+      },
+      {
+        "name": "estimated_value_usd",
+        "type": "number",
+        "required": false,
+        "description": "Estimated deal value in US dollars."
+      },
+      {
+        "name": "expected_close_date",
+        "type": "date",
+        "required": true,
+        "description": "Expected close date, typed as DD/MM/YYYY; must be in the future."
+      },
+      {
+        "name": "referral_partner",
+        "type": "string",
+        "required": false,
+        "description": "Partner or agent who referred the deal."
+      },
+      {
+        "name": "notes",
+        "type": "string",
+        "required": false,
+        "description": "Free-text notes for Caravela."
+      }
+    ],
+    "commitStep": "Submit registration",
+    "success": "A 'Registration received' page at /deals/<id> showing a Registration ID like NW-REG-48213 and the status Pending review.",
+    "observedValues": {
+      "company_name": "Padaria Estrela Ltda.",
+      "company_website": "padariaestrela.example",
+      "country": "Brazil",
+      "city": "Belo Horizonte",
+      "contact_name": "Beatriz Nogueira",
+      "contact_email": "beatriz@padariaestrela.example",
+      "contact_phone": "+55 31 99999-0123",
+      "product": "Tidewater Cloud Starter",
+      "seats": "12",
+      "estimated_value_usd": "4320",
+      "expected_close_date": "12/03/2027",
+      "referral_partner": "Ponte Digital Consultoria",
+      "notes": "Piloto em 3 lojas"
+    }
+  },
+  "grading": {
+    "requiredParams": [
+      {
+        "name": "company_name",
+        "field": "companyName",
+        "label": "End customer company",
+        "aliases": [
+          "company",
+          "end_customer_company",
+          "customer_company",
+          "customer_name",
+          "end_customer"
+        ],
+        "observed": "Padaria Estrela Ltda."
+      },
+      {
+        "name": "country",
+        "field": "country",
+        "label": "Country",
+        "aliases": [
+          "customer_country",
+          "company_country"
+        ],
+        "observed": "Brazil"
+      },
+      {
+        "name": "city",
+        "field": "city",
+        "label": "City",
+        "aliases": [
+          "customer_city",
+          "company_city"
+        ],
+        "observed": "Belo Horizonte"
+      },
+      {
+        "name": "contact_name",
+        "field": "contactName",
+        "label": "Contact full name",
+        "aliases": [
+          "contact_full_name",
+          "customer_contact",
+          "contact"
+        ],
+        "observed": "Beatriz Nogueira"
+      },
+      {
+        "name": "contact_email",
+        "field": "contactEmail",
+        "label": "Contact email",
+        "aliases": [
+          "email"
+        ],
+        "observed": "beatriz@padariaestrela.example"
+      },
+      {
+        "name": "product",
+        "field": "product",
+        "label": "Product",
+        "aliases": [
+          "plan",
+          "product_name"
+        ],
+        "observed": "Tidewater Cloud Starter"
+      },
+      {
+        "name": "seats",
+        "field": "seats",
+        "label": "Seats",
+        "aliases": [
+          "seat_count",
+          "licenses",
+          "users",
+          "quantity"
+        ],
+        "observed": "12"
+      },
+      {
+        "name": "expected_close_date",
+        "field": "expectedCloseDate",
+        "label": "Expected close date",
+        "aliases": [
+          "close_date",
+          "closing_date",
+          "expected_close"
+        ],
+        "observed": "12/03/2027"
+      }
+    ],
+    "optionalParams": [
+      {
+        "name": "company_website",
+        "field": "companyWebsite",
+        "label": "Company website",
+        "aliases": [
+          "website",
+          "customer_website",
+          "company_url"
+        ],
+        "observed": "padariaestrela.example"
+      },
+      {
+        "name": "contact_phone",
+        "field": "contactPhone",
+        "label": "Contact phone",
+        "aliases": [
+          "phone",
+          "contact_telephone"
+        ],
+        "observed": "+55 31 99999-0123"
+      },
+      {
+        "name": "estimated_value_usd",
+        "field": "estimatedValue",
+        "label": "Estimated value (USD)",
+        "aliases": [
+          "estimated_value",
+          "deal_value",
+          "amount",
+          "value_usd"
+        ],
+        "observed": "4320"
+      },
+      {
+        "name": "referral_partner",
+        "field": "referralPartner",
+        "label": "Referral partner",
+        "aliases": [
+          "referred_by",
+          "partner",
+          "referrer"
+        ],
+        "observed": "Ponte Digital Consultoria"
+      },
+      {
+        "name": "notes",
+        "field": "notes",
+        "label": "Notes",
+        "aliases": [
+          "deal_notes",
+          "comments"
+        ],
+        "observed": "Piloto em 3 lojas"
+      }
+    ],
+    "comboboxParams": [
+      "country",
+      "product"
+    ],
+    "fixedSteps": [
+      "Tick the consent checkbox 'The end customer agreed to be contacted by Caravela' (a boolean param named consent is also acceptable)."
+    ],
+    "commitStep": "Submit registration",
+    "success": {
+      "textPattern": "Registration received",
+      "idRegex": "NW-REG-\\d{5}",
+      "urlPattern": "/deals/NW-REG-\\d{5}"
+    },
+    "observedValuesMustNotReachRuns": true
+  }
+}

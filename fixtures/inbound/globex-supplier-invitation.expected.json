@@ -1,0 +1,67 @@
+{
+  "fixture": "fixtures/inbound/globex-supplier-invitation.pdf",
+  "synthetic": true,
+  "kind": "supplier_registration_invitation",
+  "language": "pt",
+  "buyer": "Globex Industrial",
+  "tenant": "globex",
+  "inviteCode": "GLOBEX-2048",
+  "portalUrl": "http://localhost:5102/t/globex/invite/GLOBEX-2048",
+  "deadline": "2026-11-30",
+  "deadlineAsWritten": "30/11/2026",
+  "reference": "GLX-SS-2026-1187",
+  "documentsRequested": [
+    "Formulário W-9",
+    "Certificado de seguro"
+  ],
+  "documentsRequestedCanonical": [
+    "w9File",
+    "coiFile"
+  ],
+  "sender": {
+    "name": "Rodrigo Valente",
+    "title": "Analista de Strategic Sourcing, Globex Industrial",
+    "email": "vendors@globex-industrial.example",
+    "team": "Globex Industrial Strategic Sourcing"
+  },
+  "addressedTo": {
+    "company": "Tidewater Cloud Ltda.",
+    "person": "Ana Ribeiro"
+  },
+  "understanding": {
+    "intent": "supplier_onboarding",
+    "language": "pt",
+    "company": "Globex Industrial",
+    "city": null,
+    "country": null,
+    "seats": null,
+    "startDate": null,
+    "contactName": "Rodrigo Valente",
+    "contactEmail": "vendors@globex-industrial.example",
+    "contactPhone": null,
+    "product": null,
+    "estValue": null,
+    "closeDate": null,
+    "website": null,
+    "referralPartner": null,
+    "notes": "Deadline 30/11/2026. Documents: Formulário W-9, Certificado de seguro. Ref. GLX-SS-2026-1187.",
+    "portalUrl": "http://localhost:5102/t/globex/invite/GLOBEX-2048",
+    "tenant": "globex",
+    "inviteCode": "GLOBEX-2048",
+    "buyerName": "Globex Industrial",
+    "missing": [],
+    "summaryForRep": "A Globex Industrial pede o cadastro da Tidewater Cloud como fornecedora no portal (GLOBEX-2048) até 30/11/2026. Precisa do W-9 e do certificado de seguro."
+  },
+  "gradedUnderstandingFields": [
+    "intent",
+    "language",
+    "portalUrl",
+    "tenant",
+    "inviteCode",
+    "buyerName"
+  ],
+  "freeTextFields": [
+    "understanding.summaryForRep",
+    "understanding.notes"
+  ]
+}

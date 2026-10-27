@@ -1,0 +1,10 @@
+{
+  "phone": "5511999990001",
+  "name": "Ana Ribeiro",
+  "tz": "America/Sao_Paulo",
+  "locale": "pt-BR",
+  "languageBias": [
+    "Portuguese",
+    "English"
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "synthetic": true,
+  "note": "Expected Understanding per voice note. Dates resolve against 2026-10-27 in America/Sao_Paulo; summaryForRep is free text and not graded. Country is inferred from the city.",
+  "ungradedFields": [
+    "summaryForRep"
+  ],
+  "scripts": [
+    {
+      "id": "vn1-register-cafe-aurora",
+      "audio": "fixtures/voice/vn1-register-cafe-aurora.ogg",
+      "speaker": "Marcos Tavares (Rota Consultoria, referral partner)",
+      "script": "Oi Ana, é o Marcos, da Rota Consultoria. Registra aí pra mim um deal novo: Café Aurora, vinte e cinco seats do Business, em São Paulo. Fecha em janeiro, dia vinte e nove. The contact is Júlia Prado, julia at cafeaurora dot example. Valeu!",
+      "expected": {
+        "intent": "register_deal",
+        "language": "pt",
+        "company": "Café Aurora",
+        "city": "São Paulo",
+        "country": "Brazil",
+        "seats": 25,
+        "startDate": null,
+        "contactName": "Júlia Prado",
+        "contactEmail": "julia@cafeaurora.example",
+        "contactPhone": null,
+        "product": "Tidewater Cloud Business",
+        "estValue": null,
+        "closeDate": "2027-01-29",
+        "website": null,
+        "referralPartner": "Rota Consultoria",
+        "notes": null,
+        "portalUrl": null,
+        "tenant": null,
+        "inviteCode": null,
+        "buyerName": null,
+        "missing": [],
+        "summaryForRep": "Registrar a Café Aurora (São Paulo) na Caravela: 25 seats do Tidewater Cloud Business, fechamento em 29/01/2027, contato Júlia Prado. Indicação da Rota Consultoria."
+      }
+    },
+    {
+      "id": "vn2-quote-cafe-aurora",
+      "audio": "fixtures/voice/vn2-quote-cafe-aurora.ogg",
+      "speaker": "Júlia Prado (Café Aurora, buyer)",
+      "script": "Oi Ana, aqui é a Júlia, do Café Aurora. Can you send pricing for 25 people em São Paulo, começando em janeiro? A gente tá pensando no plano Business. Obrigada!",
+      "expected": {
+        "intent": "quote",
+        "language": "pt",
+        "company": "Café Aurora",
+        "city": "São Paulo",
+        "country": "Brazil",
+        "seats": 25,
+        "startDate": "2027-01-01",
+        "contactName": "Júlia",
+        "contactEmail": null,
+        "contactPhone": null,
+        "product": "Tidewater Cloud Business",
+        "estValue": null,
+        "closeDate": null,
+        "website": null,
+        "referralPartner": null,
+        "notes": null,
+        "portalUrl": null,
+        "tenant": null,
+        "inviteCode": null,
+        "buyerName": null,
+        "missing": [],
+        "summaryForRep": "Cotação para a Café Aurora: 25 usuários do Tidewater Cloud Business em São Paulo, início em janeiro de 2027."
+      }
+    },
+    {
+      "id": "vn3-register-vila-nova-missing-seats",
+      "audio": "fixtures/voice/vn3-register-vila-nova-missing-seats.ogg",
+      "speaker": "Marcos Tavares (Rota Consultoria, referral partner)",
+      "script": "Ana, mais uma do Marcos, da Rota Consultoria. Registra a Vila Nova Logística, lá em Curitiba, plano Business. O fechamento é dia vinte e seis de fevereiro. The contact person é a Helena Kowalski, helena at vilanovalog dot example. Depois te mando o form assinado.",
+      "expected": {
+        "intent": "register_deal",
+        "language": "pt",
+        "company": "Vila Nova Logística",
+        "city": "Curitiba",
+        "country": "Brazil",
+        "seats": null,
+        "startDate": null,
+        "contactName": "Helena Kowalski",
+        "contactEmail": "helena@vilanovalog.example",
+        "contactPhone": null,
+        "product": "Tidewater Cloud Business",
+        "estValue": null,
+        "closeDate": "2027-02-26",
+        "website": null,
+        "referralPartner": "Rota Consultoria",
+        "notes": null,
+        "portalUrl": null,
+        "tenant": null,
+        "inviteCode": null,
+        "buyerName": null,
+        "missing": [
+          "seats"
+        ],
+        "summaryForRep": "Registrar a Vila Nova Logística (Curitiba) na Caravela: Tidewater Cloud Business, fechamento em 26/02/2027, contato Helena Kowalski. Falta o número de seats."
+      },
+      "followUp": {
+        "askFor": "seats",
+        "questionPt": "Quantos seats a Vila Nova Logística vai contratar?",
+        "answer": "Quarenta.",
+        "resolves": {
+          "seats": 40,
+          "missing": []
+        }
+      }
+    }
+  ]
+}
