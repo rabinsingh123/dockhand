@@ -634,7 +634,7 @@ describe("uploads and extraction on a fixture page", () => {
               fingerprint: { tag: "input", inputType: "file", label: "W-9 form", domId: "w9", bbox: { x: 0, y: 0, w: 0, h: 0 } },
             },
           },
-          { id: "s3", op: "extract", intent: "Read the reference", name: "reference", regex: "REF-\d{5}" },
+          { id: "s3", op: "extract", intent: "Read the reference", name: "reference", regex: "REF-\\d{5}" },
         ],
         success: { extract: [] },
         createdFrom: { kind: "goal", traceRunId: "x" },
