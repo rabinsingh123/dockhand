@@ -19,3 +19,4 @@ docs/DRAFT_ARCHITECTURE.md
 docs/internal/
 docs/reviews/
 docs/research/participant-guide-copy.md
+evals/results/*.jsonl

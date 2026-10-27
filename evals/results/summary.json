@@ -1,0 +1,301 @@
+{
+  "generatedAt": "2026-10-27T14:36:40.331Z",
+  "totals": {
+    "runs": 105,
+    "silentWrong": 0,
+    "excludedScripted": 0
+  },
+  "groups": [
+    {
+      "suite": "mutation",
+      "skill": "caravela_register_deal",
+      "seed": 1,
+      "repair": "none",
+      "n": 55,
+      "excludedScripted": 0,
+      "providers": {
+        "none": 55
+      },
+      "ok": 45,
+      "submittedCorrect": 40,
+      "successRate": 0.8181818181818182,
+      "silentWrong": 0,
+      "safeStops": 5,
+      "failed": 10,
+      "heals": {
+        "fallback": {
+          "runs": 10,
+          "steps": 73
+        },
+        "similarity": {
+          "runs": 0,
+          "steps": 0
+        },
+        "open_weights": {
+          "runs": 0,
+          "steps": 0
+        },
+        "computer_use": {
+          "runs": 0,
+          "steps": 0
+        },
+        "ask_rep": {
+          "runs": 0,
+          "steps": 0
+        }
+      },
+      "healedRuns": 10,
+      "ms": {
+        "p50": 3047,
+        "p90": 3804,
+        "mean": 3228
+      },
+      "modelCalls": 0,
+      "costUsd": 0,
+      "costPerRunUsd": 0,
+      "byOperator": [
+        {
+          "operator": "label_synonym",
+          "n": 5,
+          "buckets": {
+            "clean": 0,
+            "healed_fallback": 5,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic_or_model"
+        },
+        {
+          "operator": "testid_churn",
+          "n": 5,
+          "buckets": {
+            "clean": 0,
+            "healed_fallback": 5,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic"
+        },
+        {
+          "operator": "button_rename",
+          "n": 5,
+          "buckets": {
+            "clean": 0,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 5,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_model"
+        },
+        {
+          "operator": "reorder_fields",
+          "n": 5,
+          "buckets": {
+            "clean": 5,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic"
+        },
+        {
+          "operator": "wrapper_divs",
+          "n": 5,
+          "buckets": {
+            "clean": 5,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic"
+        },
+        {
+          "operator": "class_churn",
+          "n": 5,
+          "buckets": {
+            "clean": 5,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic"
+        },
+        {
+          "operator": "id_churn",
+          "n": 5,
+          "buckets": {
+            "clean": 5,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic"
+        },
+        {
+          "operator": "placeholder_change",
+          "n": 5,
+          "buckets": {
+            "clean": 5,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic"
+        },
+        {
+          "operator": "insert_optional_field",
+          "n": 5,
+          "buckets": {
+            "clean": 5,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_deterministic"
+        },
+        {
+          "operator": "insert_required_field",
+          "n": 5,
+          "buckets": {
+            "clean": 0,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 5,
+            "failed": 0,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "must_fail_safe"
+        },
+        {
+          "operator": "combobox_to_radio",
+          "n": 5,
+          "buckets": {
+            "clean": 0,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 5,
+            "silent_wrong": 0
+          },
+          "expectedCategory": "heal_model"
+        }
+      ]
+    },
+    {
+      "suite": "replay",
+      "skill": "caravela_register_deal",
+      "seed": 1,
+      "repair": "none",
+      "n": 50,
+      "excludedScripted": 0,
+      "providers": {
+        "none": 50
+      },
+      "ok": 50,
+      "submittedCorrect": 50,
+      "successRate": 1,
+      "silentWrong": 0,
+      "safeStops": 0,
+      "failed": 0,
+      "heals": {
+        "fallback": {
+          "runs": 0,
+          "steps": 0
+        },
+        "similarity": {
+          "runs": 0,
+          "steps": 0
+        },
+        "open_weights": {
+          "runs": 0,
+          "steps": 0
+        },
+        "computer_use": {
+          "runs": 0,
+          "steps": 0
+        },
+        "ask_rep": {
+          "runs": 0,
+          "steps": 0
+        }
+      },
+      "healedRuns": 0,
+      "ms": {
+        "p50": 3118,
+        "p90": 3683,
+        "mean": 3187
+      },
+      "modelCalls": 0,
+      "costUsd": 0,
+      "costPerRunUsd": 0,
+      "byOperator": [
+        {
+          "operator": "none",
+          "n": 50,
+          "buckets": {
+            "clean": 50,
+            "healed_fallback": 0,
+            "healed_similarity": 0,
+            "healed_open_weights": 0,
+            "healed_computer_use": 0,
+            "healed_ask_rep": 0,
+            "safe_stop": 0,
+            "failed": 0,
+            "silent_wrong": 0
+          }
+        }
+      ]
+    }
+  ]
+}

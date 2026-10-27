@@ -1,0 +1,873 @@
+{
+  "name": "caravela_register_deal",
+  "version": 1,
+  "parentVersion": null,
+  "title": "Register a deal on Caravela Partner Hub",
+  "portalId": "caravela",
+  "params": [
+    {
+      "name": "company_name",
+      "type": "string",
+      "required": true,
+      "description": "End customer company"
+    },
+    {
+      "name": "company_website",
+      "type": "string",
+      "required": false,
+      "description": "Company website"
+    },
+    {
+      "name": "country",
+      "type": "enum",
+      "required": true,
+      "description": "Country",
+      "enumValues": [
+        "Argentina",
+        "Brazil",
+        "Chile",
+        "Colombia",
+        "India",
+        "Indonesia",
+        "Mexico",
+        "Peru",
+        "Philippines",
+        "Portugal",
+        "Spain",
+        "United States",
+        "Vietnam"
+      ]
+    },
+    {
+      "name": "city",
+      "type": "string",
+      "required": true,
+      "description": "City"
+    },
+    {
+      "name": "contact_name",
+      "type": "string",
+      "required": true,
+      "description": "Contact full name"
+    },
+    {
+      "name": "contact_email",
+      "type": "email",
+      "required": true,
+      "description": "Contact email"
+    },
+    {
+      "name": "contact_phone",
+      "type": "phone",
+      "required": false,
+      "description": "Contact phone"
+    },
+    {
+      "name": "product",
+      "type": "enum",
+      "required": true,
+      "description": "Product",
+      "enumValues": ["Tidewater Cloud Starter", "Tidewater Cloud Business", "Tidewater Cloud Enterprise"]
+    },
+    {
+      "name": "seats",
+      "type": "number",
+      "required": true,
+      "description": "Seats"
+    },
+    {
+      "name": "estimated_value",
+      "type": "number",
+      "required": false,
+      "description": "Estimated value (USD)"
+    },
+    {
+      "name": "expected_close_date",
+      "type": "date",
+      "required": true,
+      "description": "Expected close date"
+    },
+    {
+      "name": "referral_partner",
+      "type": "string",
+      "required": false,
+      "description": "Referral partner"
+    },
+    {
+      "name": "notes",
+      "type": "string",
+      "required": false,
+      "description": "Notes"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "intent": "Open /deals/new",
+      "op": "goto",
+      "url": "http://127.0.0.1:5101/deals/new"
+    },
+    {
+      "id": "s2",
+      "intent": "Fill 'End customer company'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-company-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "End customer company",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "End customer company",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#company-name"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. Sabiá Foods Ltda."
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "End customer company",
+          "label": "End customer company",
+          "placeholder": "e.g. Sabiá Foods Ltda.",
+          "testId": "nw-company-name",
+          "domId": "company-name",
+          "value": "Sabiá Foods Ltda.",
+          "section": "End customer",
+          "bbox": {
+            "x": 163,
+            "y": 290,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{company_name}}"
+    },
+    {
+      "id": "s3",
+      "intent": "Fill 'Company website'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-company-website"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Company website",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Company website",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#company-website"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. sabiafoods.com.br"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Company website",
+          "label": "Company website",
+          "placeholder": "e.g. sabiafoods.com.br",
+          "testId": "nw-company-website",
+          "domId": "company-website",
+          "value": "sabiafoods.com.br",
+          "section": "End customer",
+          "bbox": {
+            "x": 163,
+            "y": 367,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{company_website}}"
+    },
+    {
+      "id": "s4",
+      "intent": "Select 'Country'",
+      "op": "select",
+      "trigger": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "combobox",
+            "name": "Country",
+            "exact": true
+          },
+          {
+            "by": "testid",
+            "value": "nw-country"
+          },
+          {
+            "by": "css",
+            "value": "#country"
+          },
+          {
+            "by": "label",
+            "value": "Country",
+            "exact": true
+          },
+          {
+            "by": "placeholder",
+            "value": "Select a country"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "combobox",
+          "name": "Country",
+          "label": "Country",
+          "placeholder": "Select a country",
+          "testId": "nw-country",
+          "domId": "country",
+          "value": "Brazil",
+          "section": "End customer",
+          "bbox": {
+            "x": 163,
+            "y": 443,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "option": "{{country}}"
+    },
+    {
+      "id": "s5",
+      "intent": "Fill 'City'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-city"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "City",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "City",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#city"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. São Paulo"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "City",
+          "label": "City",
+          "placeholder": "e.g. São Paulo",
+          "testId": "nw-city",
+          "domId": "city",
+          "value": "São Paulo",
+          "section": "End customer",
+          "bbox": {
+            "x": 163,
+            "y": 520,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{city}}"
+    },
+    {
+      "id": "s6",
+      "intent": "Fill 'Contact full name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-contact-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Contact full name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Contact full name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#contact-name"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. Mariana Costa"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Contact full name",
+          "label": "Contact full name",
+          "placeholder": "e.g. Mariana Costa",
+          "testId": "nw-contact-name",
+          "domId": "contact-name",
+          "value": "Mariana Costa",
+          "section": "Customer contact",
+          "bbox": {
+            "x": 163,
+            "y": 685,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{contact_name}}"
+    },
+    {
+      "id": "s7",
+      "intent": "Fill 'Contact email'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-contact-email"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Contact email",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Contact email",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#contact-email"
+          },
+          {
+            "by": "placeholder",
+            "value": "name@company.com"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "email",
+          "role": "textbox",
+          "name": "Contact email",
+          "label": "Contact email",
+          "placeholder": "name@company.com",
+          "testId": "nw-contact-email",
+          "domId": "contact-email",
+          "value": "mariana.costa@sabiafoods.example",
+          "section": "Customer contact",
+          "bbox": {
+            "x": 163,
+            "y": 762,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{contact_email}}"
+    },
+    {
+      "id": "s8",
+      "intent": "Fill 'Contact phone'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-contact-phone"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Contact phone",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Contact phone",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#contact-phone"
+          },
+          {
+            "by": "placeholder",
+            "value": "+55 11 91234 5678"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "tel",
+          "role": "textbox",
+          "name": "Contact phone",
+          "label": "Contact phone",
+          "placeholder": "+55 11 91234 5678",
+          "testId": "nw-contact-phone",
+          "domId": "contact-phone",
+          "value": "+55 11 91234 5678",
+          "section": "Customer contact",
+          "bbox": {
+            "x": 163,
+            "y": 839,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{contact_phone}}"
+    },
+    {
+      "id": "s9",
+      "intent": "Select 'Product'",
+      "op": "select",
+      "trigger": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "combobox",
+            "name": "Product",
+            "exact": true
+          },
+          {
+            "by": "testid",
+            "value": "nw-product"
+          },
+          {
+            "by": "css",
+            "value": "#product"
+          },
+          {
+            "by": "label",
+            "value": "Product",
+            "exact": true
+          },
+          {
+            "by": "placeholder",
+            "value": "Select a product"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "combobox",
+          "name": "Product",
+          "label": "Product",
+          "placeholder": "Select a product",
+          "testId": "nw-product",
+          "domId": "product",
+          "value": "Tidewater Cloud Business",
+          "section": "Opportunity",
+          "bbox": {
+            "x": 163,
+            "y": 970,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "option": "{{product}}"
+    },
+    {
+      "id": "s10",
+      "intent": "Fill 'Seats'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-seats"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Seats",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Seats",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#seats"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. 25"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Seats",
+          "label": "Seats",
+          "placeholder": "e.g. 25",
+          "testId": "nw-seats",
+          "domId": "seats",
+          "value": "25",
+          "section": "Opportunity",
+          "bbox": {
+            "x": 163,
+            "y": 1047,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{seats}}"
+    },
+    {
+      "id": "s11",
+      "intent": "Fill 'Estimated value (USD)'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-estimated-value"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Estimated value (USD)",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Estimated value (USD)",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#estimated-value"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. 18000"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Estimated value (USD)",
+          "label": "Estimated value (USD)",
+          "placeholder": "e.g. 18000",
+          "testId": "nw-estimated-value",
+          "domId": "estimated-value",
+          "value": "18000",
+          "section": "Opportunity",
+          "bbox": {
+            "x": 163,
+            "y": 1124,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{estimated_value}}"
+    },
+    {
+      "id": "s12",
+      "intent": "Fill 'Expected close date'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-close-date"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Expected close date",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Expected close date",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#close-date"
+          },
+          {
+            "by": "placeholder",
+            "value": "DD/MM/YYYY"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Expected close date",
+          "label": "Expected close date",
+          "placeholder": "DD/MM/YYYY",
+          "testId": "nw-close-date",
+          "domId": "close-date",
+          "value": "26/12/2026",
+          "section": "Opportunity",
+          "bbox": {
+            "x": 163,
+            "y": 1201,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{expected_close_date|date:DD/MM/YYYY}}"
+    },
+    {
+      "id": "s13",
+      "intent": "Fill 'Referral partner'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-referral-partner"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Referral partner",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Referral partner",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#referral-partner"
+          },
+          {
+            "by": "placeholder",
+            "value": "Partner or agent name (optional)"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Referral partner",
+          "label": "Referral partner",
+          "placeholder": "Partner or agent name (optional)",
+          "testId": "nw-referral-partner",
+          "domId": "referral-partner",
+          "value": "Agência Ponte Digital",
+          "section": "Opportunity",
+          "bbox": {
+            "x": 163,
+            "y": 1278,
+            "w": 634,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{referral_partner}}"
+    },
+    {
+      "id": "s14",
+      "intent": "Fill 'Notes'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-notes"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Notes",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Notes",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#notes"
+          },
+          {
+            "by": "placeholder",
+            "value": "Anything Caravela should know about this opportunity"
+          }
+        ],
+        "fingerprint": {
+          "tag": "textarea",
+          "role": "textbox",
+          "name": "Notes",
+          "label": "Notes",
+          "placeholder": "Anything Caravela should know about this opportunity",
+          "testId": "nw-notes",
+          "domId": "notes",
+          "value": "Pilot with the finance team first",
+          "section": "Additional information",
+          "bbox": {
+            "x": 163,
+            "y": 1409,
+            "w": 634,
+            "h": 101
+          }
+        }
+      },
+      "value": "{{notes}}"
+    },
+    {
+      "id": "s15",
+      "intent": "Check 'The end customer agreed to be contacted by Caravela'",
+      "op": "check",
+      "target": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "checkbox",
+            "name": "The end customer agreed to be contacted by Caravela",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "The end customer agreed to be contacted by Caravela",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#consent"
+          },
+          {
+            "by": "testid",
+            "value": "nw-consent"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "checkbox",
+          "role": "checkbox",
+          "name": "The end customer agreed to be contacted by Caravela",
+          "label": "The end customer agreed to be contacted by Caravela",
+          "testId": "nw-consent",
+          "domId": "consent",
+          "value": "true",
+          "section": "Register a deal",
+          "bbox": {
+            "x": 163,
+            "y": 1557,
+            "w": 17,
+            "h": 17
+          }
+        }
+      },
+      "checked": true
+    },
+    {
+      "id": "s16",
+      "intent": "Click 'Submit registration'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "nw-submit"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Submit registration",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "button:nth-of-type(2)"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Submit registration",
+          "testId": "nw-submit",
+          "text": "Submit registration",
+          "section": "Register a deal",
+          "bbox": {
+            "x": 640,
+            "y": 1620,
+            "w": 157,
+            "h": 38
+          },
+          "formSubmit": true
+        }
+      },
+      "commit": true
+    }
+  ],
+  "success": {
+    "urlIncludes": "/deals/NW-REG-",
+    "textPattern": "NW-REG-\\d{5}",
+    "extract": [
+      {
+        "name": "confirmation_id",
+        "regex": "NW-REG-\\d{5}"
+      }
+    ]
+  },
+  "createdFrom": {
+    "kind": "goal",
+    "traceRunId": "bootstrap-caravela-01M5YV46CAW3R8W1X3YYYG0MK3"
+  },
+  "changelog": ""
+}

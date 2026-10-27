@@ -1,0 +1,2459 @@
+{
+  "name": "acme_supplier_registration",
+  "version": 1,
+  "parentVersion": null,
+  "title": "Register Tidewater Cloud as a supplier on the Acme Group portal",
+  "portalId": "supplier",
+  "params": [
+    {
+      "name": "tenant",
+      "type": "string",
+      "required": true,
+      "description": "Buyer tenant slug in the invite URL"
+    },
+    {
+      "name": "invite_code",
+      "type": "string",
+      "required": true,
+      "description": "Supplier invitation code"
+    },
+    {
+      "name": "legal_name",
+      "type": "string",
+      "required": true,
+      "description": "Legal company name"
+    },
+    {
+      "name": "trade_name",
+      "type": "string",
+      "required": false,
+      "description": "Trade name (DBA)"
+    },
+    {
+      "name": "tax_id",
+      "type": "string",
+      "required": true,
+      "description": "Tax ID (EIN)"
+    },
+    {
+      "name": "country_of_incorporation",
+      "type": "enum",
+      "required": true,
+      "description": "Country of incorporation",
+      "enumValues": [
+        "Argentina",
+        "Australia",
+        "Brazil",
+        "Canada",
+        "Chile",
+        "Colombia",
+        "France",
+        "Germany",
+        "India",
+        "Indonesia",
+        "Ireland",
+        "Japan",
+        "Mexico",
+        "Netherlands",
+        "Peru",
+        "Philippines",
+        "Portugal",
+        "Singapore",
+        "Spain",
+        "United Kingdom",
+        "United States",
+        "Vietnam"
+      ]
+    },
+    {
+      "name": "state_of_incorporation",
+      "type": "string",
+      "required": true,
+      "description": "State / province of incorporation"
+    },
+    {
+      "name": "year_founded",
+      "type": "number",
+      "required": true,
+      "description": "Year founded"
+    },
+    {
+      "name": "website",
+      "type": "string",
+      "required": false,
+      "description": "Company website"
+    },
+    {
+      "name": "employees",
+      "type": "enum",
+      "required": true,
+      "description": "Number of employees",
+      "enumValues": ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001+"]
+    },
+    {
+      "name": "annual_revenue",
+      "type": "enum",
+      "required": true,
+      "description": "Annual revenue (USD)",
+      "enumValues": ["Under $1M", "$1M-$10M", "$10M-$50M", "$50M-$250M", "$250M-$1B", "Over $1B"]
+    },
+    {
+      "name": "street1",
+      "type": "string",
+      "required": true,
+      "description": "Street address"
+    },
+    {
+      "name": "street2",
+      "type": "string",
+      "required": false,
+      "description": "Address line 2"
+    },
+    {
+      "name": "city",
+      "type": "string",
+      "required": true,
+      "description": "City"
+    },
+    {
+      "name": "state",
+      "type": "string",
+      "required": true,
+      "description": "State / province"
+    },
+    {
+      "name": "postal_code",
+      "type": "string",
+      "required": true,
+      "description": "Postal code"
+    },
+    {
+      "name": "country",
+      "type": "enum",
+      "required": true,
+      "description": "Country",
+      "enumValues": [
+        "Argentina",
+        "Australia",
+        "Brazil",
+        "Canada",
+        "Chile",
+        "Colombia",
+        "France",
+        "Germany",
+        "India",
+        "Indonesia",
+        "Ireland",
+        "Japan",
+        "Mexico",
+        "Netherlands",
+        "Peru",
+        "Philippines",
+        "Portugal",
+        "Singapore",
+        "Spain",
+        "United Kingdom",
+        "United States",
+        "Vietnam"
+      ]
+    },
+    {
+      "name": "primary_contact_name",
+      "type": "string",
+      "required": true,
+      "description": "Primary contact name"
+    },
+    {
+      "name": "primary_contact_title",
+      "type": "string",
+      "required": true,
+      "description": "Primary contact title"
+    },
+    {
+      "name": "primary_contact_email",
+      "type": "email",
+      "required": true,
+      "description": "Primary contact email"
+    },
+    {
+      "name": "primary_contact_phone",
+      "type": "phone",
+      "required": true,
+      "description": "Primary contact phone"
+    },
+    {
+      "name": "ar_contact_name",
+      "type": "string",
+      "required": true,
+      "description": "Accounts receivable name"
+    },
+    {
+      "name": "ar_contact_email",
+      "type": "email",
+      "required": true,
+      "description": "Accounts receivable email"
+    },
+    {
+      "name": "ar_contact_phone",
+      "type": "phone",
+      "required": false,
+      "description": "Accounts receivable phone"
+    },
+    {
+      "name": "sales_contact_name",
+      "type": "string",
+      "required": false,
+      "description": "Sales contact name"
+    },
+    {
+      "name": "sales_contact_email",
+      "type": "email",
+      "required": false,
+      "description": "Sales contact email"
+    },
+    {
+      "name": "bank_name",
+      "type": "string",
+      "required": true,
+      "description": "Bank name"
+    },
+    {
+      "name": "account_holder",
+      "type": "string",
+      "required": true,
+      "description": "Account holder name"
+    },
+    {
+      "name": "account_number",
+      "type": "string",
+      "required": true,
+      "description": "Account number"
+    },
+    {
+      "name": "routing_number",
+      "type": "string",
+      "required": true,
+      "description": "Routing number (ABA)"
+    },
+    {
+      "name": "swift_bic",
+      "type": "string",
+      "required": false,
+      "description": "SWIFT / BIC"
+    },
+    {
+      "name": "currency",
+      "type": "enum",
+      "required": true,
+      "description": "Currency",
+      "enumValues": ["USD", "EUR", "BRL", "MXN", "INR"]
+    },
+    {
+      "name": "w9_file",
+      "type": "file",
+      "required": true,
+      "description": "W-9 form"
+    },
+    {
+      "name": "coi_file",
+      "type": "file",
+      "required": true,
+      "description": "Certificate of insurance"
+    },
+    {
+      "name": "signatory_name",
+      "type": "string",
+      "required": true,
+      "description": "Signatory name"
+    },
+    {
+      "name": "signatory_title",
+      "type": "string",
+      "required": true,
+      "description": "Signatory title"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "intent": "Open /t/%7B%7Btenant%7D%7D/invite/%7B%7Binvite_code%7D%7D",
+      "op": "goto",
+      "url": "http://127.0.0.1:5101/t/{{tenant}}/invite/{{invite_code}}"
+    },
+    {
+      "id": "s2",
+      "intent": "Click 'Start registration'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-start"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Start registration",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "button"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Start registration",
+          "testId": "sg-start",
+          "text": "Start registration",
+          "section": "You've been invited to register as a supplier for Acme Group",
+          "bbox": {
+            "x": 327,
+            "y": 536,
+            "w": 161,
+            "h": 42
+          }
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "intent": "Wait for /t/{{tenant}}/register/company",
+      "op": "waitFor",
+      "urlIncludes": "/t/{{tenant}}/register/company"
+    },
+    {
+      "id": "s4",
+      "intent": "Fill 'Legal company name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-legal-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Legal company name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Legal company name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#legal-name"
+          },
+          {
+            "by": "placeholder",
+            "value": "As shown on your tax documents"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Legal company name",
+          "label": "Legal company name",
+          "placeholder": "As shown on your tax documents",
+          "testId": "sg-legal-name",
+          "domId": "legal-name",
+          "value": "Tidewater Cloud Ltda.",
+          "section": "Company information",
+          "bbox": {
+            "x": 177,
+            "y": 289,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{legal_name}}"
+    },
+    {
+      "id": "s5",
+      "intent": "Fill 'Trade name (DBA)'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-trade-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Trade name (DBA)",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Trade name (DBA)",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#trade-name"
+          },
+          {
+            "by": "placeholder",
+            "value": "If different from the legal name"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Trade name (DBA)",
+          "label": "Trade name (DBA)",
+          "placeholder": "If different from the legal name",
+          "testId": "sg-trade-name",
+          "domId": "trade-name",
+          "value": "Tidewater Cloud",
+          "section": "Company information",
+          "bbox": {
+            "x": 650,
+            "y": 289,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{trade_name}}"
+    },
+    {
+      "id": "s6",
+      "intent": "Fill 'Tax ID (EIN)'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-tax-id"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Tax ID (EIN)",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Tax ID (EIN)",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#tax-id"
+          },
+          {
+            "by": "placeholder",
+            "value": "NN-NNNNNNN"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Tax ID (EIN)",
+          "label": "Tax ID (EIN)",
+          "placeholder": "NN-NNNNNNN",
+          "testId": "sg-tax-id",
+          "domId": "tax-id",
+          "value": "00-1234567",
+          "section": "Company information",
+          "bbox": {
+            "x": 177,
+            "y": 366,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{tax_id}}"
+    },
+    {
+      "id": "s7",
+      "intent": "Select 'Country of incorporation'",
+      "op": "select",
+      "trigger": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "combobox",
+            "name": "Country of incorporation",
+            "exact": true
+          },
+          {
+            "by": "testid",
+            "value": "sg-incorporation-country"
+          },
+          {
+            "by": "css",
+            "value": "#incorporation-country"
+          },
+          {
+            "by": "label",
+            "value": "Country of incorporation",
+            "exact": true
+          },
+          {
+            "by": "placeholder",
+            "value": "Select a country"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "combobox",
+          "name": "Country of incorporation",
+          "label": "Country of incorporation",
+          "placeholder": "Select a country",
+          "testId": "sg-incorporation-country",
+          "domId": "incorporation-country",
+          "value": "Brazil",
+          "section": "Company information",
+          "bbox": {
+            "x": 650,
+            "y": 366,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "option": "{{country_of_incorporation}}"
+    },
+    {
+      "id": "s8",
+      "intent": "Fill 'State / province of incorporation'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-incorporation-state"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "State / province of incorporation",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "State / province of incorporation",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#incorporation-state"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. Delaware"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "State / province of incorporation",
+          "label": "State / province of incorporation",
+          "placeholder": "e.g. Delaware",
+          "testId": "sg-incorporation-state",
+          "domId": "incorporation-state",
+          "value": "São Paulo",
+          "section": "Company information",
+          "bbox": {
+            "x": 177,
+            "y": 443,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{state_of_incorporation}}"
+    },
+    {
+      "id": "s9",
+      "intent": "Fill 'Year founded'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-year-founded"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Year founded",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Year founded",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#year-founded"
+          },
+          {
+            "by": "placeholder",
+            "value": "YYYY"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Year founded",
+          "label": "Year founded",
+          "placeholder": "YYYY",
+          "testId": "sg-year-founded",
+          "domId": "year-founded",
+          "value": "2019",
+          "section": "Company information",
+          "bbox": {
+            "x": 650,
+            "y": 443,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{year_founded}}"
+    },
+    {
+      "id": "s10",
+      "intent": "Fill 'Company website'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-website"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Company website",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Company website",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#website"
+          },
+          {
+            "by": "placeholder",
+            "value": "https://"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Company website",
+          "label": "Company website",
+          "placeholder": "https://",
+          "testId": "sg-website",
+          "domId": "website",
+          "value": "https://tidewater.example.com",
+          "section": "Company information",
+          "bbox": {
+            "x": 177,
+            "y": 520,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{website}}"
+    },
+    {
+      "id": "s11",
+      "intent": "Select 'Number of employees'",
+      "op": "select",
+      "trigger": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "combobox",
+            "name": "Number of employees",
+            "exact": true
+          },
+          {
+            "by": "testid",
+            "value": "sg-employees"
+          },
+          {
+            "by": "css",
+            "value": "#employees"
+          },
+          {
+            "by": "label",
+            "value": "Number of employees",
+            "exact": true
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "combobox",
+          "name": "Number of employees",
+          "label": "Number of employees",
+          "placeholder": "Select a range",
+          "testId": "sg-employees",
+          "domId": "employees",
+          "value": "51-200",
+          "section": "Company information",
+          "bbox": {
+            "x": 650,
+            "y": 520,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "option": "{{employees}}"
+    },
+    {
+      "id": "s12",
+      "intent": "Select 'Annual revenue (USD)'",
+      "op": "select",
+      "trigger": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "combobox",
+            "name": "Annual revenue (USD)",
+            "exact": true
+          },
+          {
+            "by": "testid",
+            "value": "sg-annual-revenue"
+          },
+          {
+            "by": "css",
+            "value": "#annual-revenue"
+          },
+          {
+            "by": "label",
+            "value": "Annual revenue (USD)",
+            "exact": true
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "combobox",
+          "name": "Annual revenue (USD)",
+          "label": "Annual revenue (USD)",
+          "placeholder": "Select a range",
+          "testId": "sg-annual-revenue",
+          "domId": "annual-revenue",
+          "value": "$10M-$50M",
+          "section": "Company information",
+          "bbox": {
+            "x": 177,
+            "y": 596,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "option": "{{annual_revenue}}"
+    },
+    {
+      "id": "s13",
+      "intent": "Check 'LLC'",
+      "op": "check",
+      "target": {
+        "candidates": [
+          {
+            "by": "label",
+            "value": "LLC",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#entity-type-llc"
+          },
+          {
+            "by": "testid",
+            "value": "sg-entity-type-llc"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "radio",
+          "role": "radio",
+          "name": "Corporation",
+          "label": "LLC",
+          "testId": "sg-entity-type-llc",
+          "domId": "entity-type-llc",
+          "nameAttr": "entity-type",
+          "value": "true",
+          "section": "Company information",
+          "bbox": {
+            "x": 783,
+            "y": 606,
+            "w": 16,
+            "h": 16
+          }
+        }
+      },
+      "checked": true
+    },
+    {
+      "id": "s14",
+      "intent": "Click 'Next'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-next"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Next",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "div:nth-of-type(2) > div > button"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Next",
+          "testId": "sg-next",
+          "text": "Next",
+          "section": "Company information",
+          "bbox": {
+            "x": 1039,
+            "y": 669,
+            "w": 64,
+            "h": 38
+          },
+          "formSubmit": true
+        }
+      }
+    },
+    {
+      "id": "s15",
+      "intent": "Wait for /t/{{tenant}}/register/address",
+      "op": "waitFor",
+      "urlIncludes": "/t/{{tenant}}/register/address"
+    },
+    {
+      "id": "s16",
+      "intent": "Fill 'Street address'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-street1"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Street address",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Street address",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#street1"
+          },
+          {
+            "by": "placeholder",
+            "value": "Street and number"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Street address",
+          "label": "Street address",
+          "placeholder": "Street and number",
+          "testId": "sg-street1",
+          "domId": "street1",
+          "value": "Rua das Marés, 420",
+          "section": "Business address",
+          "bbox": {
+            "x": 177,
+            "y": 289,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{street1}}"
+    },
+    {
+      "id": "s17",
+      "intent": "Fill 'Address line 2'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-street2"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Address line 2",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Address line 2",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#street2"
+          },
+          {
+            "by": "placeholder",
+            "value": "Suite, floor, building (optional)"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Address line 2",
+          "label": "Address line 2",
+          "placeholder": "Suite, floor, building (optional)",
+          "testId": "sg-street2",
+          "domId": "street2",
+          "value": "Conjunto 81, 8º andar",
+          "section": "Business address",
+          "bbox": {
+            "x": 650,
+            "y": 289,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{street2}}"
+    },
+    {
+      "id": "s18",
+      "intent": "Fill 'City'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-city"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "City",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "City",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#city"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "City",
+          "label": "City",
+          "testId": "sg-city",
+          "domId": "city",
+          "value": "São Paulo",
+          "section": "Business address",
+          "bbox": {
+            "x": 177,
+            "y": 366,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{city}}"
+    },
+    {
+      "id": "s19",
+      "intent": "Fill 'State / province'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-state"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "State / province",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "State / province",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#state"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "State / province",
+          "label": "State / province",
+          "testId": "sg-state",
+          "domId": "state",
+          "value": "SP",
+          "section": "Business address",
+          "bbox": {
+            "x": 650,
+            "y": 366,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{state}}"
+    },
+    {
+      "id": "s20",
+      "intent": "Fill 'Postal code'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-postal-code"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Postal code",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Postal code",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#postal-code"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Postal code",
+          "label": "Postal code",
+          "testId": "sg-postal-code",
+          "domId": "postal-code",
+          "value": "04571-010",
+          "section": "Business address",
+          "bbox": {
+            "x": 177,
+            "y": 443,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{postal_code}}"
+    },
+    {
+      "id": "s21",
+      "intent": "Select 'Country'",
+      "op": "select",
+      "trigger": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "combobox",
+            "name": "Country",
+            "exact": true
+          },
+          {
+            "by": "testid",
+            "value": "sg-country"
+          },
+          {
+            "by": "css",
+            "value": "#country"
+          },
+          {
+            "by": "label",
+            "value": "Country",
+            "exact": true
+          },
+          {
+            "by": "placeholder",
+            "value": "Select a country"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "combobox",
+          "name": "Country",
+          "label": "Country",
+          "placeholder": "Select a country",
+          "testId": "sg-country",
+          "domId": "country",
+          "value": "Brazil",
+          "section": "Business address",
+          "bbox": {
+            "x": 650,
+            "y": 443,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "option": "{{country}}"
+    },
+    {
+      "id": "s22",
+      "intent": "Click 'Next'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-next"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Next",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "div:nth-of-type(2) > div > button"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Next",
+          "testId": "sg-next",
+          "text": "Next",
+          "section": "Business address",
+          "bbox": {
+            "x": 1039,
+            "y": 574,
+            "w": 64,
+            "h": 38
+          },
+          "formSubmit": true
+        }
+      }
+    },
+    {
+      "id": "s23",
+      "intent": "Wait for /t/{{tenant}}/register/contacts",
+      "op": "waitFor",
+      "urlIncludes": "/t/{{tenant}}/register/contacts"
+    },
+    {
+      "id": "s24",
+      "intent": "Fill 'Primary contact name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-primary-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Primary contact name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Primary contact name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#primary-name"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Primary contact name",
+          "label": "Primary contact name",
+          "testId": "sg-primary-name",
+          "domId": "primary-name",
+          "value": "Ana Ribeiro",
+          "section": "Primary contact",
+          "bbox": {
+            "x": 177,
+            "y": 317,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{primary_contact_name}}"
+    },
+    {
+      "id": "s25",
+      "intent": "Fill 'Primary contact title'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-primary-title"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Primary contact title",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Primary contact title",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#primary-title"
+          },
+          {
+            "by": "placeholder",
+            "value": "e.g. Head of Sales"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Primary contact title",
+          "label": "Primary contact title",
+          "placeholder": "e.g. Head of Sales",
+          "testId": "sg-primary-title",
+          "domId": "primary-title",
+          "value": "Senior Account Executive",
+          "section": "Primary contact",
+          "bbox": {
+            "x": 650,
+            "y": 317,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{primary_contact_title}}"
+    },
+    {
+      "id": "s26",
+      "intent": "Fill 'Primary contact email'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-primary-email"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Primary contact email",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Primary contact email",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#primary-email"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "email",
+          "role": "textbox",
+          "name": "Primary contact email",
+          "label": "Primary contact email",
+          "testId": "sg-primary-email",
+          "domId": "primary-email",
+          "value": "ana.ribeiro@example.com",
+          "section": "Primary contact",
+          "bbox": {
+            "x": 177,
+            "y": 393,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{primary_contact_email}}"
+    },
+    {
+      "id": "s27",
+      "intent": "Fill 'Primary contact phone'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-primary-phone"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Primary contact phone",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Primary contact phone",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#primary-phone"
+          },
+          {
+            "by": "placeholder",
+            "value": "+1 555 010 0000"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "tel",
+          "role": "textbox",
+          "name": "Primary contact phone",
+          "label": "Primary contact phone",
+          "placeholder": "+1 555 010 0000",
+          "testId": "sg-primary-phone",
+          "domId": "primary-phone",
+          "value": "+55 11 99999-0001",
+          "section": "Primary contact",
+          "bbox": {
+            "x": 650,
+            "y": 393,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{primary_contact_phone}}"
+    },
+    {
+      "id": "s28",
+      "intent": "Fill 'Accounts receivable name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-ar-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Accounts receivable name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Accounts receivable name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#ar-name"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Accounts receivable name",
+          "label": "Accounts receivable name",
+          "testId": "sg-ar-name",
+          "domId": "ar-name",
+          "value": "Carla Mendes",
+          "section": "Accounts receivable",
+          "bbox": {
+            "x": 177,
+            "y": 502,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{ar_contact_name}}"
+    },
+    {
+      "id": "s29",
+      "intent": "Fill 'Accounts receivable email'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-ar-email"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Accounts receivable email",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Accounts receivable email",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#ar-email"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "email",
+          "role": "textbox",
+          "name": "Accounts receivable email",
+          "label": "Accounts receivable email",
+          "testId": "sg-ar-email",
+          "domId": "ar-email",
+          "value": "contas.receber@example.com",
+          "section": "Accounts receivable",
+          "bbox": {
+            "x": 650,
+            "y": 502,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{ar_contact_email}}"
+    },
+    {
+      "id": "s30",
+      "intent": "Fill 'Accounts receivable phone'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-ar-phone"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Accounts receivable phone",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Accounts receivable phone",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#ar-phone"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "tel",
+          "role": "textbox",
+          "name": "Accounts receivable phone",
+          "label": "Accounts receivable phone",
+          "testId": "sg-ar-phone",
+          "domId": "ar-phone",
+          "value": "+55 11 99999-0002",
+          "section": "Accounts receivable",
+          "bbox": {
+            "x": 177,
+            "y": 579,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{ar_contact_phone}}"
+    },
+    {
+      "id": "s31",
+      "intent": "Fill 'Sales contact name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-sales-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Sales contact name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Sales contact name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#sales-name"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Sales contact name",
+          "label": "Sales contact name",
+          "testId": "sg-sales-name",
+          "domId": "sales-name",
+          "value": "Bruno Azevedo",
+          "section": "Sales contact",
+          "bbox": {
+            "x": 177,
+            "y": 720,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{sales_contact_name}}"
+    },
+    {
+      "id": "s32",
+      "intent": "Fill 'Sales contact email'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-sales-email"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Sales contact email",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Sales contact email",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#sales-email"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "email",
+          "role": "textbox",
+          "name": "Sales contact email",
+          "label": "Sales contact email",
+          "testId": "sg-sales-email",
+          "domId": "sales-email",
+          "value": "bruno.azevedo@example.com",
+          "section": "Sales contact",
+          "bbox": {
+            "x": 650,
+            "y": 720,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{sales_contact_email}}"
+    },
+    {
+      "id": "s33",
+      "intent": "Click 'Next'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-next"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Next",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "div:nth-of-type(2) > div > button"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Next",
+          "testId": "sg-next",
+          "text": "Next",
+          "section": "Contacts",
+          "bbox": {
+            "x": 1039,
+            "y": 793,
+            "w": 64,
+            "h": 38
+          },
+          "formSubmit": true
+        }
+      }
+    },
+    {
+      "id": "s34",
+      "intent": "Wait for /t/{{tenant}}/register/banking",
+      "op": "waitFor",
+      "urlIncludes": "/t/{{tenant}}/register/banking"
+    },
+    {
+      "id": "s35",
+      "intent": "Fill 'Bank name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-bank-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Bank name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Bank name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#bank-name"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Bank name",
+          "label": "Bank name",
+          "testId": "sg-bank-name",
+          "domId": "bank-name",
+          "value": "Banco Exemplo S.A.",
+          "section": "Banking details",
+          "bbox": {
+            "x": 177,
+            "y": 289,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{bank_name}}"
+    },
+    {
+      "id": "s36",
+      "intent": "Fill 'Account holder name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-account-holder"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Account holder name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Account holder name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#account-holder"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Account holder name",
+          "label": "Account holder name",
+          "testId": "sg-account-holder",
+          "domId": "account-holder",
+          "value": "TIDEWATER CLOUD LTDA",
+          "section": "Banking details",
+          "bbox": {
+            "x": 650,
+            "y": 289,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{account_holder}}"
+    },
+    {
+      "id": "s37",
+      "intent": "Fill 'Account number'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-account-number"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Account number",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Account number",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#account-number"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Account number",
+          "label": "Account number",
+          "testId": "sg-account-number",
+          "domId": "account-number",
+          "value": "000123456",
+          "section": "Banking details",
+          "bbox": {
+            "x": 177,
+            "y": 366,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{account_number}}"
+    },
+    {
+      "id": "s38",
+      "intent": "Fill 'Routing number (ABA)'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-routing-number"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Routing number (ABA)",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Routing number (ABA)",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#routing-number"
+          },
+          {
+            "by": "placeholder",
+            "value": "9 digits"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Routing number (ABA)",
+          "label": "Routing number (ABA)",
+          "placeholder": "9 digits",
+          "testId": "sg-routing-number",
+          "domId": "routing-number",
+          "value": "999999999",
+          "section": "Banking details",
+          "bbox": {
+            "x": 650,
+            "y": 366,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{routing_number}}"
+    },
+    {
+      "id": "s39",
+      "intent": "Fill 'SWIFT / BIC'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-swift"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "SWIFT / BIC",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "SWIFT / BIC",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#swift"
+          },
+          {
+            "by": "placeholder",
+            "value": "8 or 11 characters"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "SWIFT / BIC",
+          "label": "SWIFT / BIC",
+          "placeholder": "8 or 11 characters",
+          "testId": "sg-swift",
+          "domId": "swift",
+          "value": "EXMPBRS0",
+          "section": "Banking details",
+          "bbox": {
+            "x": 177,
+            "y": 443,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{swift_bic}}"
+    },
+    {
+      "id": "s40",
+      "intent": "Select 'Currency'",
+      "op": "select",
+      "trigger": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "combobox",
+            "name": "Currency",
+            "exact": true
+          },
+          {
+            "by": "testid",
+            "value": "sg-currency"
+          },
+          {
+            "by": "css",
+            "value": "#currency"
+          },
+          {
+            "by": "label",
+            "value": "Currency",
+            "exact": true
+          },
+          {
+            "by": "placeholder",
+            "value": "Select a currency"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "combobox",
+          "name": "Currency",
+          "label": "Currency",
+          "placeholder": "Select a currency",
+          "testId": "sg-currency",
+          "domId": "currency",
+          "value": "BRL",
+          "section": "Banking details",
+          "bbox": {
+            "x": 650,
+            "y": 443,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "option": "{{currency}}"
+    },
+    {
+      "id": "s41",
+      "intent": "Check 'I confirm these banking details'",
+      "op": "check",
+      "target": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "checkbox",
+            "name": "I confirm these banking details",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "I confirm these banking details",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#bank-confirm"
+          },
+          {
+            "by": "testid",
+            "value": "sg-bank-confirm"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "checkbox",
+          "role": "checkbox",
+          "name": "I confirm these banking details",
+          "label": "I confirm these banking details",
+          "testId": "sg-bank-confirm",
+          "domId": "bank-confirm",
+          "value": "true",
+          "section": "Banking details",
+          "bbox": {
+            "x": 177,
+            "y": 520,
+            "w": 17,
+            "h": 17
+          }
+        }
+      },
+      "checked": true
+    },
+    {
+      "id": "s42",
+      "intent": "Click 'Next'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-next"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Next",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "div:nth-of-type(2) > div > button"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Next",
+          "testId": "sg-next",
+          "text": "Next",
+          "section": "Banking details",
+          "bbox": {
+            "x": 1039,
+            "y": 574,
+            "w": 64,
+            "h": 38
+          },
+          "formSubmit": true
+        }
+      }
+    },
+    {
+      "id": "s43",
+      "intent": "Wait for /t/{{tenant}}/register/compliance",
+      "op": "waitFor",
+      "urlIncludes": "/t/{{tenant}}/register/compliance"
+    },
+    {
+      "id": "s44",
+      "intent": "Upload the file for 'W-9 form'",
+      "op": "upload",
+      "target": {
+        "candidates": [
+          {
+            "by": "label",
+            "value": "W-9 form",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#w9"
+          },
+          {
+            "by": "testid",
+            "value": "sg-w9"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "W-9 form",
+            "exact": true
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "file",
+          "role": "button",
+          "name": "W-9 form",
+          "label": "W-9 form",
+          "testId": "sg-w9",
+          "domId": "w9",
+          "section": "Documents",
+          "bbox": {
+            "x": 191,
+            "y": 348,
+            "w": 1,
+            "h": 1
+          }
+        }
+      },
+      "fileParam": "w9_file"
+    },
+    {
+      "id": "s45",
+      "intent": "Upload the file for 'Certificate of insurance'",
+      "op": "upload",
+      "target": {
+        "candidates": [
+          {
+            "by": "label",
+            "value": "Certificate of insurance",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#coi"
+          },
+          {
+            "by": "testid",
+            "value": "sg-coi"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Certificate of insurance",
+            "exact": true
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "file",
+          "role": "button",
+          "name": "Certificate of insurance",
+          "label": "Certificate of insurance",
+          "testId": "sg-coi",
+          "domId": "coi",
+          "section": "Documents",
+          "bbox": {
+            "x": 664,
+            "y": 348,
+            "w": 1,
+            "h": 1
+          }
+        }
+      },
+      "fileParam": "coi_file"
+    },
+    {
+      "id": "s46",
+      "intent": "Check 'None of these'",
+      "op": "check",
+      "target": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "checkbox",
+            "name": "None of these",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "None of these",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#diversity-none-of-these"
+          },
+          {
+            "by": "testid",
+            "value": "sg-diversity-none-of-these"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "checkbox",
+          "role": "checkbox",
+          "name": "None of these",
+          "label": "None of these",
+          "testId": "sg-diversity-none-of-these",
+          "domId": "diversity-none-of-these",
+          "value": "true",
+          "section": "Diversity classifications",
+          "bbox": {
+            "x": 757,
+            "y": 509,
+            "w": 16,
+            "h": 16
+          }
+        }
+      },
+      "checked": true
+    },
+    {
+      "id": "s47",
+      "intent": "Check 'No'",
+      "op": "check",
+      "target": {
+        "candidates": [
+          {
+            "by": "label",
+            "value": "No",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#conflict-no"
+          },
+          {
+            "by": "testid",
+            "value": "sg-conflict-no"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "radio",
+          "role": "radio",
+          "name": "Yes",
+          "label": "No",
+          "testId": "sg-conflict-no",
+          "domId": "conflict-no",
+          "nameAttr": "conflict",
+          "value": "true",
+          "section": "Diversity and ethics",
+          "bbox": {
+            "x": 257,
+            "y": 608,
+            "w": 16,
+            "h": 16
+          }
+        }
+      },
+      "checked": true
+    },
+    {
+      "id": "s48",
+      "intent": "Check 'I accept the Supplier Code of Conduct'",
+      "op": "check",
+      "target": {
+        "candidates": [
+          {
+            "by": "role",
+            "role": "checkbox",
+            "name": "I accept the Supplier Code of Conduct",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "I accept the Supplier Code of Conduct",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#code-of-conduct"
+          },
+          {
+            "by": "testid",
+            "value": "sg-code-of-conduct"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "checkbox",
+          "role": "checkbox",
+          "name": "I accept the Supplier Code of Conduct",
+          "label": "I accept the Supplier Code of Conduct",
+          "testId": "sg-code-of-conduct",
+          "domId": "code-of-conduct",
+          "value": "true",
+          "section": "Diversity and ethics",
+          "bbox": {
+            "x": 177,
+            "y": 651,
+            "w": 17,
+            "h": 17
+          }
+        }
+      },
+      "checked": true
+    },
+    {
+      "id": "s49",
+      "intent": "Fill 'Signatory name'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-signatory-name"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Signatory name",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Signatory name",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#signatory-name"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Signatory name",
+          "label": "Signatory name",
+          "testId": "sg-signatory-name",
+          "domId": "signatory-name",
+          "value": "Renata Figueiredo",
+          "section": "Signature",
+          "bbox": {
+            "x": 177,
+            "y": 773,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{signatory_name}}"
+    },
+    {
+      "id": "s50",
+      "intent": "Fill 'Signatory title'",
+      "op": "fill",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-signatory-title"
+          },
+          {
+            "by": "role",
+            "role": "textbox",
+            "name": "Signatory title",
+            "exact": true
+          },
+          {
+            "by": "label",
+            "value": "Signatory title",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "#signatory-title"
+          }
+        ],
+        "fingerprint": {
+          "tag": "input",
+          "inputType": "text",
+          "role": "textbox",
+          "name": "Signatory title",
+          "label": "Signatory title",
+          "testId": "sg-signatory-title",
+          "domId": "signatory-title",
+          "value": "Chief Financial Officer",
+          "section": "Signature",
+          "bbox": {
+            "x": 650,
+            "y": 773,
+            "w": 453,
+            "h": 38
+          }
+        }
+      },
+      "value": "{{signatory_title}}"
+    },
+    {
+      "id": "s51",
+      "intent": "Click 'Next'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-next"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Next",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "form > div:nth-of-type(2) > div > button"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Next",
+          "testId": "sg-next",
+          "text": "Next",
+          "section": "Compliance and documents",
+          "bbox": {
+            "x": 1039,
+            "y": 846,
+            "w": 64,
+            "h": 38
+          },
+          "formSubmit": true
+        }
+      }
+    },
+    {
+      "id": "s52",
+      "intent": "Wait for /t/{{tenant}}/register/review",
+      "op": "waitFor",
+      "urlIncludes": "/t/{{tenant}}/register/review"
+    },
+    {
+      "id": "s53",
+      "intent": "Click 'Submit for approval'",
+      "op": "click",
+      "target": {
+        "candidates": [
+          {
+            "by": "testid",
+            "value": "sg-submit"
+          },
+          {
+            "by": "role",
+            "role": "button",
+            "name": "Submit for approval",
+            "exact": true
+          },
+          {
+            "by": "css",
+            "value": "div:nth-of-type(3) > div > button"
+          }
+        ],
+        "fingerprint": {
+          "tag": "button",
+          "role": "button",
+          "name": "Submit for approval",
+          "testId": "sg-submit",
+          "text": "Submit for approval",
+          "section": "Compliance and documents",
+          "bbox": {
+            "x": 942,
+            "y": 1520,
+            "w": 161,
+            "h": 38
+          }
+        }
+      },
+      "commit": true
+    }
+  ],
+  "success": {
+    "urlIncludes": "/t/acme/register/complete/SG-ACME-",
+    "textPattern": "SG-ACME-\\d{6}",
+    "extract": [
+      {
+        "name": "confirmation_id",
+        "regex": "SG-ACME-\\d{6}"
+      }
+    ]
+  },
+  "createdFrom": {
+    "kind": "goal",
+    "traceRunId": "bootstrap-supplier-01M5YV4M647XFV1QFDRE9MNJRY"
+  },
+  "changelog": ""
+}
