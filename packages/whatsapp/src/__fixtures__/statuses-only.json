@@ -1,0 +1,64 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102000000000001",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "109000000000001"
+            },
+            "statuses": [
+              {
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABEYEkRPQ0tIQU5EUExBTkNBUkQwMQA=",
+                "status": "sent",
+                "timestamp": "1761574200",
+                "recipient_id": "5511999990000",
+                "conversation": {
+                  "id": "c0ffee00000000000000000000000001",
+                  "origin": {
+                    "type": "service"
+                  }
+                },
+                "pricing": {
+                  "billable": false,
+                  "pricing_model": "PMP",
+                  "category": "service",
+                  "type": "free_customer_service"
+                }
+              },
+              {
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABEYEkRPQ0tIQU5EUExBTkNBUkQwMQA=",
+                "status": "delivered",
+                "timestamp": "1761574201",
+                "recipient_id": "5511999990000",
+                "conversation": {
+                  "id": "c0ffee00000000000000000000000001",
+                  "origin": {
+                    "type": "service"
+                  }
+                },
+                "pricing": {
+                  "billable": false,
+                  "pricing_model": "PMP",
+                  "category": "service",
+                  "type": "free_customer_service"
+                }
+              },
+              {
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABEYEkRPQ0tIQU5EUExBTkNBUkQwMQA=",
+                "status": "read",
+                "timestamp": "1761574202",
+                "recipient_id": "5511999990000"
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

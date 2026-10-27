@@ -1,0 +1,42 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102000000000001",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "109000000000001"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Ana Souza"
+                },
+                "wa_id": "5511999990000"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5511999990000",
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABIYFDNBMDFGQUtF0006VIDEOAA==",
+                "timestamp": "1761573960",
+                "type": "video",
+                "video": {
+                  "caption": "Como registro um deal no portal da Caravela",
+                  "mime_type": "video/mp4",
+                  "sha256": "vdGU5X4caz12KwFgYwpljlUNqMt1YnkH+5GkPc3mMnc=",
+                  "id": "7316700000000004"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102000000000001",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "109000000000001"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Ana Souza"
+                },
+                "wa_id": "5511999990000"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5511999990000",
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABIYFDNBMDFGQUtF0007DOCUMEAA==",
+                "timestamp": "1761574020",
+                "type": "document",
+                "document": {
+                  "filename": "screen-recording-partner-portal.mp4",
+                  "mime_type": "video/mp4",
+                  "sha256": "Q2FyYXZlbGFQYXJ0bmVySHViVGVhY2hWaWRlb0Zha2U=",
+                  "id": "7316700000000005"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

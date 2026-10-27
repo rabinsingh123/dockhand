@@ -7,12 +7,14 @@
     "node": ">=22.13"
   },
   "scripts": {
+    "dev": "tsx apps/gateway/src/main.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "preflight": "tsx apps/gateway/src/doctor.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",

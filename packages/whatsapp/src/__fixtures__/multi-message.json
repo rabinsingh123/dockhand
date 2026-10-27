@@ -1,0 +1,102 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102000000000001",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "109000000000001"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Ana Souza"
+                },
+                "wa_id": "5511999990000"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5511999990000",
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABIYFDNBMDFGQUtF0010TEXTAA==",
+                "timestamp": "1761574200",
+                "type": "text",
+                "text": {
+                  "body": "Segue a foto do formulário"
+                }
+              },
+              {
+                "from": "5511999990000",
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABIYFDNBMDFGQUtF0011IMAGEAA==",
+                "timestamp": "1761574260",
+                "type": "image",
+                "image": {
+                  "mime_type": "image/png",
+                  "sha256": "UE5HRmFrZUhhc2hGb3JUZXN0c09ubHkwMDAwMDAwMDA=",
+                  "id": "1003300000000007"
+                }
+              }
+            ],
+            "statuses": [
+              {
+                "id": "wamid.HBgNNTUxMTk5OTk5MDAwMBUCABEYEkRPQ0tIQU5EUExBTkNBUkQwMQA=",
+                "status": "delivered",
+                "timestamp": "1761574300",
+                "recipient_id": "5511999990000"
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    },
+    {
+      "id": "102000000000001",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "109000000000001"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Bruno Lima"
+                },
+                "wa_id": "5521988880000"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5521988880000",
+                "id": "wamid.HBgNNTUyMTk4ODg4MDAwMBUCABIYFDNBMDFGQUtFMDAxMlRFWFQAAA==",
+                "timestamp": "1761574310",
+                "type": "text",
+                "text": {
+                  "body": "Quero registrar um deal"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        },
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550000000",
+              "phone_number_id": "109000000000001"
+            }
+          },
+          "field": "account_update"
+        }
+      ]
+    }
+  ]
+}
