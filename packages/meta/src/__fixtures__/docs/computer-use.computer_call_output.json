@@ -1,0 +1,9 @@
+{
+  "type": "computer_call_output",
+  "call_id": "call_abc123",
+  "acknowledged_safety_checks": [],
+  "output": {
+    "type": "computer_screenshot",
+    "image_url": "data:image/png;base64,<...>"
+  }
+}

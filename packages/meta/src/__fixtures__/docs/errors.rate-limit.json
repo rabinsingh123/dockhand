@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Rate limit exceeded. Please retry after 15 seconds.",
+    "type": "rate_limit_error",
+    "param": null,
+    "code": "rate_limit_exceeded"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "type": "computer_call",
+  "id": "cc_abc123",
+  "call_id": "call_abc123",
+  "actions": [
+    { "type": "click", "button": "left", "x": 412, "y": 315 },
+    { "type": "type", "text": "quarterly revenue" },
+    { "type": "keypress", "keys": ["Enter"] }
+  ],
+  "pending_safety_checks": [],
+  "status": "completed"
+}

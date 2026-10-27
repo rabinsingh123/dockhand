@@ -1,2 +1,12 @@
-{ "name": "@dockhand/meta", "private": true, "type": "module", "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@dockhand/core": "workspace:*", "zod": "^4" } }
+{
+  "name": "@dockhand/meta",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dockhand/core": "workspace:*",
+    "zod": "^4"
+  }
+}

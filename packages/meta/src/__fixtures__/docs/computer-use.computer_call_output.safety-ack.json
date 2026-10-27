@@ -1,0 +1,8 @@
+{
+  "type": "computer_call_output",
+  "call_id": "call_def456",
+  "acknowledged_safety_checks": [
+    { "id": "csc_123", "code": "malicious_instructions", "message": "Potentially unsafe action detected." }
+  ],
+  "output": { "type": "computer_screenshot", "image_url": "data:image/png;base64,<...>" }
+}

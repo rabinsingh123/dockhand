@@ -1,0 +1,6 @@
+{
+  "model": "muse-spark-1.3",
+  "reasoning": { "effort": "high" },
+  "input": "Now extend the proof to show that the square root of 3 is also irrational.",
+  "previous_response_id": "resp_abc123"
+}

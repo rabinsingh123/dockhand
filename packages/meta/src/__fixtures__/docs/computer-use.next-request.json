@@ -1,0 +1,16 @@
+{
+  "model": "muse-wonder-1.0",
+  "previous_response_id": "<response.id>",
+  "tools": [{ "type": "computer" }],
+  "input": [
+    {
+      "type": "computer_call_output",
+      "call_id": "<call.call_id>",
+      "acknowledged_safety_checks": [],
+      "output": {
+        "type": "computer_screenshot",
+        "image_url": "data:image/png;base64,<...>"
+      }
+    }
+  ]
+}

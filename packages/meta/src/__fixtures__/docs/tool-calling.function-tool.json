@@ -1,0 +1,16 @@
+{
+  "type": "function",
+  "name": "get_weather",
+  "description": "Return current weather for the given location.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "City name, e.g. 'Seattle'"
+      }
+    },
+    "required": ["location"],
+    "additionalProperties": false
+  }
+}

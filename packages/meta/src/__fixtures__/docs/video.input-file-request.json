@@ -1,0 +1,19 @@
+{
+  "model": "muse-spark-1.3",
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Describe what happens in this video."
+        },
+        {
+          "type": "input_file",
+          "file_id": "file-abc123"
+        }
+      ]
+    }
+  ]
+}

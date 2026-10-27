@@ -1,0 +1,141 @@
+{
+  "source": "https://docs.baseten.co/reference/inference-api/llm-openapi-spec.json",
+  "retrieved": "2026-10-27",
+  "ResponseFormatJson": {
+    "additionalProperties": false,
+    "properties": {
+      "type": {
+        "const": "json_schema",
+        "title": "Type",
+        "type": "string",
+        "description": "The response format type, always `json_schema`."
+      },
+      "json_schema": {
+        "$ref": "#/components/schemas/JsonSchema",
+        "description": "The JSON schema definition."
+      }
+    },
+    "required": ["type", "json_schema"],
+    "title": "ResponseFormatJson",
+    "type": "object",
+    "description": "JSON schema response format for structured outputs."
+  },
+  "JsonSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "description": "The name of the schema."
+      },
+      "description": {
+        "title": "Description",
+        "description": "A description of the schema.",
+        "type": "string"
+      },
+      "schema": {
+        "additionalProperties": true,
+        "title": "Schema",
+        "type": "object",
+        "description": "The JSON Schema definition."
+      },
+      "strict": {
+        "default": true,
+        "title": "Strict",
+        "description": "If `true`, enables strict schema adherence.",
+        "const": true,
+        "type": "boolean"
+      }
+    },
+    "required": ["name", "schema"],
+    "title": "JsonSchema",
+    "type": "object",
+    "description": "A JSON schema for structured output."
+  },
+  "UsageInfo": {
+    "additionalProperties": false,
+    "properties": {
+      "completion_tokens": {
+        "default": 0,
+        "title": "Completion Tokens",
+        "type": "integer",
+        "description": "Number of tokens in the generated completion."
+      },
+      "prompt_tokens": {
+        "default": 0,
+        "title": "Prompt Tokens",
+        "type": "integer",
+        "description": "Number of tokens in the prompt."
+      },
+      "total_tokens": {
+        "default": 0,
+        "title": "Total Tokens",
+        "type": "integer",
+        "description": "Total number of tokens used (prompt + completion)."
+      },
+      "completion_tokens_details": {
+        "$ref": "#/components/schemas/CompletionTokensDetails",
+        "description": "Breakdown of completion token usage."
+      },
+      "prompt_tokens_details": {
+        "$ref": "#/components/schemas/PromptTokensDetails",
+        "description": "Breakdown of prompt token usage."
+      }
+    },
+    "title": "UsageInfo",
+    "type": "object",
+    "description": "Token usage statistics for the request."
+  },
+  "PromptTokensDetails": {
+    "additionalProperties": false,
+    "properties": {
+      "audio_tokens": {
+        "default": 0,
+        "title": "Audio Tokens",
+        "type": "integer",
+        "description": "Number of audio tokens in the prompt."
+      },
+      "cached_tokens": {
+        "default": 0,
+        "title": "Cached Tokens",
+        "type": "integer",
+        "description": "Number of tokens retrieved from cache."
+      }
+    },
+    "title": "PromptTokensDetails",
+    "type": "object",
+    "description": "Breakdown of tokens used in the prompt."
+  },
+  "CompletionTokensDetails": {
+    "additionalProperties": false,
+    "properties": {
+      "accepted_prediction_tokens": {
+        "default": 0,
+        "title": "Accepted Prediction Tokens",
+        "type": "integer",
+        "description": "Number of tokens in accepted predictions (for speculative decoding)."
+      },
+      "audio_tokens": {
+        "default": 0,
+        "title": "Audio Tokens",
+        "type": "integer",
+        "description": "Number of audio tokens generated."
+      },
+      "reasoning_tokens": {
+        "default": 0,
+        "title": "Reasoning Tokens",
+        "type": "integer",
+        "description": "Number of tokens used for reasoning (for models that support extended thinking)."
+      },
+      "rejected_prediction_tokens": {
+        "default": 0,
+        "title": "Rejected Prediction Tokens",
+        "type": "integer",
+        "description": "Number of tokens in rejected predictions (for speculative decoding)."
+      }
+    },
+    "title": "CompletionTokensDetails",
+    "type": "object",
+    "description": "Breakdown of tokens used in the completion."
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "Address",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "street": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string", "description": "2-letter state abbreviation" },
+        "zip": { "type": "string", "description": "5-digit zip code" }
+      },
+      "required": ["street", "city", "state", "zip"]
+    }
+  }
+}
