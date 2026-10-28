@@ -113,10 +113,22 @@
              expanded: el.getAttribute('aria-expanded'), disabled: el.disabled === true || el.getAttribute('aria-disabled') === 'true',
              invalid: el.getAttribute('aria-invalid') === 'true' };
   }
+  // A control the page never tied to its label (no <label for>, no aria-*, no placeholder; EspoCRM's form cells):
+  // the single <label> of the nearest ancestor (up to 4 levels) that holds no other label. It fills only the
+  // fingerprint and the snapshot key, never a candidate (Playwright would not resolve it by label).
+  function visualLabel(el) {
+    if ((el.labels && el.labels.length) || name(el)) return '';
+    for (let n = el.parentElement, d = 0; n && n !== document.body && d < 4; n = n.parentElement, d++) {
+      const labels = n.querySelectorAll('label');
+      if (labels.length > 1) return '';
+      if (labels.length === 1) return labels[0].control && labels[0].control !== el ? '' : textOf(labels[0]);
+    }
+    return '';
+  }
   function fingerprint(el) {
     const b = el.getBoundingClientRect();
     return { tag: el.tagName.toLowerCase(), type: el.getAttribute('type') || '', role: role(el), name: name(el),
-      label: el.labels && el.labels.length ? textOf(el.labels[0]) : '', placeholder: norm(el.getAttribute('placeholder')),
+      label: el.labels && el.labels.length ? textOf(el.labels[0]) : visualLabel(el), placeholder: norm(el.getAttribute('placeholder')),
       nameAttr: el.getAttribute('name') || '', id: generated(el.id) ? '' : el.id, testid: el.getAttribute('data-testid') || '',
       text: norm(el.innerText).slice(0, 80), section: section(el)?.name || '', heading: heading(el),
       classes: [...el.classList].filter(c => !generated(c)).slice(0, 6),
@@ -219,7 +231,7 @@
         if (fieldValue(el) === 'true') g.picked.push(bare(name(el)));
         continue;
       }
-      entries.push({ key: bare(name(el)) || el.getAttribute('name') || el.id || el.tagName.toLowerCase(), value: fieldValue(el), el });
+      entries.push({ key: bare(name(el)) || el.getAttribute('name') || el.id || bare(visualLabel(el)) || el.tagName.toLowerCase(), value: fieldValue(el), el });
     }
     const out = {};
     for (const e of entries) {

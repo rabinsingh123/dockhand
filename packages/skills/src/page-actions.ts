@@ -115,14 +115,24 @@ export async function harvestOptions(
 // (`const f = () => ...`): under tsx, esbuild's keepNames wraps those in __name(), which does not exist in
 // the page and throws.
 
-/** In-page: visible error signals (aria-invalid fields and non-empty role=alert regions). */
+/**
+ * In-page: visible error signals (aria-invalid fields, non-empty role=alert regions, and the Bootstrap-style
+ * `.has-error` / `.is-invalid` marks that pages without ARIA error states use, EspoCRM among them).
+ */
 function countIssuesInPage(): number {
   let n = 0;
-  for (const e of document.querySelectorAll('[aria-invalid="true"], [role="alert"]')) {
+  for (const e of document.querySelectorAll(
+    '[aria-invalid="true"], [role="alert"], .has-error, .is-invalid',
+  )) {
     const style = getComputedStyle(e);
     if (e.getClientRects().length === 0 || style.visibility === "hidden" || style.display === "none")
       continue;
-    if (e.getAttribute("aria-invalid") !== "true" && !(e.textContent ?? "").trim()) continue;
+    if (
+      e.getAttribute("aria-invalid") !== "true" &&
+      e.getAttribute("role") === "alert" &&
+      !(e.textContent ?? "").trim()
+    )
+      continue;
     n++;
   }
   return n;
@@ -182,14 +192,32 @@ export async function emptyRequiredFields(page: Page): Promise<Locator[]> {
   return out;
 }
 
-/** Visible fields marked aria-invalid, as locators. */
+/**
+ * Visible fields marked aria-invalid, as locators. A page with no aria-invalid field at all falls back to
+ * Bootstrap-style marks: a control with `.is-invalid`, or the first control inside a `.has-error` container.
+ */
 export async function invalidFields(page: Page): Promise<Locator[]> {
-  const all = page.locator('[aria-invalid="true"]');
-  const n = await all.count();
+  const visible = async (all: Locator): Promise<Locator[]> => {
+    const n = await all.count();
+    const out: Locator[] = [];
+    for (let i = 0; i < n; i++) {
+      const el = all.nth(i);
+      if (await el.isVisible().catch(() => false)) out.push(el);
+    }
+    return out;
+  };
+  const aria = await visible(page.locator('[aria-invalid="true"]'));
+  if (aria.length > 0) return aria;
+  const control =
+    'input:not([type=hidden]):not([type=button]):not([type=submit]), select, textarea, [role="combobox"], [contenteditable="true"]';
   const out: Locator[] = [];
-  for (let i = 0; i < n; i++) {
-    const el = all.nth(i);
-    if (await el.isVisible().catch(() => false)) out.push(el);
+  for (const mark of await visible(page.locator(".has-error, .is-invalid"))) {
+    if (await mark.evaluate((el, sel) => el.matches(sel), control).catch(() => false)) {
+      out.push(mark);
+      continue;
+    }
+    const inner = await visible(mark.locator(control));
+    if (inner[0]) out.push(inner[0]);
   }
   return out;
 }
@@ -226,11 +254,18 @@ export async function waitForOutcome(
         }
         // Same count as countIssuesInPage, inlined (a page function cannot call another one).
         let issues = 0;
-        for (const e of document.querySelectorAll('[aria-invalid="true"], [role="alert"]')) {
+        for (const e of document.querySelectorAll(
+          '[aria-invalid="true"], [role="alert"], .has-error, .is-invalid',
+        )) {
           const style = getComputedStyle(e);
           if (e.getClientRects().length === 0 || style.visibility === "hidden" || style.display === "none")
             continue;
-          if (e.getAttribute("aria-invalid") !== "true" && !(e.textContent ?? "").trim()) continue;
+          if (
+            e.getAttribute("aria-invalid") !== "true" &&
+            e.getAttribute("role") === "alert" &&
+            !(e.textContent ?? "").trim()
+          )
+            continue;
           issues++;
         }
         return issues > baseline ? "validation" : false;

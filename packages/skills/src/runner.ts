@@ -402,6 +402,7 @@ class SkillRun {
       case "fill": {
         const value = renderTemplate(step.value, this.values);
         await locator.fill(value, { timeout });
+        await this.typeIfRejected(locator, value, timeout);
         await this.remember(step, locator, value);
         return null;
       }
@@ -433,6 +434,21 @@ class SkillRun {
       default:
         return null;
     }
+  }
+
+  /**
+   * Some apps keep their own model of a field and only take keystrokes: EspoCRM's number inputs show a filled
+   * value but drop it on blur, and the record is saved without it. After a fill, blur and read the field back;
+   * if the value did not stick, clear it and type it key by key, once. Read-back still has the last word.
+   */
+  private async typeIfRejected(locator: Locator, value: string, timeout: number): Promise<void> {
+    if (value === "") return;
+    await locator.blur({ timeout }).catch(() => undefined);
+    const after = await readFieldValue(locator).catch(() => undefined);
+    if (after === undefined || valuesEquivalent(value, after)) return;
+    await locator.fill("", { timeout });
+    await locator.pressSequentially(value, { timeout });
+    await locator.blur({ timeout }).catch(() => undefined);
   }
 
   private async remember(step: Step, locator: Locator, intended: string): Promise<void> {
