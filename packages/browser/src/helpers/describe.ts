@@ -35,11 +35,19 @@ export async function engineRoleName(page: Page, css: string): Promise<EngineNam
   }
 }
 
-function anchorCss(raw: RawDescription): string | null {
+/**
+ * A CSS selector that resolves to exactly this element, stable ones first. A `name` attribute is not enough:
+ * every radio of a group shares it, and Playwright's role and name would then come from the group's first
+ * option instead of the one clicked.
+ */
+async function anchorCss(page: Page, raw: RawDescription, handle: ElementHandle): Promise<string | null> {
   const css = raw.candidates.list.filter(
     (c): c is Extract<RawCandidate, { kind: "css" }> => c.kind === "css",
   );
-  return (css.find((c) => !c.positional) ?? css[css.length - 1])?.css ?? null;
+  for (const c of [...css.filter((c) => !c.positional), ...css.filter((c) => c.positional)]) {
+    if (await candidateHits(page, { by: "css", value: c.css }, handle, true)) return c.css;
+  }
+  return null;
 }
 
 export function isFileFingerprint(fp: { tag: string; type?: string; inputType?: string }): boolean {
@@ -192,7 +200,7 @@ export async function describeExact(page: Page, handle: ElementHandle): Promise<
   if (fp.tag === "body" || fp.tag === "html")
     return { candidates: [], fingerprint: toDescriptor(fp, null, raw.state) };
   const formSubmit = await handle.evaluate((el) => window.__dh?.formSubmitOf(el as Element) ?? false);
-  const css = anchorCss(raw);
+  const css = await anchorCss(page, raw, handle);
   const engine = css ? await engineRoleName(page, css) : null;
   const descriptor = toDescriptor(fp, engine, raw.state, formSubmit);
   const file = isFileFingerprint(fp);

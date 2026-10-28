@@ -202,3 +202,24 @@ describe("describeAt on Caravela Partner Hub v1", () => {
     }
   });
 });
+
+describe("radio groups", () => {
+  it("names a radio by its own option, not the group's first one (they share a name attribute)", async () => {
+    const { page, context } = await fixtureContext(browser, { "/form": REGISTER_FORM });
+    try {
+      await page.goto(`${FIXTURE_ORIGIN}/form`);
+      for (const [value, name] of [
+        ["silver", "Silver"],
+        ["gold", "Gold"],
+      ] as const) {
+        const { x, y } = await centreOf(page, `input[value="${value}"]`);
+        const t = await describeAt(page, x, y);
+        expect(t.fingerprint).toMatchObject({ role: "radio", name });
+        expect(t.candidates).toContainEqual({ by: "role", role: "radio", name, exact: true });
+        await expectCandidatesHit(page, t, `input[value="${value}"]`);
+      }
+    } finally {
+      await context.close();
+    }
+  });
+});
