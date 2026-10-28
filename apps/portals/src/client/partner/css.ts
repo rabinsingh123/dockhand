@@ -14,8 +14,8 @@ export const PARTNER_CSS = `
 }
 
 .app{min-height:100vh;display:flex;flex-direction:column}
-.app-main{flex:1}
-.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.app-main{flex:1;background:linear-gradient(180deg,#e8eef4 0,var(--bg) 190px)}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 1px 2px rgba(16,24,40,.05),0 2px 6px rgba(16,24,40,.03)}
 .crumbs{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:8px}
 .crumbs a{color:var(--link);text-decoration:none;font-weight:600}
 .crumbs a:hover{text-decoration:underline}
@@ -23,7 +23,7 @@ export const PARTNER_CSS = `
 .page-title{font-size:24px;line-height:1.25;font-weight:700;color:var(--heading);letter-spacing:-.2px}
 .page-sub{margin-top:4px;font-size:14px;color:var(--muted)}
 
-.topbar{background:var(--navy);color:#fff}
+.topbar{background:linear-gradient(180deg,#0f3d5c 0,var(--navy) 100%);color:#fff;box-shadow:inset 0 -1px 0 rgba(255,255,255,.06),0 1px 3px rgba(11,48,72,.25)}
 .topbar-inner{max-width:1080px;margin:0 auto;padding:0 32px;height:58px;display:flex;align-items:center;gap:26px}
 .brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
 .brand-name{font-size:16px;font-weight:700;letter-spacing:.1px}
@@ -102,7 +102,7 @@ export const PARTNER_CSS = `
 
 .v2{--bg:#f6f7f9;--radius:12px;--radius-sm:8px;--input-h:40px;--primary:#1061a0;--primary-hover:#0c4f84;--primary-tint:#eaf2fa;--primary-ink:#0c4f84;--focus-ring:rgba(16,97,160,.22);--link:#1061a0;--border:#e3e7ec;--divider:#eef1f4}
 .shell2{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
-.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:20px;padding:18px 14px;background:#fff;border-right:1px solid var(--border)}
+.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:20px;padding:18px 14px;background:linear-gradient(180deg,#fff 0,#fbfcfd 100%);border-right:1px solid var(--border)}
 .side-brand{display:flex;align-items:center;gap:10px;padding:2px 8px;color:var(--heading);text-decoration:none}
 .side-brand-name{font-size:15px;font-weight:700;line-height:1.1}
 .side-brand-sub{font-size:12px;color:var(--muted)}
@@ -111,12 +111,12 @@ export const PARTNER_CSS = `
 .side-link{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;color:var(--text-2);font-size:14px;font-weight:600;text-decoration:none}
 .side-link:hover{background:var(--hover-bg)}
 .side-link.is-active{background:var(--primary-tint);color:var(--primary-ink)}
-.side-link.is-disabled{color:#9aa5b1;cursor:default}
+.side-link.is-disabled{color:var(--text-2);cursor:default}
 .side-link.is-disabled:hover{background:transparent}
 .side-foot{margin-top:auto;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted)}
 .side-foot strong{display:block;color:var(--heading);font-size:13px}
 .main2{min-width:0;display:flex;flex-direction:column}
-.header2{position:sticky;top:0;z-index:20;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 28px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--border)}
+.header2{position:sticky;top:0;z-index:20;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 28px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--border);box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .header2 .crumbs{margin:0}
 .user2{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
 .user2 .avatar{background:var(--primary-tint);color:var(--primary-ink)}
@@ -124,6 +124,9 @@ export const PARTNER_CSS = `
 .signout2:hover{background:var(--hover-bg)}
 .content2{flex:1;width:100%;max-width:1040px;padding:24px 28px 8px}
 .v2 .page-title{font-size:22px}
+.form-card .section-title::before{content:"";display:inline-block;width:3px;height:14px;margin-right:9px;border-radius:2px;background:var(--amber);vertical-align:-2px}
+.v2 .content2{background:linear-gradient(180deg,#eef2f6 0,var(--bg) 180px)}
+.v2 .form-card .section-title::before{background:var(--primary)}
 .v2 .form-card{padding:24px 28px 22px}
 .v2 .form-card .form-section{padding-bottom:20px;margin-bottom:20px}
 .v2 .section-fieldset{padding:16px 18px 18px;border:1px solid var(--border);border-radius:10px;background:#fafbfc}

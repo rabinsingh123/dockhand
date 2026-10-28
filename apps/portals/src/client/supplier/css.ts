@@ -12,8 +12,8 @@ export const SUPPLIER_CSS = `
 --radius:10px;--radius-sm:7px;--input-h:38px
 }
 .sg{min-height:100vh;display:flex;flex-direction:column}
-.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 1px 2px rgba(16,24,40,.05)}
-.sg-top{background:#fff;border-top:4px solid var(--primary);border-bottom:1px solid var(--border)}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 1px 2px rgba(16,24,40,.05),0 2px 6px rgba(16,24,40,.03)}
+.sg-top{background:#fff;border-top:4px solid var(--primary);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(16,24,40,.05)}
 .sg-top-inner{max-width:1040px;margin:0 auto;padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .tenant{display:flex;align-items:center;gap:12px;color:var(--heading)}
 .tenant-line{display:flex;align-items:baseline;gap:8px;font-size:16px;line-height:1.2}
@@ -23,6 +23,7 @@ export const SUPPLIER_CSS = `
 .top-help{font-size:13px;color:var(--muted)}
 .top-help strong{color:var(--text-2);font-weight:600}
 .sg-main{flex:1;width:100%;max-width:1040px;margin:0 auto;padding:18px 28px 0}
+.sg{background:linear-gradient(180deg,var(--primary-tint) 0,var(--bg) 220px)}
 
 .stepper-card{margin-bottom:14px}
 .stepper{display:flex;align-items:center;list-style:none;margin:0;padding:12px 20px}
@@ -34,7 +35,7 @@ export const SUPPLIER_CSS = `
 .step-dot{width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border-strong);background:#fff;color:var(--muted);font-size:12px;font-weight:700}
 .step-label{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
 .step-line{flex:1;height:2px;min-width:12px;margin:0 12px;background:var(--border)}
-.step.is-done .step-dot{background:var(--primary);border-color:var(--primary);color:#fff}
+.step.is-done .step-dot{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 1px 2px rgba(16,24,40,.15)}
 .step.is-done .step-label{color:var(--text)}
 .step.is-done .step-line{background:var(--primary)}
 .step.is-current .step-dot{border-color:var(--primary);color:var(--primary);box-shadow:0 0 0 4px var(--primary-tint)}
@@ -47,6 +48,7 @@ export const SUPPLIER_CSS = `
 .step-desc{margin-top:4px;font-size:14px;color:var(--muted)}
 .wizard-card .form-section{margin-bottom:20px}
 .wizard-card .section-title{padding-top:2px}
+.wizard-card .section-title::before{content:"";display:inline-block;width:3px;height:14px;margin-right:9px;border-radius:2px;background:var(--primary);vertical-align:-2px}
 .wizard-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px -28px 0;padding:14px 28px;border-top:1px solid var(--divider);background:#fafbfc;border-radius:0 0 var(--radius) var(--radius)}
 .actions-right{display:flex;align-items:center;gap:14px;margin-left:auto}
 .save-note{font-size:12px;color:var(--muted)}
