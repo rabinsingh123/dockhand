@@ -455,8 +455,11 @@ function latestRun(w: World): {
   }
 }
 
+/** Free-text fields the model may word differently between runs (the fixtures mark them ungraded). */
+let freeText: readonly string[] = [];
+
 function fieldsMatch(actual: Record<string, unknown>, want: Record<string, unknown>, what: string): void {
-  for (const [k, v] of Object.entries(want)) same(actual[k], v, `${what}.${k}`);
+  for (const [k, v] of Object.entries(want)) if (!freeText.includes(k)) same(actual[k], v, `${what}.${k}`);
 }
 
 type Step = { name: string; run: (w: World) => Promise<void> };
@@ -487,7 +490,8 @@ const STEPS: Step[] = [
       await rep.sendFile(fixture("inbound", "referral-cafe-aurora.jpg"));
       const plan = await rep.card("First time: computer use", ["Approve", "Cancel"]);
       check(
-        (plan.text ?? "").includes("Company name: Café Aurora Ltda."),
+        // The label follows the param name the teach model chose ("Company name", "End customer company").
+        /: Café Aurora Ltda.$/m.test(plan.text ?? ""),
         "the plan does not show the company",
       );
       await rep.shot("first-run-plan");
@@ -739,7 +743,7 @@ function watchCost(o: Options, dbPath: string, dev: Dev): void {
     }
     if (spent <= o.maxUsd) return;
     clearInterval(timer);
-    costAbort = `model calls cost ${spent.toFixed(2)}, over the ${o.maxUsd} cap`;
+    costAbort = `model calls cost ${spent.toFixed(2)} USD, over the ${o.maxUsd} USD cap`;
     process.stdout.write(`  STOP  ${costAbort}
 `);
     void dev.stop();
@@ -751,6 +755,8 @@ function watchCost(o: Options, dbPath: string, dev: Dev): void {
 
 async function main(): Promise<number> {
   const o = parseArgs(process.argv.slice(2));
+  // Real model output words free text its own way (notes); the stand-ins are exact.
+  if (o.mode !== "fake") freeText = ["notes"];
   const shotsDir = join(o.varDir, "demo-check");
   const results: StepResult[] = [];
   const t0 = performance.now();
@@ -819,8 +825,11 @@ async function main(): Promise<number> {
   }
   if (o.mode !== "fake") {
     const spent = modelCost(join(o.varDir, "dockhand.sqlite"));
-    process.stdout.write(`model calls: ${spent.toFixed(3)} at list price (${o.mode})${costAbort ? ` - ABORTED: ${costAbort}` : ""}
-`);
+    const what =
+      o.mode === "record"
+        ? `spent on live model calls: $${spent.toFixed(3)} at list price`
+        : `replayed from tapes, nothing spent (the same calls live: $${spent.toFixed(3)} at list price)`;
+    process.stdout.write(`${what}${costAbort ? ` - ABORTED: ${costAbort}` : ""}\n`);
     if (costAbort) results.push({ name: "cost cap", ok: false, ms: 0, error: costAbort });
   }
   const failed = results.filter((r) => !r.ok);

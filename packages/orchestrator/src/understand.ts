@@ -86,7 +86,7 @@ const FIELDS = `Fields (null when not stated; never invent a value):
 - product: one of "Tidewater Cloud Starter", "Tidewater Cloud Business", "Tidewater Cloud Enterprise" when a plan is named.
 - estValue: the estimated deal value as a plain number in the currency written.
 - website: the customer's website. referralPartner: the partner or agent who referred the deal.
-- notes: other facts worth keeping, short.
+- notes: other facts worth keeping, short, in the words and language they were written in (never translate them).
 - portalUrl, tenant, inviteCode, buyerName: from a supplier invitation (tenant is the short buyer id in the invite link, e.g. "acme").
 - buyerName is the buying organization's name, never a person. The person who wrote or signed the invitation goes in contactName (and contactEmail).`;
 
