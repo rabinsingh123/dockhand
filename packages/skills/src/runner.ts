@@ -6,6 +6,8 @@
 
 import {
   describeLocator,
+  type Hud,
+  hudOf,
   installWriteGuard,
   readFieldValue,
   resolveTarget,
@@ -183,20 +185,26 @@ class SkillRun {
   private errorCode: ErrorCode | undefined;
   private error: string | undefined;
   private finalScreenshot: ArtifactRef | undefined;
+  /** Demo overlay (DEMO_MODE only): draws the run for the camera; undefined otherwise. */
+  private readonly hud: Hud | undefined;
+  private readonly hooks: RunHooks;
 
   constructor(
     private readonly page: Page,
     private readonly skill: Skill,
     values: Record<string, ParamValue>,
-    private readonly hooks: RunHooks,
+    hooks: RunHooks,
     private readonly opts: RunSkillOptions,
   ) {
+    this.hud = hudOf(page);
+    this.hooks = this.hud?.wrapRunHooks(hooks) ?? hooks;
     this.steps = [...skill.steps];
     this.params = skill.params.map((p) => ({ ...p }));
     this.values = { ...values };
   }
 
   async run(): Promise<RunResult> {
+    this.hud?.runStart({ skill: this.skill, dryRun: this.opts.dryRun === true });
     try {
       if (this.opts.writeGuard) {
         this.guard = await installWriteGuard(this.page, this.opts.writeGuard, async (req) => {
@@ -223,7 +231,18 @@ class SkillRun {
       await this.guard?.dispose().catch(() => {});
     }
     await this.captureFinal();
+    await this.hud?.end({
+      outcome: this.outcome ?? "failed",
+      extracted: this.extracted,
+      ...(this.error ? { error: this.error } : {}),
+      ...(this.errorCode ? { errorCode: this.errorCode } : {}),
+    });
     return this.result();
+  }
+
+  /** Milliseconds since `t0`, without the time a demo HUD held the run for the camera (pacing). */
+  private since(t0: number): number {
+    return performance.now() - t0 - (this.hud?.pausedSince(t0) ?? 0);
   }
 
   // ---------- steps ----------
@@ -231,6 +250,7 @@ class SkillRun {
   private async runStep(idx: number): Promise<Flow> {
     const step = this.steps[idx] as Step;
     const started = performance.now();
+    this.hud?.step(idx, this.steps);
     const missing = this.missingParams(step);
     if (missing.required.length > 0) {
       return this.stop(
@@ -263,7 +283,10 @@ class SkillRun {
       else {
         const res = await this.resolve(idx, step);
         if (!res.ok) return this.repair(idx, step, started, res);
-        const bounced = await this.act(idx, this.steps[idx] as Step, res.locator, started);
+        const resolved = this.steps[idx] as Step;
+        await this.hud?.before(idx, resolved, res.locator, res.outcome, started);
+        const bounced = await this.act(idx, resolved, res.locator, started);
+        await this.hud?.after(idx, resolved, res.locator);
         if (bounced) return bounced;
         outcome = res.outcome;
       }
@@ -498,7 +521,7 @@ class SkillRun {
         if (res.trace && !isCommitStep(s) && (s.op === "click" || s.op === "press")) this.preDone.add(s.id);
       }
       const first = replacement[0] as Step;
-      this.carriedMs.set(first.id, (this.carriedMs.get(first.id) ?? 0) + (performance.now() - started));
+      this.carriedMs.set(first.id, (this.carriedMs.get(first.id) ?? 0) + this.since(started));
       return { next: idx };
     }
     return this.stop(idx, step, started, "failed", failure.code, [failure.detail, ...reasons].join("; "));
@@ -628,6 +651,7 @@ class SkillRun {
   private async readBack(): Promise<Verification> {
     const mismatches: Verification["mismatches"] = [];
     const list: { label: string; value: string }[] = [];
+    const shown: Parameters<Hud["verify"]>[0] = [];
     let checked = 0;
     let matched = 0;
     for (const step of this.steps) {
@@ -645,8 +669,19 @@ class SkillRun {
       if (ok) matched++;
       else mismatches.push({ stepId: step.id, label: w.label, expected: w.intended, actual: actual ?? "" });
       list.push({ label: w.label, value: actual ?? "" });
+      if (this.hud) {
+        shown.push({
+          stepId: step.id,
+          locator: w.locator,
+          ok,
+          label: w.label,
+          expected: w.intended,
+          actual: actual ?? "",
+        });
+      }
     }
     this.readback = list;
+    await this.hud?.verify(shown);
     return { checked, matched, mismatches };
   }
 
@@ -738,7 +773,7 @@ class SkillRun {
     this.steps.splice(idx, 0, ...inserted);
     this.changed = true;
     this.retried.add(step.id);
-    this.carriedMs.set(step.id, (this.carriedMs.get(step.id) ?? 0) + (performance.now() - started));
+    this.carriedMs.set(step.id, (this.carriedMs.get(step.id) ?? 0) + this.since(started));
     return { next: idx };
   }
 
@@ -843,7 +878,7 @@ class SkillRun {
       status,
       ...(rung ? { rung } : {}),
       ...(base.candidateIdx !== undefined ? { candidateIdx: base.candidateIdx } : {}),
-      ms: Math.round(performance.now() - started + (this.carriedMs.get(step.id) ?? 0)),
+      ms: Math.round(this.since(started) + (this.carriedMs.get(step.id) ?? 0)),
       ...(base.errorCode ? { errorCode: base.errorCode } : {}),
       ...(base.error ? { error: base.error } : {}),
     };
@@ -899,7 +934,7 @@ class SkillRun {
       extracted: this.extracted,
       ...(this.finalScreenshot ? { finalScreenshot: this.finalScreenshot } : {}),
       ...(this.changed ? { patched: this.patchedBody() } : {}),
-      ms: Math.round(performance.now() - this.started),
+      ms: Math.round(this.since(this.started)),
       execCostUsd: this.cost,
       ...(this.errorCode ? { errorCode: this.errorCode } : {}),
       ...(this.error ? { error: this.error } : {}),

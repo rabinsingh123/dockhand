@@ -91,7 +91,7 @@ export function createOpenWeightsRepairer(
   models: ModelGateway,
   opts: { model: string; ledger?: Ledger; maxElements?: number; minConfidence?: number },
 ): Repairer {
-  return async (req, _hooks, ctx): Promise<RepairResult> => {
+  const repair: Repairer = async (req, _hooks, ctx): Promise<RepairResult> => {
     const rung = "open_weights" as const;
     const step = req.skill.steps[req.stepIdx];
     const target = step ? stepTarget(step) : undefined;
@@ -166,6 +166,7 @@ export function createOpenWeightsRepairer(
       note: `now '${displayName(fresh.fingerprint)}' (${pick.reason})`,
     };
   };
+  return Object.assign(repair, { rung: "open_weights" as const }); // the rung, for the demo HUD
 }
 
 /** The value a fill/select step enters with these params, for the repair goal. */
@@ -226,7 +227,7 @@ export interface CuRepairerOptions {
  * then asks for approval); any other step's sub-trace is compiled into replacement steps.
  */
 export function createCuRepairer(opts: CuRepairerOptions): Repairer {
-  return async (req, hooks, ctx): Promise<RepairResult> => {
+  const repair: Repairer = async (req, hooks, ctx): Promise<RepairResult> => {
     const rung = "computer_use" as const;
     const step = req.skill.steps[req.stepIdx];
     if (!step) return { ok: false, rung, reason: `no step ${req.stepIdx}`, costUsd: 0 };
@@ -314,4 +315,5 @@ export function createCuRepairer(opts: CuRepairerOptions): Repairer {
       note: steps.map((s) => s.intent).join("; "),
     };
   };
+  return Object.assign(repair, { rung: "computer_use" as const }); // the rung, for the demo HUD
 }

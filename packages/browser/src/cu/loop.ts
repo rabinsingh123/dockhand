@@ -41,6 +41,7 @@ import {
 } from "../helpers/describe.ts";
 import { formSnapshot } from "../helpers/forms.ts";
 import { installWriteGuard, type WriteGuard } from "../helpers/writeGuard.ts";
+import { type Hud, hudOf } from "../hud/hud.ts";
 import { pngSize } from "../png.ts";
 import { isCommitTarget, keyCommitTarget } from "./commit.ts";
 import { planKeys } from "./keys.ts";
@@ -239,15 +240,20 @@ class ComputerUseRun {
   private blockedWriteCount = 0;
   private requestCount = 0;
   private readonly inflight = new Set<Request>();
+  /** Demo overlay (DEMO_MODE only): draws the run for the camera; undefined otherwise. */
+  private readonly hud: Hud | undefined;
+  private readonly hooks: CuHooks;
 
   constructor(
     private readonly model: ComputerUseModel,
     private readonly input: CuRunInput,
-    private readonly hooks: CuHooks,
+    hooks: CuHooks,
     private readonly ctx: CallCtx,
     private readonly clock: Clock,
   ) {
     this.page = input.page;
+    this.hud = hudOf(input.page);
+    this.hooks = this.hud?.wrapCuHooks(hooks) ?? hooks;
   }
 
   // ---------- listeners ----------
@@ -335,6 +341,11 @@ class ComputerUseRun {
         );
       }
       await ensureDh(page);
+      this.hud?.cuStart({
+        model: this.model.model,
+        provider: this.model.provider,
+        purpose: this.ctx.purpose,
+      });
       const session = this.model.open({
         instructions: computerUseInstructions(input),
         functions: computerUseFunctions(input),
@@ -344,7 +355,9 @@ class ComputerUseRun {
       let incomplete = 0;
       for (;;) {
         this.checkLimits();
+        this.hud?.cuThinking();
         const turns = await session.send(reply, this.ctx);
+        this.hud?.cuTurn(this.hud ? this.input.costSoFar?.() : undefined);
         this.checkCost();
         const call = turns.find(
           (t): t is ComputerCall | FunctionCall => t.kind === "computer_call" || t.kind === "function_call",
@@ -384,6 +397,7 @@ class ComputerUseRun {
       await this.guard?.dispose();
     }
     const final = await this.finalState();
+    this.hud?.cuEnd(this.outcome, this.message);
     for (const b of this.batch) await b.described?.handle.dispose().catch(() => {});
     this.batch = [];
     const trace: Trace = {
@@ -646,6 +660,7 @@ class ComputerUseRun {
     step.formSnapshotBefore = await formSnapshot(page).catch(() => ({}));
 
     if (commit && this.commitTokens === 0) {
+      this.hud?.cuBlocked(commit);
       step.tags.push("blocked");
       this.steps.push(step);
       this.batch.push({ step, described: null });
@@ -660,6 +675,7 @@ class ComputerUseRun {
 
     const before = await this.signature();
     const mark = this.mark();
+    this.hud?.cuAction(a, pt, described?.target);
     try {
       await this.execute(a, pt);
     } catch (e) {
@@ -671,6 +687,7 @@ class ComputerUseRun {
       return { stop: true };
     }
     await this.settle(mark);
+    this.hud?.cuActed(a, pt, described?.handle);
     step.urlAfter = page.url();
     this.lastUrl = step.urlAfter;
     const after = await this.signature();
