@@ -291,3 +291,19 @@ describe("cassettes", () => {
     });
   });
 });
+
+describe("structured cassette keys", () => {
+  it("leave calendar dates out of the instructions, so a recording replays on another day", () => {
+    const req = (today: string) => ({
+      model: "muse-spark-1.3",
+      schemaName: "understanding",
+      instructions: `Rules:\n- Today is ${today} in America/Sao_Paulo. Dates are ISO YYYY-MM-DD.`,
+      input: [{ type: "text", text: "pricing for 25 people" }] as InputPart[],
+    });
+    const key = (today: string) => cassetteKey("understand", structuredKeyMaterial(req(today)));
+    expect(key("Wed 2026-10-28")).toBe(key("Thu 2026-10-29"));
+    expect(key("Wed 2026-10-28")).not.toBe(
+      cassetteKey("understand", structuredKeyMaterial({ ...req("Wed 2026-10-28"), schemaName: "other" })),
+    );
+  });
+});

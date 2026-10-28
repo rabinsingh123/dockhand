@@ -45,7 +45,11 @@ export function assertInputParts(parts: InputPart[], route: Route): void {
     throw new DockhandError("TOO_MANY_IMAGES", `${images} images in one request (max ${max})`);
 }
 
-/** Cassette identity of a structured request: model, schema name, instructions, text parts, media hashes. */
+/**
+ * Cassette identity of a structured request: model, schema name, instructions, text parts, media hashes.
+ * Calendar dates in the instructions are left out ("Today is Wed 2026-10-28" in the understanding prompt), so
+ * a recording replays on any day; the replayed answer keeps the dates it was recorded with.
+ */
 export function structuredKeyMaterial(req: {
   model: string;
   schemaName: string;
@@ -55,9 +59,16 @@ export function structuredKeyMaterial(req: {
   return {
     model: req.model,
     schemaName: req.schemaName,
-    instructions: req.instructions,
+    instructions: withoutDates(req.instructions),
     parts: req.input.map(keyPart),
   };
+}
+
+const WEEKDAY_DATE = /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? (?=\d{4}-\d{2}-\d{2}\b)/g;
+const ISO_DATE = /\b\d{4}-\d{2}-\d{2}\b/g;
+
+function withoutDates(text: string): string {
+  return text.replace(WEEKDAY_DATE, "").replace(ISO_DATE, "<date>");
 }
 
 function keyPart(p: InputPart): Record<string, unknown> {
