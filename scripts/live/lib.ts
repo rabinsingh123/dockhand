@@ -6,6 +6,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
+  type ComputerUseModel,
   type Config,
   createArtifactStore,
   createLedger,
@@ -119,6 +120,62 @@ export function openLive(tag: string, opts: { cassetteDir?: string } = {}): Live
     },
     close() {
       db.close();
+    },
+  };
+}
+
+export interface TurnLog {
+  at: number;
+  ms: number;
+  reply: string;
+  note?: string;
+  output?: string;
+  summary?: string;
+  imagesInChain: number;
+  turns: unknown;
+  error?: string;
+}
+
+/** Wraps a computer-use model so every turn (reply sent, items returned) lands in `log`. */
+export function observeModel(
+  model: ComputerUseModel,
+  log: TurnLog[],
+  instructions: string[],
+): ComputerUseModel {
+  return {
+    provider: model.provider,
+    get model() {
+      return model.model;
+    },
+    open(o) {
+      instructions.push(o.instructions);
+      const s = model.open(o);
+      return {
+        imagesInChain: () => s.imagesInChain(),
+        async send(reply, ctx) {
+          const entry: TurnLog = {
+            at: Date.now(),
+            ms: 0,
+            reply: reply.kind,
+            imagesInChain: 0,
+            turns: null,
+            ...(reply.kind === "computer_output" && reply.note ? { note: reply.note } : {}),
+            ...(reply.kind === "function_output" ? { output: reply.output } : {}),
+            ...(reply.kind === "rollover" ? { summary: reply.summary } : {}),
+          };
+          log.push(entry);
+          try {
+            entry.turns = await s.send(reply, ctx);
+            return entry.turns as Awaited<ReturnType<typeof s.send>>;
+          } catch (err) {
+            entry.error = (err as Error).message;
+            throw err;
+          } finally {
+            entry.ms = Date.now() - entry.at;
+            entry.imagesInChain = s.imagesInChain();
+          }
+        },
+      };
     },
   };
 }

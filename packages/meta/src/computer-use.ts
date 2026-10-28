@@ -50,6 +50,8 @@ type Item = Record<string, unknown>;
 const FUNCTION_NAME = /^[a-zA-Z0-9_.-]+$/;
 /** A computer_call_output screenshot must decode to 25 MiB or less. */
 const MAX_SCREENSHOT_BYTES = 25 * 1024 * 1024;
+/** Appended to a function output whose screenshot cannot be sent. */
+export const SCREEN_CHANGED = "The screen has changed: take a screenshot before your next action.";
 /** Persistence can briefly lag a completed response; the docs say to retry a chained request once or twice. */
 const CHAIN_LAG_RETRY_MS = 1_000;
 
@@ -129,8 +131,10 @@ function openSession(
       );
     }
     const screenshot = reply.screenshot;
-    const shots = screenshot ? 1 : 0;
-    const imageUrl = screenshot ? screenshotUrl(screenshot) : undefined;
+    // Only start, rollover and computer_output carry an image (see replyInput for function outputs).
+    const sendsImage = screenshot !== undefined && reply.kind !== "function_output";
+    const shots = sendsImage ? 1 : 0;
+    const imageUrl = sendsImage ? screenshotUrl(screenshot) : undefined;
     const replyItems = replyInput(reply, imageUrl);
 
     // What this request carries, and the state to keep if it completes.
@@ -280,10 +284,18 @@ function replyInput(reply: CuReply, imageUrl: string | undefined): Item[] {
         ...(reply.note ? [{ role: "user", content: [{ type: "input_text", text: reply.note }] }] : []),
       ];
     case "function_output":
+      // Live, a user input_image after the first turn is refused (HTTP 400 "native computer input images are
+      // supported only in the initial request"), so a screenshot that follows a function call is not sent:
+      // the output tells the model the screen changed, and its next screenshot action returns the image.
       return [
-        { type: "function_call_output", call_id: reply.callId, output: reply.output },
-        // Images count only in user messages, so a screenshot after a function call travels as one.
-        ...(imageUrl ? [{ role: "user", content: [image()] }] : []),
+        {
+          type: "function_call_output",
+          call_id: reply.callId,
+          output: reply.screenshot
+            ? `${reply.output}
+${SCREEN_CHANGED}`
+            : reply.output,
+        },
       ];
   }
 }

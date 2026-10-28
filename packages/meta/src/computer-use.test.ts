@@ -1,5 +1,6 @@
 import { type CuSession, DockhandError, type FunctionTool } from "@dockhand/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { SCREEN_CHANGED } from "./computer-use.ts";
 import {
   b64,
   ctx,
@@ -281,7 +282,7 @@ describe("computer use (live)", () => {
     expect(session.imagesInChain()).toBe(2);
   });
 
-  it("chained: function_call -> function_call_output, with the screenshot as a user input_image message", async () => {
+  it("chained: function_call -> function_call_output; a screenshot after it is not sent as a user image", async () => {
     world = await makeWorld({ computerUseState: "chained" });
     world.server.on(
       "/v1/responses",
@@ -327,13 +328,13 @@ describe("computer use (live)", () => {
       {
         type: "function_call_output",
         call_id: "call_9",
-        output: 'approved: click "Submit registration" now',
+        output: `approved: click "Submit registration" now
+${SCREEN_CHANGED}`,
       },
-      { role: "user", content: [{ type: "input_image", image_url: `data:image/png;base64,${b64(shot)}` }] },
     ]);
     const documented = docFixture("tool-calling.function-call-output.json");
     expect(shapeOf((must(bodies()[1]).input as unknown[])[0])).toEqual(shapeOf(documented));
-    expect(session.imagesInChain()).toBe(2);
+    expect(session.imagesInChain()).toBe(1);
 
     await session.send(
       { kind: "function_output", callId: "call_10", output: "not_ready: Phone is empty" },
@@ -342,7 +343,7 @@ describe("computer use (live)", () => {
     expect(bodies()[2]?.input).toEqual([
       { type: "function_call_output", call_id: "call_10", output: "not_ready: Phone is empty" },
     ]);
-    expect(session.imagesInChain()).toBe(2);
+    expect(session.imagesInChain()).toBe(1);
   });
 
   it("returns the assistant message as final and skips commentary", async () => {
