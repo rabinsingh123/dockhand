@@ -93,6 +93,10 @@ importers:
       zod:
         specifier: ^4
         version: 4.6.7
+    devDependencies:
+      '@dockhand/portals':
+        specifier: workspace:*
+        version: link:../../apps/portals
 
   packages/core:
     dependencies:
@@ -161,6 +165,9 @@ importers:
         specifier: ^4
         version: 4.6.7
     devDependencies:
+      '@dockhand/meta':
+        specifier: workspace:*
+        version: link:../meta
       '@dockhand/portals':
         specifier: workspace:*
         version: link:../../apps/portals

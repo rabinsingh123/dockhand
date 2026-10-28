@@ -17,9 +17,9 @@ export function workspaceRoot(): string {
   }
 }
 
-/** `<workspace root>/var` (runtime data, git-ignored), created on demand. */
+/** `<workspace root>/var` (runtime data, git-ignored), or DOCKHAND_VAR_DIR when set; created on demand. */
 export function varDir(): string {
-  const dir = join(workspaceRoot(), "var");
+  const dir = process.env.DOCKHAND_VAR_DIR || join(workspaceRoot(), "var");
   mkdirSync(dir, { recursive: true });
   return dir;
 }
