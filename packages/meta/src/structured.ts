@@ -13,11 +13,14 @@ import {
   type Route,
   structuredKeyMaterial,
 } from "./inputs.ts";
+import { effortFor, grownBudget, outputBudget } from "./policy.ts";
 import { incompleteReason, outputText, parseResponseBody } from "./responses.ts";
 import type { WireSchema } from "./schema.ts";
 
 /** Baseten's default, stated explicitly: reasoning shares this budget. */
 const DEFAULT_OPEN_WEIGHTS_MAX_TOKENS = 4096;
+/** Incomplete reasons that mean "ran out of output budget" (Responses API, chat completions). */
+const BUDGET_REASONS = new Set(["max_output_tokens", "max_tokens"]);
 const MAX_ECHOED_REPLY_CHARS = 20_000;
 const MAX_ERROR_CHARS = 2_000;
 
@@ -36,17 +39,23 @@ interface Previous {
 
 interface StructuredRoute {
   provider: Route;
-  send(previous: Previous | undefined): Promise<unknown>;
+  effort: Effort | undefined;
+  /** Output budget of the first attempt (undefined: none sent). */
+  budget: number | undefined;
+  send(previous: Previous | undefined, budget: number | undefined): Promise<unknown>;
   read(raw: unknown): Attempt;
   price(usage: TokenUsage): number;
 }
 
 type Checked<T> = { ok: true; value: T } | { ok: false; text: string; error: string };
+type Outcome<T> = Checked<T> | { ok: false; incomplete: string };
 
 /**
  * One structured call: Meta's Responses API with text.format json_schema, or Baseten chat completions when
  * the model is the configured open-weights tag. Output is JSON-parsed and zod-validated; an invalid reply
- * gets one retry with the validation error appended, then MODEL_INVALID_OUTPUT. Every attempt is a ledger row.
+ * gets one retry with the validation error appended, then MODEL_INVALID_OUTPUT. A reply cut off by the
+ * output budget (reasoning shares it) gets one retry with a doubled budget, then MODEL_INCOMPLETE. Effort
+ * and the budget floor come from policy.ts when the caller sets none. Every attempt is a ledger row.
  */
 export async function runStructured<T>(env: GatewayEnv, req: StructuredRequest<T>, ctx: CallCtx): Promise<T> {
   const route: Route = req.model === env.config.openWeights.model ? "baseten" : "meta";
@@ -60,12 +69,17 @@ export async function runStructured<T>(env: GatewayEnv, req: StructuredRequest<T
   const wire = env.wireSchema(req.schema as ZodType);
   const tape = env.cassettes.tape(ctx.purpose, cassetteKey(ctx.purpose, structuredKeyMaterial(req)));
   const scope = openScope(ctx);
-  const target = route === "meta" ? metaRoute(env, req, wire, scope) : basetenRoute(env, req, wire, scope);
+  const target =
+    route === "meta" ? metaRoute(env, req, wire, scope, ctx) : basetenRoute(env, req, wire, scope);
   const images = countImages(req.input);
 
   let previous: Previous | undefined;
+  let budget = target.budget;
+  let grown = false;
+  let invalid = 0;
   try {
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (;;) {
+      const sentBudget = budget;
       const outcome = await recordCall(
         env,
         {
@@ -75,17 +89,16 @@ export async function runStructured<T>(env: GatewayEnv, req: StructuredRequest<T
           normalize: scope.normalize,
           price: (rec) => target.price(rec.usage),
         },
-        async (rec): Promise<Checked<T>> => {
+        async (rec): Promise<Outcome<T>> => {
           rec.images = images;
           const sent = previous;
-          const reply = target.read(await tape.next(() => target.send(sent)));
+          const reply = target.read(await tape.next(() => target.send(sent, sentBudget)));
           rec.usage = reply.usage;
           if (reply.responseId) rec.responseId = reply.responseId;
           if (reply.incomplete !== undefined) {
-            throw new DockhandError(
-              "MODEL_INCOMPLETE",
-              `${req.schemaName}: output stopped early (${reply.incomplete})`,
-            );
+            rec.status = "incomplete";
+            rec.errorCode = "MODEL_INCOMPLETE";
+            return { ok: false, incomplete: reply.incomplete };
           }
           const checked = checkOutput(reply, wire, req.schema);
           if (!checked.ok) {
@@ -96,14 +109,35 @@ export async function runStructured<T>(env: GatewayEnv, req: StructuredRequest<T
         },
       );
       if (outcome.ok) return outcome.value;
+      if ("incomplete" in outcome) {
+        const next = grownBudget(sentBudget, target.effort);
+        if (!grown && BUDGET_REASONS.has(outcome.incomplete) && next > (sentBudget ?? 0)) {
+          grown = true;
+          budget = next;
+          env.log.warn("structured output ran out of budget; retrying once with a larger one", {
+            purpose: ctx.purpose,
+            model: req.model,
+            schema: req.schemaName,
+            from: sentBudget,
+            to: next,
+          });
+          continue;
+        }
+        throw new DockhandError(
+          "MODEL_INCOMPLETE",
+          `${req.schemaName}: output stopped early (${outcome.incomplete})`,
+          { schemaName: req.schemaName, model: req.model, maxOutputTokens: sentBudget },
+        );
+      }
       env.log.warn("structured output invalid", {
         purpose: ctx.purpose,
         model: req.model,
         schema: req.schemaName,
-        attempt,
+        attempt: invalid + 1,
         error: outcome.error.slice(0, 500),
       });
       previous = { text: outcome.text, error: outcome.error };
+      if (++invalid >= 2) break;
     }
   } finally {
     await tape.save();
@@ -120,12 +154,15 @@ function metaRoute<T>(
   req: StructuredRequest<T>,
   wire: WireSchema,
   scope: RequestScope,
+  ctx: CallCtx,
 ): StructuredRoute {
   let userMessage: Promise<Record<string, unknown>> | undefined;
-  const effort = effortFor(req.model, req.effort);
+  const effort = effortFor(req.model, req.effort, ctx.purpose);
   return {
     provider: "meta",
-    async send(previous) {
+    effort,
+    budget: outputBudget(req.maxOutputTokens, effort),
+    async send(previous, budget) {
       userMessage ??= buildResponsesUserMessage(req.input, env, scope);
       return env.meta.postJson(
         "/responses",
@@ -142,9 +179,7 @@ function metaRoute<T>(
             },
           },
           ...(effort !== undefined ? { reasoning: { effort } } : {}),
-          ...(req.maxOutputTokens !== undefined
-            ? { max_output_tokens: Math.max(16, req.maxOutputTokens) }
-            : {}),
+          ...(budget !== undefined ? { max_output_tokens: budget } : {}),
           // Single-shot: nothing chains from it, and store=true can 413 on large inline media.
           store: false,
         },
@@ -193,9 +228,13 @@ function basetenRoute<T>(
 ): StructuredRoute {
   let userContent: Promise<string | Record<string, unknown>[]> | undefined;
   const prices = openWeightsPrices(env.config.openWeights);
+  const effort = openWeightsEffort(req.effort);
   return {
     provider: "baseten",
-    async send(previous) {
+    effort,
+    // Not measured live (no Baseten key yet): the caller's budget as given, Baseten's default otherwise.
+    budget: req.maxOutputTokens ?? DEFAULT_OPEN_WEIGHTS_MAX_TOKENS,
+    async send(previous, budget) {
       userContent ??= buildChatUserContent(req.input, env.artifacts);
       return env.baseten.postJson(
         "/chat/completions",
@@ -213,8 +252,8 @@ function basetenRoute<T>(
             type: "json_schema",
             json_schema: { name: formatName(req.schemaName), schema: wire.schema },
           },
-          reasoning_effort: openWeightsEffort(req.effort),
-          max_tokens: req.maxOutputTokens ?? DEFAULT_OPEN_WEIGHTS_MAX_TOKENS,
+          reasoning_effort: effort,
+          max_tokens: budget ?? DEFAULT_OPEN_WEIGHTS_MAX_TOKENS,
         },
         scope,
       );
@@ -306,11 +345,6 @@ function chatCorrection(previous: Previous | undefined): Record<string, unknown>
 /** text.format.name allows a-z, A-Z, 0-9, underscores and dashes, up to 64 characters. */
 export function formatName(schemaName: string): string {
   return schemaName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "output";
-}
-
-/** Contributor mode has no "max" effort (https://dev.meta.ai/docs/reasoning). */
-export function effortFor(model: string, effort: Effort | undefined): Effort | undefined {
-  return effort === "max" && model.endsWith("-contributor") ? "xhigh" : effort;
 }
 
 /** Muse Spark Open takes low/medium/high/xhigh only; rung 2 defaults to low. */

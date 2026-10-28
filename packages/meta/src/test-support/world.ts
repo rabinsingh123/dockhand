@@ -15,6 +15,7 @@ import {
   type ModelCallRecord,
   type ModelGateway,
 } from "@dockhand/core";
+import type { CuState } from "../computer-use.ts";
 import type { MetaConfig } from "../config.ts";
 import { createModelGateway } from "../gateway.ts";
 import { type MockServer, startMockServer } from "./mock-server.ts";
@@ -51,6 +52,7 @@ export interface WorldOptions {
   mode?: MetaMode;
   cassetteDir?: string;
   disableParallelToolCalls?: boolean;
+  computerUseState?: CuState;
   openWeights?: Partial<MetaConfig["openWeights"]>;
   metaApiKey?: string;
   /** Replaces fetch (cassette tests pass one that fails on any network use). */
@@ -96,6 +98,7 @@ export async function makeWorld(opts: WorldOptions = {}): Promise<World> {
     ...(opts.fetch ? { fetch: opts.fetch } : {}),
     ...(opts.cassetteDir ? { cassetteDir: opts.cassetteDir } : {}),
     ...(opts.disableParallelToolCalls ? { disableParallelToolCalls: true } : {}),
+    ...(opts.computerUseState ? { computerUseState: opts.computerUseState } : {}),
     retry: {
       sleep: async (ms) => {
         sleeps.push(ms);

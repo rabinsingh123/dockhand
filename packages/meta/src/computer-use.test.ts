@@ -74,8 +74,8 @@ function bodies(): Record<string, unknown>[] {
 }
 
 describe("computer use (live)", () => {
-  it("first send: task + screenshot as a user message, computer tool plus function tools, store true", async () => {
-    world = await makeWorld();
+  it("chained: first send: task + screenshot as a user message, computer tool plus function tools, store true", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     const shot = pngBytes(1);
     world.server.on("/v1/responses", {
       json: responseBody([reasoningItem(), computerCall("call_1", { action: { type: "screenshot" } })], {
@@ -186,8 +186,8 @@ describe("computer use (live)", () => {
     ]);
   });
 
-  it("next send: computer_call_output with acknowledged checks, chained by previous_response_id, settings re-sent", async () => {
-    world = await makeWorld();
+  it("chained: next send: computer_call_output with acknowledged checks, chained by previous_response_id, settings re-sent", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     const check = {
       id: "csc_123",
       code: "malicious_instructions",
@@ -238,8 +238,8 @@ describe("computer use (live)", () => {
     );
   });
 
-  it("sends a harness note as a user input_text message after the computer_call_output", async () => {
-    world = await makeWorld();
+  it("chained: sends a harness note as a user input_text message after the computer_call_output", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     world.server.on(
       "/v1/responses",
       {
@@ -281,8 +281,8 @@ describe("computer use (live)", () => {
     expect(session.imagesInChain()).toBe(2);
   });
 
-  it("function_call -> function_call_output, with the screenshot as a user input_image message", async () => {
-    world = await makeWorld();
+  it("chained: function_call -> function_call_output, with the screenshot as a user input_image message", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     world.server.on(
       "/v1/responses",
       {
@@ -371,8 +371,8 @@ describe("computer use (live)", () => {
     ]);
   });
 
-  it("rollover starts a new chain: no previous_response_id, summary + screenshot, image count reset", async () => {
-    world = await makeWorld();
+  it("chained: rollover starts a new chain: no previous_response_id, summary + screenshot, image count reset", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     const next = (id: string) => ({
       json: responseBody([computerCall(`call_${id}`, { actions: [{ type: "wait" }] })], { id }),
     });
@@ -411,8 +411,8 @@ describe("computer use (live)", () => {
     expect(bodies()[3]?.previous_response_id).toBe("resp_3");
   });
 
-  it("incomplete: returns only the incomplete turn and does not advance the chain", async () => {
-    world = await makeWorld();
+  it("chained: incomplete: returns only the incomplete turn and does not advance the chain", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     world.server.on(
       "/v1/responses",
       { json: responseBody([computerCall("call_1", { actions: [{ type: "wait" }] })], { id: "resp_1" }) },
@@ -500,8 +500,8 @@ describe("computer use (live)", () => {
     expect(bodies()[0]?.parallel_tool_calls).toBe(false);
   });
 
-  it("refuses a 51st image in one chain with TOO_MANY_IMAGES (roll over first)", async () => {
-    world = await makeWorld();
+  it("chained: refuses a 51st image in one chain with TOO_MANY_IMAGES (roll over first)", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     const replies = Array.from({ length: 50 }, (_, i) => ({
       json: responseBody([computerCall(`call_${i}`, { actions: [{ type: "wait" }] })], { id: `resp_${i}` }),
     }));
@@ -525,8 +525,8 @@ describe("computer use (live)", () => {
     expect(world.server.requestsTo("/v1/responses")).toHaveLength(50);
   });
 
-  it("retries once when a chained previous_response_id is not persisted yet", async () => {
-    world = await makeWorld();
+  it("chained: retries once when a chained previous_response_id is not persisted yet", async () => {
+    world = await makeWorld({ computerUseState: "chained" });
     world.server.on(
       "/v1/responses",
       { json: responseBody([computerCall("call_1", { actions: [{ type: "wait" }] })], { id: "resp_1" }) },
@@ -586,5 +586,178 @@ describe("computer use (live)", () => {
         .open({ instructions: "x", functions: [{ ...REQUEST_COMMIT, name: "a.b.c" }] }),
     ).toThrow(/not allowed/);
     expect(world.server.requestsTo("/v1/responses")).toHaveLength(1);
+  });
+});
+
+describe("computer use (live, stateless replay: the default)", () => {
+  const RECEIPT = "cu_sr_receipt_1";
+  const ROUTINE = {
+    id: "cu_sc_1",
+    code: "computer_action_requires_confirmation",
+    message: "Review and confirm before executing this computer action.",
+  };
+  const commentary = (text: string) => messageItem(text, { id: "msg_c", phase: "commentary" });
+  const call = (callId: string, actions: unknown[]) => ({
+    ...computerCall(callId, { actions, checks: [ROUTINE] }),
+    meta_safety_replay_receipt: RECEIPT,
+  });
+
+  it("first send: store false, no previous_response_id, effort from the purpose when unset", async () => {
+    world = await makeWorld();
+    world.server.on("/v1/responses", { json: responseBody([messageItem("done")]) });
+    const session = world.gateway
+      .computerUse({ model: "muse-spark-1.3" })
+      .open({ instructions: INSTRUCTIONS, functions: [] });
+    const shot = pngBytes(1);
+    await session.send({ kind: "start", task: "t", screenshot: shot }, ctx("cu_first_run"));
+
+    const [first] = bodies();
+    expect(first).toMatchObject({ store: false, reasoning: { effort: "low" } });
+    expect(first?.previous_response_id).toBeUndefined();
+    expect(first?.input).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: "t" },
+          { type: "input_image", image_url: `data:image/png;base64,${b64(shot)}` },
+        ],
+      },
+    ]);
+  });
+
+  it("next send replays the opening, the model's items (receipt and phase kept, reasoning dropped) and the reply", async () => {
+    world = await makeWorld();
+    const first = call("call_1", [{ type: "click", button: "left", x: 469, y: 308 }]);
+    world.server.on(
+      "/v1/responses",
+      { json: responseBody([reasoningItem(), commentary("Filling the company."), first], { id: "resp_1" }) },
+      { json: responseBody([messageItem("done")], { id: "resp_2" }) },
+    );
+    const session = open();
+    const start = pngBytes(1);
+    await session.send({ kind: "start", task: "t", screenshot: start }, ctx("cu_first_run"));
+    const shot = pngBytes(2);
+    await session.send(
+      { kind: "computer_output", callId: "call_1", screenshot: shot, acknowledged: [ROUTINE], note: "n" },
+      ctx("cu_first_run"),
+    );
+
+    const second = bodies()[1];
+    expect(second?.previous_response_id).toBeUndefined();
+    expect(second?.store).toBe(false);
+    expect(second?.input).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: "t" },
+          { type: "input_image", image_url: `data:image/png;base64,${b64(start)}` },
+        ],
+      },
+      commentary("Filling the company."),
+      first,
+      {
+        type: "computer_call_output",
+        call_id: "call_1",
+        acknowledged_safety_checks: [ROUTINE],
+        output: { type: "computer_screenshot", image_url: `data:image/png;base64,${b64(shot)}` },
+      },
+      { role: "user", content: [{ type: "input_text", text: "n" }] },
+    ]);
+    expect(session.imagesInChain()).toBe(2);
+  });
+
+  it("replays only the call that was answered when a response holds several", async () => {
+    world = await makeWorld();
+    const answered = call("call_a", [{ type: "wait" }]);
+    world.server.on(
+      "/v1/responses",
+      {
+        json: responseBody([answered, functionCall("call_b", "request_commit", '{"summary":"x"}')], {
+          id: "resp_1",
+        }),
+      },
+      { json: responseBody([messageItem("done")], { id: "resp_2" }) },
+    );
+    const session = open();
+    await session.send({ kind: "start", task: "t", screenshot: pngBytes() }, ctx("cu_first_run"));
+    await session.send(
+      { kind: "computer_output", callId: "call_a", screenshot: pngBytes(), acknowledged: [] },
+      ctx("cu_first_run"),
+    );
+
+    const input = bodies()[1]?.input as Record<string, unknown>[];
+    expect(input.filter((i) => i.type === "function_call")).toEqual([]);
+    expect(input.filter((i) => i.type === "computer_call")).toEqual([answered]);
+  });
+
+  it("keeps a bounded window: whole old turns are dropped, the opening message stays", async () => {
+    world = await makeWorld();
+    const replies = Array.from({ length: 15 }, (_, i) => ({
+      json: responseBody([call(`call_${i}`, [{ type: "wait" }])], { id: `resp_${i}` }),
+    }));
+    world.server.on("/v1/responses", ...replies);
+    const session = open();
+    await session.send({ kind: "start", task: "t", screenshot: pngBytes() }, ctx("cu_first_run"));
+    for (let i = 0; i < 13; i++) {
+      await session.send(
+        { kind: "computer_output", callId: `call_${i}`, screenshot: pngBytes(i), acknowledged: [] },
+        ctx("cu_first_run"),
+      );
+    }
+    // 12 answered turns fit; the 13th drops the window back to the newest 6.
+    const twelfth = bodies()[12]?.input as Record<string, unknown>[];
+    expect(twelfth.filter((i) => i.type === "computer_call_output")).toHaveLength(12);
+    const thirteenth = bodies()[13]?.input as Record<string, unknown>[];
+    const outputs = thirteenth.filter((i) => i.type === "computer_call_output").map((i) => i.call_id);
+    expect(outputs).toEqual(["call_7", "call_8", "call_9", "call_10", "call_11", "call_12"]);
+    expect(thirteenth[0]).toMatchObject({ role: "user" });
+    expect(session.imagesInChain()).toBe(7);
+  });
+
+  it("rollover replaces the history; an incomplete response leaves it untouched", async () => {
+    world = await makeWorld();
+    world.server.on(
+      "/v1/responses",
+      { json: responseBody([call("call_1", [{ type: "wait" }])], { id: "resp_1" }) },
+      {
+        json: responseBody([reasoningItem()], {
+          id: "resp_2",
+          status: "incomplete",
+          incomplete: "max_output_tokens",
+        }),
+      },
+      { json: responseBody([call("call_3", [{ type: "wait" }])], { id: "resp_3" }) },
+      { json: responseBody([call("call_4", [{ type: "wait" }])], { id: "resp_4" }) },
+    );
+    const session = open();
+    await session.send({ kind: "start", task: "t", screenshot: pngBytes() }, ctx("cu_first_run"));
+    const reply = {
+      kind: "computer_output" as const,
+      callId: "call_1",
+      screenshot: pngBytes(2),
+      acknowledged: [],
+    };
+    expect(await session.send(reply, ctx("cu_first_run"))).toEqual([
+      { kind: "incomplete", reason: "max_output_tokens" },
+    ]);
+    expect(session.imagesInChain()).toBe(1);
+    await session.send(reply, ctx("cu_first_run"));
+    expect(bodies()[2]?.input).toEqual(bodies()[1]?.input);
+    expect(session.imagesInChain()).toBe(2);
+
+    await session.send(
+      { kind: "rollover", summary: "Done: company.", screenshot: pngBytes(5) },
+      ctx("cu_first_run"),
+    );
+    expect(bodies()[3]?.input).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: "Done: company." },
+          { type: "input_image", image_url: `data:image/png;base64,${b64(pngBytes(5))}` },
+        ],
+      },
+    ]);
+    expect(session.imagesInChain()).toBe(1);
   });
 });

@@ -9,7 +9,13 @@ export {
   type Tape,
   type TapeMode,
 } from "./cassette.ts";
-export { type CuModelOptions, createMetaComputerUseModel } from "./computer-use.ts";
+export {
+  CU_HISTORY_KEEP_TURNS,
+  CU_HISTORY_MAX_TURNS,
+  type CuModelOptions,
+  type CuState,
+  createMetaComputerUseModel,
+} from "./computer-use.ts";
 export { ASR_MODEL, MAX_IMAGES_PER_REQUEST, MAX_OPEN_WEIGHTS_IMAGES, type MetaConfig } from "./config.ts";
 export {
   audioCostUsd,
@@ -65,6 +71,14 @@ export {
   toDataUrl,
 } from "./media.ts";
 export {
+  DEFAULT_EFFORT,
+  effortFor,
+  grownBudget,
+  MAX_OUTPUT_TOKENS_CAP,
+  MIN_OUTPUT_TOKENS,
+  outputBudget,
+} from "./policy.ts";
+export {
   incompleteReason,
   outputText,
   parseCuTurns,
@@ -72,7 +86,7 @@ export {
   type ResponseBody,
 } from "./responses.ts";
 export { type JsonSchema, toWireSchema, type WireSchema } from "./schema.ts";
-export { effortFor, formatName, openWeightsEffort, parseJsonReply, runStructured } from "./structured.ts";
+export { formatName, openWeightsEffort, parseJsonReply, runStructured } from "./structured.ts";
 export { type TranscribeOptions, transcribeWav } from "./transcribe.ts";
 export {
   assertTranscribable,

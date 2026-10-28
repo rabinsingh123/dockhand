@@ -98,7 +98,8 @@ describe("structured (Responses API)", () => {
         format: { type: "json_schema", name: "Extraction", schema: EXPECTED_WIRE_SCHEMA, strict: false },
       },
       reasoning: { effort: "low" },
-      max_output_tokens: 2048,
+      // 2048 asked, lifted to the low-effort floor: reasoning shares the budget (policy.ts).
+      max_output_tokens: 4096,
       store: false,
     });
     // Same message structure as the documented Responses input (file-handling page).
@@ -390,10 +391,74 @@ describe("structured (Responses API)", () => {
     ).toBe(true);
   });
 
-  it("maps status incomplete to MODEL_INCOMPLETE and records the billed usage", async () => {
+  it("retries an incomplete reply once with a doubled budget, then maps it to MODEL_INCOMPLETE", async () => {
+    world = await makeWorld();
+    const incomplete = {
+      json: responseBody([reasoningItem()], { status: "incomplete", incomplete: "max_output_tokens" }),
+    };
+    world.server.on("/v1/responses", incomplete, incomplete);
+
+    const code = await codeOf(
+      world.gateway.structured(
+        {
+          model: "muse-spark-1.3",
+          instructions: "x",
+          input: [],
+          schemaName: "Extraction",
+          schema: Extraction,
+          effort: "minimal",
+          maxOutputTokens: 16,
+        },
+        ctx(),
+      ),
+    );
+
+    expect(code).toBe("MODEL_INCOMPLETE");
+    const budgets = world.server
+      .requestsTo("/v1/responses")
+      .map((r) => (r.json as { max_output_tokens?: number }).max_output_tokens);
+    expect(budgets).toEqual([2048, 4096]);
+    expect(world.ledger.rows).toHaveLength(2);
+    expect(world.ledger.rows[0]).toMatchObject({
+      status: "incomplete",
+      errorCode: "MODEL_INCOMPLETE",
+      outputTokens: 300,
+    });
+    expect(world.ledger.rows[0]?.costUsd).toBeCloseTo(0.002555, 12);
+  });
+
+  it("recovers when the larger budget completes, and defaults effort by purpose", async () => {
+    world = await makeWorld();
+    world.server.on(
+      "/v1/responses",
+      { json: responseBody([reasoningItem()], { status: "incomplete", incomplete: "max_output_tokens" }) },
+      { json: responseBody([messageItem('{"company":"Acme Group","seats":2}')]) },
+    );
+
+    const result = await world.gateway.structured(
+      {
+        model: "muse-spark-1.3",
+        instructions: "x",
+        input: [{ type: "text", text: "two seats" }],
+        schemaName: "Extraction",
+        schema: Extraction,
+      },
+      ctx("understand"),
+    );
+
+    expect(result).toEqual({ company: "Acme Group", seats: 2 });
+    const sent = world.server
+      .requestsTo("/v1/responses")
+      .map((r) => r.json as { reasoning?: unknown; max_output_tokens?: number });
+    expect(sent.map((s) => s.reasoning)).toEqual([{ effort: "low" }, { effort: "low" }]);
+    expect(sent.map((s) => s.max_output_tokens)).toEqual([4096, 8192]);
+    expect(world.ledger.rows.map((r) => r.status)).toEqual(["incomplete", "ok"]);
+  });
+
+  it("does not retry an incomplete reply for a reason other than the output budget", async () => {
     world = await makeWorld();
     world.server.on("/v1/responses", {
-      json: responseBody([reasoningItem()], { status: "incomplete", incomplete: "max_output_tokens" }),
+      json: responseBody([reasoningItem()], { status: "incomplete", incomplete: "content_filter" }),
     });
 
     const code = await codeOf(
@@ -404,19 +469,13 @@ describe("structured (Responses API)", () => {
           input: [],
           schemaName: "Extraction",
           schema: Extraction,
-          maxOutputTokens: 16,
         },
         ctx(),
       ),
     );
 
     expect(code).toBe("MODEL_INCOMPLETE");
-    expect(world.ledger.rows[0]).toMatchObject({
-      status: "incomplete",
-      errorCode: "MODEL_INCOMPLETE",
-      outputTokens: 300,
-    });
-    expect(world.ledger.rows[0]?.costUsd).toBeCloseTo(0.002555, 12);
+    expect(world.server.requestsTo("/v1/responses")).toHaveLength(1);
   });
 
   it("times out with MODEL_TIMEOUT from ctx.timeoutMs", async () => {

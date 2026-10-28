@@ -2,6 +2,7 @@ import type { ArtifactStore } from "@dockhand/core";
 import type { ZodType } from "zod";
 import type { RecorderDeps } from "./call.ts";
 import type { Cassettes } from "./cassette.ts";
+import type { CuState } from "./computer-use.ts";
 import type { MetaConfig } from "./config.ts";
 import type { FileUploader } from "./files.ts";
 import type { ProviderClient } from "./http.ts";
@@ -19,4 +20,6 @@ export interface GatewayEnv extends RecorderDeps {
   wireSchema(schema: ZodType): WireSchema;
   sleep(ms: number, signal?: AbortSignal): Promise<void>;
   disableParallelToolCalls: boolean;
+  /** How computer-use sessions keep their conversation unless a session asks otherwise. */
+  computerUseState: CuState;
 }

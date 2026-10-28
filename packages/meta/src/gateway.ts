@@ -10,7 +10,7 @@ import {
 } from "@dockhand/core";
 import type { ZodType } from "zod";
 import { createCassettes, type TapeMode } from "./cassette.ts";
-import { createMetaComputerUseModel } from "./computer-use.ts";
+import { type CuState, createMetaComputerUseModel } from "./computer-use.ts";
 import type { MetaConfig } from "./config.ts";
 import { openWeightsPrices } from "./cost.ts";
 import type { GatewayEnv } from "./env.ts";
@@ -32,6 +32,11 @@ export interface ModelGatewayDeps {
   cassetteDir?: string;
   /** Send `parallel_tool_calls: false` on computer-use requests (one tool call per turn). Default: omitted. */
   disableParallelToolCalls?: boolean;
+  /**
+   * stateless (default) replays each computer-use session's history with store:false; chained uses
+   * previous_response_id. Live, chained turns took 9-11 s against 2.4-3.2 s stateless (meta-api-notes.md).
+   */
+  computerUseState?: CuState;
   /** Transport retry tuning (tests pass a no-op sleep). */
   retry?: Partial<RetryPolicy>;
 }
@@ -91,6 +96,7 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
     },
     sleep: retry.sleep ?? DEFAULT_RETRY_POLICY.sleep,
     disableParallelToolCalls: deps.disableParallelToolCalls ?? false,
+    computerUseState: deps.computerUseState ?? "stateless",
   };
 
   if (config.openWeights.apiKey && !openWeightsPrices(config.openWeights)) {

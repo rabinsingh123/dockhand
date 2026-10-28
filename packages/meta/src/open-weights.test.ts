@@ -181,12 +181,16 @@ describe("open weights (Muse Spark Open on Baseten)", () => {
     expect(world.server.requestsTo(PATH)).toHaveLength(1);
   });
 
-  it("maps finish_reason length to MODEL_INCOMPLETE", async () => {
+  it("maps finish_reason length to MODEL_INCOMPLETE after one retry with a doubled max_tokens", async () => {
     world = await makeWorld();
-    world.server.on(PATH, { json: chatBody('{"index":', { finish: "length" }) });
+    const cut = { json: chatBody('{"index":', { finish: "length" }) };
+    world.server.on(PATH, cut, cut);
     await expect(world.gateway.structured(healRequest(), ctx("heal_match"))).rejects.toMatchObject({
       code: "MODEL_INCOMPLETE",
     });
+    expect(world.server.requestsTo(PATH).map((r) => (r.json as { max_tokens: number }).max_tokens)).toEqual([
+      4096, 8192,
+    ]);
     expect(world.ledger.rows[0]).toMatchObject({ provider: "baseten", status: "incomplete" });
   });
 
