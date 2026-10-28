@@ -126,6 +126,47 @@ describe("POST /webhook/whatsapp", () => {
     expect(s.batches).toHaveLength(1);
   });
 
+  it("stores reactions and stickers (deduped) but never hands them on: no reply, no job", async () => {
+    const s = setup();
+    const payload = (message: Record<string, unknown>) =>
+      JSON.stringify({
+        object: "whatsapp_business_account",
+        entry: [
+          {
+            id: "102000000000001",
+            changes: [
+              {
+                field: "messages",
+                value: {
+                  messaging_product: "whatsapp",
+                  metadata: { display_phone_number: "15550000000", phone_number_id: "109000000000001" },
+                  messages: [{ from: REP, timestamp: "1793113200", ...message }],
+                },
+              },
+            ],
+          },
+        ],
+      });
+    const reaction = payload({
+      id: "wamid.REACTION1",
+      type: "reaction",
+      reaction: { message_id: "wamid.RECEIPT1", emoji: "👍" },
+    });
+    const sticker = payload({
+      id: "wamid.STICKER1",
+      type: "sticker",
+      sticker: { id: "1234567890123456", mime_type: "image/webp", animated: false },
+    });
+    for (const raw of [reaction, reaction, sticker]) expect((await s.post(raw)).status).toBe(200);
+    await s.gateway.drain();
+    expect(s.batches).toHaveLength(0);
+    expect(s.sent).toHaveLength(0);
+    expect((s.rows() as { wa_id: string }[]).map((r) => r.wa_id).sort()).toEqual([
+      "wamid.REACTION1",
+      "wamid.STICKER1",
+    ]);
+  });
+
   it("stores button taps with the button id and the card they answer", async () => {
     const s = setup();
     await s.post(fixture("button-reply.json"));

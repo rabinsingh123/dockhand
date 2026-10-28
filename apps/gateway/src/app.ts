@@ -124,6 +124,7 @@ export function createGatewayApp(deps: GatewayDeps): GatewayApp {
     const fresh: InboundMessage[] = [];
     const refuse: string[] = [];
     let duplicates = 0;
+    let silent = 0;
 
     db.tx(() => {
       for (const { message, raw: rawMessage } of entries) {
@@ -148,6 +149,8 @@ export function createGatewayApp(deps: GatewayDeps): GatewayApp {
           now,
         );
         if (inserted.changes === 0) duplicates++;
+        else if (isSilent(rawMessage))
+          silent++; // stored (deduped), never answered
         else fresh.push(message);
       }
     });
@@ -156,8 +159,9 @@ export function createGatewayApp(deps: GatewayDeps): GatewayApp {
       messages: entries.length,
       fresh: fresh.length,
       duplicates,
+      silent,
       refused: refuse.length,
-      blocked: entries.length - fresh.length - duplicates,
+      blocked: entries.length - fresh.length - duplicates - silent,
       ignored,
     });
     for (const to of refuse) {
@@ -179,6 +183,15 @@ export function createGatewayApp(deps: GatewayDeps): GatewayApp {
       while (pending.size > 0) await Promise.allSettled([...pending]);
     },
   };
+}
+
+/** Reactions and stickers are a rep acknowledging something: no reply, no job. */
+const SILENT_TYPES = new Set(["reaction", "sticker"]);
+
+function isSilent(raw: unknown): boolean {
+  return (
+    typeof raw === "object" && raw !== null && SILENT_TYPES.has(String((raw as { type?: unknown }).type))
+  );
 }
 
 function sameText(a: string, b: string): boolean {
