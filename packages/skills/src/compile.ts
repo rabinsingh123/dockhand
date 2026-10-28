@@ -329,6 +329,21 @@ export function compile(trace: Trace, meta: CompileMeta): CompileResult {
   const lastCommit = commitIdxs.at(-1);
   /** An earlier submit that left the page where it was failed (validation) and was retried. */
   const isFailedCommit = (i: number, t: TraceStep) => i !== lastCommit && !navigated(t);
+  /**
+   * A click that stayed on the page, on a control clicked again later on that same page where the later click
+   * moved on: the first one bounced (validation) and must not replay. Two clicks that both stay (an "Add row"
+   * pressed twice) are kept.
+   */
+  const retriedLater = (i: number, target: Target): boolean => {
+    const here = pathOf(steps[i]?.urlBefore ?? "");
+    for (let j = i + 1; j < steps.length; j++) {
+      const s = steps[j] as TraceStep;
+      if (pathOf(s.urlBefore) !== here) return false;
+      if (isSkippable(s) || (s.action.type !== "click" && s.action.type !== "double_click")) continue;
+      if (s.target && sameControl(s.target, target)) return navigated(s);
+    }
+    return false;
+  };
 
   const touch = (i: number, t: TraceStep, target: Target, kind: FieldKind): FieldRec => {
     const key = elementKey(t, target);
@@ -428,6 +443,14 @@ export function compile(trace: Trace, meta: CompileMeta): CompileResult {
         continue;
       }
       if (next?.tags.includes("upload") && !nav) continue; // the chooser trigger; replay sets the file directly
+      if (!nav && retriedLater(i, target)) {
+        // "Next" before a required box was ticked: the page refused, the model fixed it and clicked again.
+        dropped(
+          i,
+          `click on ${quote(displayName(target.fingerprint))} that the page refused (clicked again later)`,
+        );
+        continue;
+      }
       emit({ op: "click", intent: "", target });
       if (nav) emitNavWait(t);
       continue;
@@ -677,4 +700,13 @@ export function rebaseSkill<S extends { steps: Step[] }>(skill: S, origin: strin
       return m ? { ...s, url: `${base}${m[1] ?? ""}` } : s;
     }),
   };
+}
+
+/** The same control on the page: the same testid, or the same role and accessible name. */
+function sameControl(a: Target, b: Target): boolean {
+  const fa = a.fingerprint;
+  const fb = b.fingerprint;
+  if (fa.testId && fa.testId === fb.testId) return true;
+  const name = (fp: Target["fingerprint"]) => (fp.name ?? fp.text ?? "").trim().toLowerCase();
+  return !!fa.role && fa.role === fb.role && name(fa) !== "" && name(fa) === name(fb);
 }

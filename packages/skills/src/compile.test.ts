@@ -1,4 +1,4 @@
-import { Skill, type Trace } from "@dockhand/core";
+import { Skill, type Target, type Trace, type TraceStep } from "@dockhand/core";
 import { describe, expect, it } from "vitest";
 import { PARTNER_PARAM_SPECS, PARTNER_PARAMS, partnerTrace, T } from "./__fixtures__/partner-trace.ts";
 import {
@@ -108,6 +108,124 @@ describe("compile: partner-portal trace", () => {
     );
     expect(entered).toContain("15/03/2027");
     expect(entered).toContain("Tidewater Cloud Business");
+  });
+});
+
+describe("compile: a wizard step the page refused once (live Acme run)", () => {
+  // The model clicked Next with "I confirm these banking details" unticked, the page showed errors, the model
+  // ticked it and clicked Next again. Replaying both clicks bounces on validation, so the first one goes.
+  const origin = "http://127.0.0.1:5102";
+  const box = (y: number) => ({ x: 300, y, w: 200, h: 40 });
+  const legal: Target = {
+    candidates: [{ by: "label", value: "Legal company name", exact: true }],
+    fingerprint: {
+      tag: "input",
+      inputType: "text",
+      role: "textbox",
+      name: "Legal company name",
+      label: "Legal company name",
+      bbox: box(200),
+    },
+  };
+  const confirm: Target = {
+    candidates: [{ by: "role", role: "checkbox", name: "I confirm these banking details", exact: true }],
+    fingerprint: {
+      tag: "input",
+      inputType: "checkbox",
+      role: "checkbox",
+      name: "I confirm these banking details",
+      label: "I confirm these banking details",
+      bbox: box(400),
+    },
+  };
+  const next: Target = {
+    candidates: [{ by: "role", role: "button", name: "Next", exact: true }],
+    fingerprint: { tag: "button", role: "button", name: "Next", text: "Next", bbox: box(600) },
+  };
+  const page = `${origin}/t/acme/register/banking`;
+  const snap = (legalName: string, confirmed: string) => ({
+    "Legal company name": legalName,
+    "I confirm these banking details": confirmed,
+  });
+  const at = (t: Target) => ({
+    type: "click" as const,
+    x: t.fingerprint.bbox.x + 10,
+    y: t.fingerprint.bbox.y + 10,
+    button: "left" as const,
+  });
+  const step = (i: number, s: Partial<TraceStep> & Pick<TraceStep, "action">): TraceStep => ({
+    i,
+    ts: 1_793_000_000_000 + i * 600,
+    urlBefore: page,
+    urlAfter: page,
+    tags: [],
+    ...s,
+  });
+  const trace: Trace = {
+    runId: "live-acme",
+    portalId: "supplier",
+    startUrl: page,
+    viewport: { w: 1280, h: 800 },
+    params: { legal_name: "Tidewater Cloud Ltda." },
+    steps: [
+      step(0, { action: at(legal), target: legal, formSnapshotBefore: snap("", "false") }),
+      step(1, {
+        action: { type: "type", text: "Tidewater Cloud Ltda." },
+        target: legal,
+        fieldValueAfter: "Tidewater Cloud Ltda.",
+        formSnapshotBefore: snap("", "false"),
+      }),
+      step(2, { action: at(next), target: next, formSnapshotBefore: snap("Tidewater Cloud Ltda.", "false") }),
+      step(3, {
+        action: at(confirm),
+        target: confirm,
+        formSnapshotBefore: snap("Tidewater Cloud Ltda.", "false"),
+      }),
+      step(4, {
+        action: at(next),
+        target: next,
+        formSnapshotBefore: snap("Tidewater Cloud Ltda.", "true"),
+        urlAfter: `${origin}/t/acme/register/compliance`,
+        tags: ["navigation"],
+      }),
+    ],
+    final: {
+      url: `${origin}/t/acme/register/compliance`,
+      text: "Compliance",
+      screenshot: { id: "S", sha256: "s", mime: "image/png", bytes: 1, relPath: "s.png" },
+    },
+    outcome: "done",
+  };
+
+  it("keeps one Next, after the box is ticked, and says why the first one went", () => {
+    const { skill, warnings } = compile(trace, {
+      name: "supplier_onboarding",
+      title: "Supplier onboarding",
+      params: [{ name: "legal_name", type: "string", required: true, description: "Legal name" }],
+      createdFrom: { kind: "goal", traceRunId: "live-acme" },
+    });
+    expect(skill.steps.map((s) => `${s.op}:${s.op === "goto" ? "" : s.intent}`)).toEqual([
+      "goto:",
+      "fill:Fill 'Legal company name'",
+      "check:Check 'I confirm these banking details'",
+      "click:Click 'Next'",
+      "waitFor:Wait for /t/acme/register/compliance",
+    ]);
+    expect(warnings.some((w) => w.code === "DROPPED_ACTION" && /refused/.test(w.detail))).toBe(true);
+  });
+
+  it("keeps both clicks when neither moves on (an Add row pressed twice)", () => {
+    const stays = {
+      ...trace,
+      steps: trace.steps.map((s) => (s.i === 4 ? { ...s, urlAfter: page, tags: [] } : s)),
+    };
+    const { skill } = compile(stays, {
+      name: "supplier_onboarding",
+      title: "Supplier onboarding",
+      params: [{ name: "legal_name", type: "string", required: true, description: "Legal name" }],
+      createdFrom: { kind: "goal", traceRunId: "live-acme" },
+    });
+    expect(skill.steps.filter((s) => s.op === "click")).toHaveLength(2);
   });
 });
 
