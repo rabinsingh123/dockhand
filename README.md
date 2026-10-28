@@ -50,26 +50,31 @@ Every call is recorded in a ledger with tokens, images, latency and cost at Stan
 
 Built with Muse Spark Open.
 
-## Results so far
+## Results
 
-Live, real Meta API calls at Standard list prices, on the mock partner portal (Oct 28, 2026; field-level ground truth from the portal's stored submission):
+All live numbers are real Meta and Baseten calls at Standard list prices, measured Oct 28, 2026 on the mock portals, graded field by field against each portal's stored submission. Scripted and recorded (cassette) runs are never counted. Full summary: [`evals/results/live-headline.md`](evals/results/live-headline.md); raw rows in [`evals/results/live/`](evals/results/live/).
 
-| What | Model | Runs | Result |
+**The heal ladder on UI changes it never saw.** All 11 seeded mutation operators plus the v2 UI, on 3 held-out seeds (42 cases), against a skill compiled from a live first run:
+
+- 42/42 correct: 39 submitted correctly after healing, 3 stopped safely on a new required field, **0 wrong writes**.
+
+| Rung | Steps tried | Healed | Cost per attempt | Latency per attempt |
+|---|---|---|---|---|
+| 1: other stored selector, fingerprint similarity | | 84 | $0 | |
+| 2: Muse Spark Open (Baseten), text only | 18 | 16 (89%) | $0.0029 | 2.7 s |
+| 3: Muse Spark 1.3 computer use, at most 8 actions | 2 | 2 (100%) | $0.0165 | 8.9 s |
+
+![Heal rates by rung](evals/results/live-heal-rates.png)
+
+**Computer use every time vs compile once.** Pure computer use was 8/8 correct at $0.111 and 145 s per run. Compiling once cost one first run and one annotation ($0.18), then 50/50 replays were correct with 0 model calls (3.9 s mean, randomized data, jittered portal latency), and the 42 drift cases above cost $0.084 in total. Over 93 runs: **$0.26 vs $10.30**; break-even at run 2. After the 8 measured runs, the pure computer-use line is projected from their mean (dashed on the chart).
+
+![Cumulative cost](evals/results/live-cu-vs-compile.png)
+
+| More live results | Model | Runs | Result |
 |---|---|---|---|
-| First run with computer use, deal registration | muse-spark-1.3, low effort | 3 | 3/3 correct, 13/13 fields each; 29–31 actions; 74–116 s; $0.11–$0.20 per run |
-| First run with computer use, supplier onboarding from a procurement PDF (multi-step, about 40 fields, 2 uploads), zero-shot | muse-spark-1.3, low effort | 3 | 3/3 correct, 40/40 fields each; 85–98 actions; 249–310 s; $0.32–$0.49 per run |
-| The compiled supplier skill replayed for a second buyer | none | 1 | 40/40 fields, 0 model calls, 4.8 s |
-| Heal rung 2 on a renamed submit button | Muse Spark Open (Baseten) | 4 | 4/4 healed, about 3 s and $0.002 each |
-| Heal rungs 2–3 on six seeded UI changes | Muse Spark Open, then muse-spark-1.3 | 6 | 4/6 healed; the 2 widget-type changes stopped before writing; 0 wrong submissions |
-
-Measured with **no model at all** (deterministic rungs only):
-
-| Suite | Runs | Result |
-|---|---|---|
-| Replay, randomized synthetic data | 50 | 50 correct, field by field against the portal's stored submission |
-| Seeded UI mutations (11 operators × 5 seeds) | 55 | 40 correct (10 of them healed for free), 5 correct safe stops on a new required field, 10 stopped without writing (renamed button, widget swap: these need a model rung), **0 silent wrong writes** |
-
-Charts and raw summaries: [`evals/results/`](evals/results/). Reproduce with `pnpm eval --suite replay --skill caravela --n 50` and `pnpm eval --suite mutation --skill caravela`.
+| First run, supplier onboarding from a procurement PDF (multi-step, about 40 fields, 2 uploads), zero-shot | muse-spark-1.3, low effort | 3 | 3/3 correct, 40/40 fields each; 85–98 actions; 249–310 s; $0.32–$0.49 per run |
+| That compiled skill replayed for a second buyer | none | 1 | 40/40 fields, 0 model calls, 4.8 s |
+| First run guided by the teach video vs goal only (13-field form) | muse-spark-1.3, low effort | 8 and 3 | 8/8 and 3/3 correct; 34.6 vs 32.3 actions; $0.111 vs $0.118. No measurable advantage from the video on a form this size. |
 
 ## What is real and what is simulated
 
