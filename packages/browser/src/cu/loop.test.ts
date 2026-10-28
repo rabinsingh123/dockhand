@@ -512,3 +512,57 @@ describe("runComputerUse: Meta computer-tool conventions seen live", () => {
     expect(acks).toEqual([null, [routine], [routine, unsafe]]);
   });
 });
+
+describe("runComputerUse: points the model cannot have seen", () => {
+  it("refuses an off-screen click and an off-screen or non-control proposal instead of clamping them", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/long`);
+    const far = await centreOf(page, "#first");
+    const model = cannedModel([
+      [
+        {
+          kind: "computer_call",
+          callId: "c1",
+          safetyChecks: [],
+          actions: [{ type: "click", x: 558, y: 862 }],
+        },
+      ],
+      [
+        {
+          kind: "function_call",
+          callId: "f1",
+          name: "propose_target",
+          argsJson: '{"x":558,"y":862,"why":"below"}',
+        },
+      ],
+      [
+        {
+          kind: "function_call",
+          callId: "f2",
+          name: "propose_target",
+          argsJson: '{"x":900,"y":600,"why":"blank"}',
+        },
+      ],
+      [
+        {
+          kind: "function_call",
+          callId: "f3",
+          name: "propose_target",
+          argsJson: JSON.stringify({ x: far.x, y: far.y, why: "the button" }),
+        },
+      ],
+    ]);
+    const r = await runComputerUse(
+      model,
+      cuInput(page, { commitPolicy: "propose_only" }),
+      recordingHooks(),
+      CTX,
+    );
+    expect(r.trace.steps.filter((s) => s.action.type === "click")).toHaveLength(0);
+    expect(notes(model.replies)[0]).toMatch(/outside the 1280x800 screenshot/);
+    const outputs = model.replies.map((x) => (x.kind === "function_output" ? x.output : ""));
+    expect(outputs[2]).toMatch(/outside the 1280x800 screenshot/);
+    expect(outputs[3]).toMatch(/not a button or link|There is no control/);
+    expect(r.outcome).toBe("done");
+    expect(r.proposed?.fingerprint.name).toBe("First");
+  });
+});

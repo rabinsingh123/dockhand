@@ -55,6 +55,23 @@ const gateway = createModelGateway({
   artifacts,
   clock: systemClock,
   log: createLogger({ level: "warn", fields: { script: "repair" } }),
+  ...(process.env.DEBUG_POSTS
+    ? {
+        // Prints the calls each model response makes (the proposed target's coordinates, for one).
+        fetch: (async (input, init) => {
+          const res = await fetch(input, init);
+          const text = await res.clone().text();
+          try {
+            const out = (JSON.parse(text) as { output?: Record<string, unknown>[] }).output ?? [];
+            for (const o of out) {
+              if (o.type === "function_call") console.log(`  [model] ${o.name} ${o.arguments}`);
+              if (o.type === "computer_call") console.log(`  [model] actions ${JSON.stringify(o.actions)}`);
+            }
+          } catch {}
+          return res;
+        }) as typeof fetch,
+      }
+    : {}),
 });
 const wantOw = values.rungs === "open_weights" || values.rungs === "both";
 const wantCu = values.rungs === "computer_use" || values.rungs === "both";
@@ -64,6 +81,21 @@ if (wantOw && !gateway.hasOpenWeights())
 const def = portalDef("caravela");
 const portal = await def.start();
 const pool = createBrowserPool({ headless: true, maxContexts: 1, storageStateDir: join(dir, "state") });
+if (process.env.DEBUG_POSTS) {
+  // Logs every write the page sends and what became of it (diagnoses a submit that never lands).
+  const lease = pool.lease.bind(pool);
+  pool.lease = async (o) => {
+    const l = await lease(o);
+    const tag = (r: { method(): string; url(): string }) => `${r.method()} ${new URL(r.url()).pathname}`;
+    l.page.on("request", (r) => r.method() !== "GET" && console.log(`  [net] -> ${tag(r)}`));
+    l.page.on("requestfailed", (r) => console.log(`  [net] x ${tag(r)} ${r.failure()?.errorText}`));
+    l.page.on(
+      "response",
+      (r) => r.request().method() !== "GET" && console.log(`  [net] <- ${r.status()} ${tag(r.request())}`),
+    );
+    return l;
+  };
+}
 const out = join(dir, `repair-${values.rungs}-${values.suite}-${values.seed}-${Date.now()}.jsonl`);
 const since = Date.now();
 try {

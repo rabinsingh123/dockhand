@@ -78,6 +78,28 @@ const SCROLL_IDLE_MS = 800;
 function wheelPixels(delta: number): number {
   return Math.abs(delta) < MAX_NOTCHES ? delta * WHEEL_NOTCH_PX : delta;
 }
+
+/** A point the model cannot have seen: outside the screenshot (a few pixels of rounding allowed). */
+function offScreen(x: number, y: number): boolean {
+  return x < -2 || y < -2 || x > VIEWPORT.w + 1 || y > VIEWPORT.h + 1;
+}
+
+function offScreenPoint(a: CuAction): { x: number; y: number } | null {
+  const points =
+    a.type === "click" || a.type === "double_click" || a.type === "move" || a.type === "scroll"
+      ? [{ x: a.x, y: a.y }]
+      : a.type === "drag"
+        ? a.path
+        : [];
+  return points.find((p) => offScreen(p.x, p.y)) ?? null;
+}
+
+/** Something a submit can be: a button, link or menu item (not a label, wrapper or section). */
+function isControl(fp: Target["fingerprint"]): boolean {
+  if (fp.role === "button" || fp.role === "link" || fp.role === "menuitem") return true;
+  if (fp.tag === "button" || fp.tag === "a") return true;
+  return fp.tag === "input" && ["submit", "button", "image"].includes(fp.inputType ?? "");
+}
 const FIELD_ROLES = new Set([
   "textbox",
   "searchbox",
@@ -622,6 +644,15 @@ class ComputerUseRun {
     };
     const pt = pointOf(a);
 
+    // 0) A point outside the screenshot would be clamped onto whatever sits at the edge: refuse it instead.
+    const off = isHistoryClick(a) ? null : offScreenPoint(a);
+    if (off) {
+      this.note(
+        `Stopped before the ${a.type.replace("_", " ")} at (${Math.round(off.x)}, ${Math.round(off.y)}): that point is outside the 1280x800 screenshot. Scroll until the target is visible, then use coordinates from the new screenshot.`,
+      );
+      return { stop: true };
+    }
+
     // 1) Stale coordinates: the element under the point must be the one the model saw there.
     if (pt && !isHistoryClick(a) && (a.type === "click" || a.type === "double_click" || a.type === "drag")) {
       const intended = intendedUid(this.viewMap, pt.x, pt.y);
@@ -1001,12 +1032,26 @@ class ComputerUseRun {
     if (this.input.commitPolicy !== "propose_only") {
       return this.output(call, "propose_target is only for propose-only runs; click the control yourself.");
     }
+    if (offScreen(parsed.data.x, parsed.data.y)) {
+      // Live, the model proposed (558, 862) for a button below the fold; clamped, that point is another element.
+      return this.output(
+        call,
+        `(${Math.round(parsed.data.x)}, ${Math.round(parsed.data.y)}) is outside the 1280x800 screenshot. Scroll until the control is visible, then call propose_target with its position in the new screenshot.`,
+      );
+    }
     const { x, y } = clampPoint(parsed.data.x, parsed.data.y);
     const target = await describeAt(this.page, x, y);
     if (target.candidates.length === 0) {
       return this.output(
         call,
         `There is no control at (${x}, ${y}). Look at the screenshot and call propose_target again.`,
+      );
+    }
+    if (!isControl(target.fingerprint)) {
+      const what = `${target.fingerprint.role ?? target.fingerprint.tag} "${target.fingerprint.name ?? target.fingerprint.text ?? ""}"`;
+      return this.output(
+        call,
+        `(${x}, ${y}) is ${what}, not a button or link. Call propose_target with the centre of the control that submits.`,
       );
     }
     const step = this.fnStep("propose_target", { x, y, why: parsed.data.why });

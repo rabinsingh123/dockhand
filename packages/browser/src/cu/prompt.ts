@@ -54,7 +54,7 @@ export function computerUseInstructions(
   }
   const commitRule =
     input.commitPolicy === "propose_only"
-      ? "Do not click the control that submits, registers, sends, confirms or saves. When you have found it, call propose_target with its x and y in the current screenshot and a short reason. That ends your task."
+      ? "Do not click the control that submits, registers, sends, confirms or saves. If it is not visible in the screenshot, scroll until it is. Then call propose_target with the x and y of its centre in the current screenshot and a short reason. That ends your task."
       : "Before any action that submits, registers, sends, confirms or saves, call request_commit with a short summary of the values you entered. Click the submit control only after the result says approved. If it says not_ready, fix what it lists first. If you try to submit without approval, the click is blocked.";
   lines.push(
     "How to work:",
