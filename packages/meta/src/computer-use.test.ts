@@ -761,3 +761,41 @@ describe("computer use (live, stateless replay: the default)", () => {
     expect(session.imagesInChain()).toBe(1);
   });
 });
+
+describe("computer use: a model the API refuses the computer tool for", () => {
+  it("switches to muse-spark-1.3 once, for this and later sessions, and the ledger shows both", async () => {
+    world = await makeWorld();
+    world.server.on(
+      "/v1/responses",
+      {
+        status: 400,
+        json: {
+          error: {
+            message: "Unsupported tool type: 'computer'",
+            type: "invalid_request_error",
+            param: "tools",
+          },
+        },
+      },
+      { json: responseBody([messageItem("done")], { id: "resp_1" }) },
+      { json: responseBody([messageItem("done")], { id: "resp_2" }) },
+    );
+    const model = world.gateway.computerUse({ model: "muse-wonder-1.0" });
+    expect(model.model).toBe("muse-wonder-1.0");
+    const turns = await model
+      .open({ instructions: INSTRUCTIONS, functions: [] })
+      .send({ kind: "start", task: "t", screenshot: pngBytes() }, ctx("cu_repair"));
+    expect(turns).toEqual([{ kind: "final", text: "done" }]);
+    expect(model.model).toBe("muse-spark-1.3");
+    await model
+      .open({ instructions: INSTRUCTIONS, functions: [] })
+      .send({ kind: "start", task: "t", screenshot: pngBytes() }, ctx("cu_repair"));
+    expect(bodies().map((b) => b.model)).toEqual(["muse-wonder-1.0", "muse-spark-1.3", "muse-spark-1.3"]);
+    expect(world.ledger.rows.map((r) => [r.model, r.status])).toEqual([
+      ["muse-wonder-1.0", "error"],
+      ["muse-spark-1.3", "ok"],
+      ["muse-spark-1.3", "ok"],
+    ]);
+    expect(world.ledger.rows[0]?.costUsd).toBe(0);
+  });
+});

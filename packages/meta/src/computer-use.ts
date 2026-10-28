@@ -1,7 +1,9 @@
 import {
+  type CallCtx,
   type ComputerUseModel,
   type CuReply,
   type CuSession,
+  type CuTurn,
   DockhandError,
   type Effort,
   type FunctionTool,
@@ -52,20 +54,41 @@ const MAX_SCREENSHOT_BYTES = 25 * 1024 * 1024;
 const CHAIN_LAG_RETRY_MS = 1_000;
 
 /**
+ * The model that takes over when the API refuses the computer tool for the requested one. Live on
+ * 2026-10-28, muse-wonder-1.0 answered every computer-tool request with HTTP 400 "Unsupported tool type:
+ * 'computer'" (the computer-use page says it runs on Wonder); muse-spark-1.3 accepts it.
+ */
+export const CU_FALLBACK_MODEL = "muse-spark-1.3";
+
+/** The model in use; it changes once if the API refuses the computer tool for the requested model. */
+interface ModelSlot {
+  current: ModelId;
+}
+
+/**
  * Meta's native computer tool over the Responses API (https://dev.meta.ai/docs/computer-use). Each session
  * owns its conversation: replayed history (stateless) or a previous_response_id chain (chained).
  * instructions, tools and reasoning are sent on every turn either way (previous_response_id does not carry
- * them).
+ * them). If the API refuses the computer tool for the requested model, the model switches to
+ * CU_FALLBACK_MODEL for this and every later session (logged; ledger rows carry the model actually used).
  */
 export function createMetaComputerUseModel(env: GatewayEnv, opts: CuModelOptions): ComputerUseModel {
+  const slot: ModelSlot = { current: opts.model };
   return {
     provider: env.cassettes.mode === "replay" ? "cassette" : "meta",
-    model: opts.model,
+    get model() {
+      return slot.current;
+    },
     open({ instructions, functions }) {
       for (const f of functions) assertFunctionName(f.name);
-      return openSession(env, opts, instructions, functions);
+      return openSession(env, opts, slot, instructions, functions);
     },
   };
+}
+
+function computerToolRefused(err: unknown): boolean {
+  const d = providerErrorDetail(err);
+  return d?.status === 400 && /unsupported tool type: 'computer'/i.test(d.message);
 }
 
 interface Turn {
@@ -76,6 +99,7 @@ interface Turn {
 function openSession(
   env: GatewayEnv,
   opts: CuModelOptions,
+  slot: ModelSlot,
   instructions: string,
   functions: FunctionTool[],
 ): CuSession {
@@ -94,110 +118,125 @@ function openSession(
 
   const replayedImages = () => openingImages + turns.reduce((n, t) => n + t.images, 0);
 
+  const sendOnce = async (reply: CuReply, ctx: CallCtx): Promise<CuTurn[]> => {
+    const model = slot.current;
+    const newChain = reply.kind === "start" || reply.kind === "rollover";
+    const started = stateless ? pending !== undefined : previousResponseId !== undefined;
+    if (!newChain && !started) {
+      throw new DockhandError(
+        "MODEL_ERROR",
+        "computer-use session: the first reply must be start (or rollover)",
+      );
+    }
+    const screenshot = reply.screenshot;
+    const shots = screenshot ? 1 : 0;
+    const imageUrl = screenshot ? screenshotUrl(screenshot) : undefined;
+    const replyItems = replyInput(reply, imageUrl);
+
+    // What this request carries, and the state to keep if it completes.
+    let nextOpening = opening;
+    let nextOpeningImages = openingImages;
+    let nextTurns = turns;
+    let input: Item[];
+    let requestImages: number;
+    if (!stateless) {
+      input = replyItems;
+      requestImages = (newChain ? 0 : chainImages) + shots;
+    } else {
+      if (newChain) {
+        nextOpening = replyItems;
+        nextOpeningImages = shots;
+        nextTurns = [];
+      } else {
+        const answered = { items: [...answeredItems(pending ?? [], reply), ...replyItems], images: shots };
+        nextTurns = [...turns, answered];
+        if (nextTurns.length > CU_HISTORY_MAX_TURNS) nextTurns = nextTurns.slice(-CU_HISTORY_KEEP_TURNS);
+      }
+      input = [...nextOpening, ...nextTurns.flatMap((t) => t.items)];
+      requestImages = nextOpeningImages + nextTurns.reduce((n, t) => n + t.images, 0);
+    }
+    if (requestImages > MAX_IMAGES_PER_REQUEST) {
+      throw new DockhandError(
+        "TOO_MANY_IMAGES",
+        `computer-use request would hold ${requestImages} images (max ${MAX_IMAGES_PER_REQUEST}): roll over first`,
+      );
+    }
+
+    // Recording is per session, turn by turn: the key comes from what is stable across runs (not pixels).
+    tape ??= env.cassettes.tape(
+      ctx.purpose,
+      cassetteKey(ctx.purpose, { model: opts.model, instructions, functions, first: firstText(reply) }),
+    );
+    const sessionTape = tape;
+    const chainFrom = !stateless && !newChain ? previousResponseId : undefined;
+    const effort = effortFor(model, opts.effort, ctx.purpose);
+    const scope = openScope(ctx);
+    try {
+      return await recordCall(
+        env,
+        {
+          ctx,
+          provider: sessionTape.replaying ? "cassette" : "meta",
+          model,
+          normalize: scope.normalize,
+          price: (rec) => tokenCostUsd(model, rec.usage),
+        },
+        async (rec) => {
+          rec.images = shots;
+          const body = {
+            model,
+            instructions,
+            tools,
+            input,
+            ...(effort !== undefined ? { reasoning: { effort } } : {}),
+            ...(env.disableParallelToolCalls ? { parallel_tool_calls: false } : {}),
+            store: !stateless,
+            ...(chainFrom !== undefined ? { previous_response_id: chainFrom } : {}),
+          };
+          const raw = await sessionTape.next(
+            () => post(env, body, chainFrom !== undefined, scope),
+            reply.kind,
+          );
+          const resp = parseResponseBody(raw);
+          rec.usage = responsesUsage(resp.usage);
+          rec.responseId = resp.id;
+          const parsed = parseCuTurns(resp);
+          if (incompleteReason(resp) !== undefined) {
+            // Nothing is advanced, so resending the same reply continues from the same state.
+            rec.status = "incomplete";
+            rec.errorCode = "MODEL_INCOMPLETE";
+            return parsed;
+          }
+          if (stateless) {
+            opening = nextOpening;
+            openingImages = nextOpeningImages;
+            turns = nextTurns;
+            pending = resp.output.filter(isRecord).filter((item) => item.type !== "reasoning");
+          } else {
+            previousResponseId = resp.id;
+            chainImages = requestImages;
+          }
+          return parsed;
+        },
+      );
+    } finally {
+      await sessionTape.save();
+    }
+  };
+
   return {
     imagesInChain: () => (stateless ? replayedImages() : chainImages),
     async send(reply, ctx) {
-      const newChain = reply.kind === "start" || reply.kind === "rollover";
-      const started = stateless ? pending !== undefined : previousResponseId !== undefined;
-      if (!newChain && !started) {
-        throw new DockhandError(
-          "MODEL_ERROR",
-          "computer-use session: the first reply must be start (or rollover)",
-        );
-      }
-      const screenshot = reply.screenshot;
-      const shots = screenshot ? 1 : 0;
-      const imageUrl = screenshot ? screenshotUrl(screenshot) : undefined;
-      const replyItems = replyInput(reply, imageUrl);
-
-      // What this request carries, and the state to keep if it completes.
-      let nextOpening = opening;
-      let nextOpeningImages = openingImages;
-      let nextTurns = turns;
-      let input: Item[];
-      let requestImages: number;
-      if (!stateless) {
-        input = replyItems;
-        requestImages = (newChain ? 0 : chainImages) + shots;
-      } else {
-        if (newChain) {
-          nextOpening = replyItems;
-          nextOpeningImages = shots;
-          nextTurns = [];
-        } else {
-          const answered = { items: [...answeredItems(pending ?? [], reply), ...replyItems], images: shots };
-          nextTurns = [...turns, answered];
-          if (nextTurns.length > CU_HISTORY_MAX_TURNS) nextTurns = nextTurns.slice(-CU_HISTORY_KEEP_TURNS);
-        }
-        input = [...nextOpening, ...nextTurns.flatMap((t) => t.items)];
-        requestImages = nextOpeningImages + nextTurns.reduce((n, t) => n + t.images, 0);
-      }
-      if (requestImages > MAX_IMAGES_PER_REQUEST) {
-        throw new DockhandError(
-          "TOO_MANY_IMAGES",
-          `computer-use request would hold ${requestImages} images (max ${MAX_IMAGES_PER_REQUEST}): roll over first`,
-        );
-      }
-
-      // Recording is per session, turn by turn: the key comes from what is stable across runs (not pixels).
-      tape ??= env.cassettes.tape(
-        ctx.purpose,
-        cassetteKey(ctx.purpose, { model: opts.model, instructions, functions, first: firstText(reply) }),
-      );
-      const sessionTape = tape;
-      const chainFrom = !stateless && !newChain ? previousResponseId : undefined;
-      const effort = effortFor(opts.model, opts.effort, ctx.purpose);
-      const scope = openScope(ctx);
       try {
-        return await recordCall(
-          env,
-          {
-            ctx,
-            provider: sessionTape.replaying ? "cassette" : "meta",
-            model: opts.model,
-            normalize: scope.normalize,
-            price: (rec) => tokenCostUsd(opts.model, rec.usage),
-          },
-          async (rec) => {
-            rec.images = shots;
-            const body = {
-              model: opts.model,
-              instructions,
-              tools,
-              input,
-              ...(effort !== undefined ? { reasoning: { effort } } : {}),
-              ...(env.disableParallelToolCalls ? { parallel_tool_calls: false } : {}),
-              store: !stateless,
-              ...(chainFrom !== undefined ? { previous_response_id: chainFrom } : {}),
-            };
-            const raw = await sessionTape.next(
-              () => post(env, body, chainFrom !== undefined, scope),
-              reply.kind,
-            );
-            const resp = parseResponseBody(raw);
-            rec.usage = responsesUsage(resp.usage);
-            rec.responseId = resp.id;
-            const parsed = parseCuTurns(resp);
-            if (incompleteReason(resp) !== undefined) {
-              // Nothing is advanced, so resending the same reply continues from the same state.
-              rec.status = "incomplete";
-              rec.errorCode = "MODEL_INCOMPLETE";
-              return parsed;
-            }
-            if (stateless) {
-              opening = nextOpening;
-              openingImages = nextOpeningImages;
-              turns = nextTurns;
-              pending = resp.output.filter(isRecord).filter((item) => item.type !== "reasoning");
-            } else {
-              previousResponseId = resp.id;
-              chainImages = requestImages;
-            }
-            return parsed;
-          },
-        );
-      } finally {
-        await sessionTape.save();
+        return await sendOnce(reply, ctx);
+      } catch (err) {
+        if (slot.current === CU_FALLBACK_MODEL || !computerToolRefused(err)) throw err;
+        env.log.warn("the API refused the computer tool for this model; switching computer use", {
+          requested: slot.current,
+          using: CU_FALLBACK_MODEL,
+        });
+        slot.current = CU_FALLBACK_MODEL;
+        return sendOnce(reply, ctx);
       }
     },
   };
