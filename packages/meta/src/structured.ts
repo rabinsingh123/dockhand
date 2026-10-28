@@ -232,8 +232,9 @@ function basetenRoute<T>(
   return {
     provider: "baseten",
     effort,
-    // Not measured live (no Baseten key yet): the caller's budget as given, Baseten's default otherwise.
-    budget: req.maxOutputTokens ?? DEFAULT_OPEN_WEIGHTS_MAX_TOKENS,
+    // Live: at low effort Muse Spark Open reasons 120-375 tokens before a ~80-token pick, so rung 2's
+    // 400-token budget ended "length" on 2 of 8 calls. Same floor as the Meta route.
+    budget: outputBudget(req.maxOutputTokens, effort) ?? DEFAULT_OPEN_WEIGHTS_MAX_TOKENS,
     async send(previous, budget) {
       userContent ??= buildChatUserContent(req.input, env.artifacts);
       return env.baseten.postJson(
