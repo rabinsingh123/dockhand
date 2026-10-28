@@ -152,6 +152,7 @@ export async function runFirstRun(
   );
 
   const t0 = performance.now();
+  const startedAt = env.clock.now();
   let lastProgress = 0;
   const lease = await leaseFor(env, portal, runId);
   let res: CuRunResult;
@@ -164,10 +165,12 @@ export async function runFirstRun(
         portalName: portal.name,
         extendLease: (ms: number) => lease.extend(ms),
       }),
+      // A plain "still working" line every 20 s or so on long runs; quiet on short ones.
       progress(r: { action: number; note: string }) {
-        if (r.action - lastProgress < 5) return;
-        lastProgress = r.action;
-        void trySend(env, job, `Working on it: action ${r.action}, ${r.note}`);
+        const now = env.clock.now();
+        if (now - startedAt < 15_000 || now - lastProgress < 20_000) return;
+        lastProgress = now;
+        void trySend(env, job, `Still working on ${portal.name}: ${r.action} actions so far.`);
       },
     };
     res = await runComputerUse(

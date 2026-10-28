@@ -125,7 +125,7 @@ describe("hero loop through WhatsApp", () => {
   it("(a) learns a draft from a screen recording sent as a document", async () => {
     await send({ file: { path: teachFixture().videoPath, mime: "video/mp4", asDocument: true } });
     const card = lastCard();
-    expect(card.body).toContain('I learned "Register a partner deal on Caravela Partner Hub"');
+    expect(card.body).toContain("I learned *Register a partner deal on Caravela Partner Hub*: ");
     expect(card.headerImagePath).toBeTruthy();
     await tap(card, "a");
     expect(sys.skills.draftForPortal("caravela")?.draft.name).toBe("register_partner_deal");

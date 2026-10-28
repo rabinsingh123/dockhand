@@ -205,6 +205,8 @@ export async function createTestSystem(opts: TestSystemOptions = {}): Promise<Te
     ledger,
     tmpDir: join(dir, "tmp"),
     expirySweepMs: 0,
+    // Generous per-step deadline: integration files run in parallel, and a slow first render is not a bug.
+    stepTimeoutMs: 10_000,
   });
 
   return {

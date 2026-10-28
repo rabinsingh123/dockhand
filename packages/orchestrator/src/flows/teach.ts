@@ -102,7 +102,7 @@ export async function runTeach(
     kind: "skill_confirm",
     to: job.rep.phone,
     body: [
-      `I learned "${draft.title}" on ${portalName}: ${draft.steps.length} steps, ${draft.params.length} params, submits with "${draft.commitStep}".`,
+      `I learned *${draft.title}*${draft.title.toLowerCase().includes(portalName.toLowerCase()) ? "" : ` on ${portalName}`}: ${draft.steps.length} steps, ${draft.params.length} values, submits with "${draft.commitStep}".`,
       "Values from the video are shown on the card but never reused.",
       "Look right? The next real request runs once with computer use, then becomes a skill.",
     ].join("\n"),

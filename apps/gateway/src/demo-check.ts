@@ -445,9 +445,9 @@ const STEPS: Step[] = [
     async run({ rep }) {
       await rep.sendFile(fixture("teach", "caravela-register-deal.mp4"), { asDocument: true });
       await rep.textMsg("Watching your recording");
-      const card = await rep.card(/^I learned "/, ["Looks right", "Cancel"]);
+      const card = await rep.card(/^I learned \*/, ["Looks right", "Cancel"]);
       check(card.header?.type === "image", "the teach card has no image of what was learned");
-      check(/\d+ steps, \d+ params/.test(card.text ?? ""), "the teach card does not count steps and params");
+      check(/\d+ steps, \d+ values/.test(card.text ?? ""), "the teach card does not count steps and values");
       await rep.shot("teach-card");
       await rep.tap(card, "Looks right");
       await rep.textMsg(/^Saved the draft "register_partner_deal"/);
