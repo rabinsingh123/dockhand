@@ -34,7 +34,7 @@ export interface RepairSetup {
 }
 
 /** Computer-use repair model (docs/ARCHITECTURE.md §5). */
-export const CU_REPAIR_MODEL = "muse-wonder-1.0";
+export const CU_REPAIR_MODEL = "muse-spark-1.3"; // muse-wonder-1.0 refuses the computer tool (HTTP 400, 2026-10-28)
 
 const words = (s: string | undefined) =>
   new Set(

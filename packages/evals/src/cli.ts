@@ -1,5 +1,5 @@
 // pnpm eval --suite replay|mutation|repair|agentic|all --skill caravela|supplier
-//   [--n 50] [--seed 1] [--concurrency 4] [--repair none|fake|live] [--cu-model muse-wonder-1.0] [--refresh-skill]
+//   [--n 50] [--seed 1] [--concurrency 4] [--repair none|fake|live] [--cu-model muse-spark-1.3] [--refresh-skill]
 // Writes evals/results/<suite>-<skill>-<seed>.jsonl, summary.json, summary.md and the chart PNGs.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -24,7 +24,7 @@ import { costChartHtml, mutationChartHtml, renderChart, replayChartHtml } from "
 import { createEvalLedger } from "./ledger.ts";
 import { evalsDbPath, evalsVarDir, resultsDir } from "./paths.ts";
 import { EVAL_PORTALS, type EvalPortal, portalDef } from "./portals.ts";
-import { REPAIR_MODES, type RepairMode, repairSetup } from "./repairers.ts";
+import { CU_REPAIR_MODEL, REPAIR_MODES, type RepairMode, repairSetup } from "./repairers.ts";
 import { type EvalRecord, gradeSubmissions, type RunCaseDeps, runCase } from "./run.ts";
 import { headline, renderMarkdown, summarize } from "./summary.ts";
 
@@ -45,7 +45,7 @@ function parse() {
       seed: { type: "string", default: "1" },
       concurrency: { type: "string", default: "4" },
       repair: { type: "string", default: "none" },
-      "cu-model": { type: "string", default: "muse-wonder-1.0" },
+      "cu-model": { type: "string", default: CU_REPAIR_MODEL },
       "refresh-skill": { type: "boolean", default: false },
     },
     allowPositionals: false,

@@ -189,7 +189,9 @@ export function loadConfig(env?: Record<string, string | undefined>): Config {
 const MODEL_ROUTING = [
   ["voice", "muse-voice-transcribe-1.0"],
   ["vision/understand", "muse-spark-1.3"],
-  ["teach/repair", "muse-wonder-1.0"],
+  ["teach", "muse-wonder-1.0"],
+  ["computer use", "muse-spark-1.3"],
+  ["heal rung 2", "meta-models/muse-spark-open"],
 ] as const;
 
 /** One screen: modes, models, ports, which secrets are set. Never prints a secret value. */
