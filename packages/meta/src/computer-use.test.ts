@@ -818,3 +818,17 @@ describe("computer use: a turn that hangs", () => {
     expect(world.ledger.rows).toHaveLength(1);
   });
 });
+
+describe("computer use: a turn that hangs twice", () => {
+  it("fails fast with MODEL_TIMEOUT instead of waiting out the call's deadline", async () => {
+    world = await makeWorld({ computerUseSlowMs: 150 });
+    const slow = { delayMs: 2_000, json: responseBody([messageItem("late")]) };
+    world.server.on("/v1/responses", slow, slow);
+    const t0 = Date.now();
+    await expect(
+      open().send({ kind: "start", task: "t", screenshot: pngBytes() }, ctx("cu_first_run")),
+    ).rejects.toMatchObject({ code: "MODEL_TIMEOUT" });
+    expect(Date.now() - t0).toBeLessThan(1_500);
+    expect(world.ledger.rows[0]).toMatchObject({ status: "timeout", errorCode: "MODEL_TIMEOUT" });
+  });
+});

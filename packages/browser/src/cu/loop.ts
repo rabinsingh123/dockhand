@@ -76,6 +76,8 @@ const POLICY_ACKNOWLEDGED_CHECKS = new Set(["computer_action_requires_confirmati
 const SCROLL_IDLE_MS = 800;
 /** Progress heartbeat while a model turn is outstanding. */
 const HEARTBEAT_MS = 10_000;
+/** Fresh conversations started after a model turn timed out, per run. */
+const MAX_TIMEOUT_RECOVERIES = 2;
 
 function wheelPixels(delta: number): number {
   return Math.abs(delta) < MAX_NOTCHES ? delta * WHEEL_NOTCH_PX : delta;
@@ -266,6 +268,7 @@ class ComputerUseRun {
   private blockedWriteCount = 0;
   private requestCount = 0;
   private readonly inflight = new Set<Request>();
+  private recoveries = 0;
   /** Demo overlay (DEMO_MODE only): draws the run for the camera; undefined otherwise. */
   private readonly hud: Hud | undefined;
   private readonly hooks: CuHooks;
@@ -383,7 +386,23 @@ class ComputerUseRun {
       for (;;) {
         this.checkLimits();
         this.hud?.cuThinking();
-        const turns = await this.sendTurn(session, reply);
+        let turns: CuTurn[];
+        try {
+          turns = await this.sendTurn(session, reply);
+        } catch (e) {
+          // A turn the API never answers (live: the same request hung twice, 90 s) would end the run. Start a
+          // fresh conversation from the harness summary instead, at most twice per run.
+          if (!(e instanceof DockhandError && e.code === "MODEL_TIMEOUT")) throw e;
+          if (this.recoveries >= MAX_TIMEOUT_RECOVERIES || !this.canRollover()) throw e;
+          this.recoveries++;
+          this.hooks.progress?.({
+            action: this.actions,
+            note: "the model did not answer; starting a fresh turn",
+          });
+          const shot = await this.capture();
+          reply = { kind: "rollover", summary: await this.summary(), screenshot: shot.bytes };
+          continue;
+        }
         this.hud?.cuTurn(this.hud ? this.input.costSoFar?.() : undefined);
         this.checkCost();
         const call = turns.find(

@@ -1,4 +1,4 @@
-import type { CuReply, CuTurn, TraceStep } from "@dockhand/core";
+import { type CuReply, type CuTurn, DockhandError, type TraceStep } from "@dockhand/core";
 import type { Browser, BrowserContext, Page } from "playwright";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { REGISTER_FORM } from "../helpers/fixtures.ts";
@@ -613,5 +613,35 @@ describe("runComputerUse: a slow model turn", () => {
     await runComputerUse(model, cuInput(page), hooks, CTX, { heartbeatMs: 60 });
     expect(hooks.progressed.length).toBeGreaterThanOrEqual(2);
     expect(hooks.progressed[0]?.note).toMatch(/^waiting for the model \(\d+ s\)$/);
+  });
+});
+
+describe("runComputerUse: a turn the API never answers", () => {
+  it("starts a fresh conversation from the harness summary instead of failing the run", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/long`);
+    const canned = cannedModel([
+      [{ kind: "computer_call", callId: "c1", safetyChecks: [], actions: [{ type: "wait" }] }],
+      [{ kind: "final", text: "Done." }],
+    ]);
+    let failed = false;
+    const inner = canned.open({ instructions: "", functions: [] });
+    const model = {
+      ...canned,
+      open: () => ({
+        imagesInChain: () => inner.imagesInChain(),
+        send: async (reply: CuReply, ctx: typeof CTX) => {
+          if (reply.kind === "computer_output" && !failed) {
+            failed = true;
+            throw new DockhandError("MODEL_TIMEOUT", "computer-use turn took over 30000 ms twice");
+          }
+          return inner.send(reply, ctx);
+        },
+      }),
+    };
+    const hooks = recordingHooks();
+    const r = await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(r.outcome).toBe("done");
+    expect(canned.replies.map((x) => x.kind)).toEqual(["start", "rollover"]);
+    expect(hooks.progressed.map((p) => p.note)).toContain("the model did not answer; starting a fresh turn");
   });
 });
