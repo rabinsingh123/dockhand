@@ -29,7 +29,7 @@ import {
   runSkill,
 } from "@dockhand/skills";
 import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
-import { inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
+import { fitSpecsToValues, inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
 import { diffCardHtml, receiptCaption, skillCardHtml } from "../tools/receipts.ts";
@@ -340,7 +340,10 @@ async function compileRun(
   const { runId, trace, action, draft, portal } = o;
   try {
     // Enum values in a draft are what the video showed: examples, never the list a skill accepts.
-    const draftSpecs = (draft?.params ?? []).map(({ enumValues: _shown, ...p }) => p);
+    const draftSpecs = fitSpecsToValues(
+      (draft?.params ?? []).map(({ enumValues: _shown, ...p }) => p),
+      action.params,
+    );
     const specs = mergeSpecs(draftSpecs, inferSpecs(action.params));
     const { skill: body0, warnings } = compile(trace, {
       name: action.compileAs,

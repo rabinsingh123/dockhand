@@ -184,7 +184,8 @@ export function gateHooks(
             ? `Ready to submit on ${run.portalName}. Check the filled form:`
             : `Ready to submit on ${run.portalName}. Check the review page in the screenshot.`,
         ],
-        lines.map((f) => `• ${f.label}: ${f.value === "true" ? "yes" : f.value}`),
+        // Raw values: a field that reads "true" must look wrong, not like a ticked box.
+        lines.map((f) => `• ${f.label}: ${f.value}`),
         ["", "Approve to submit. Nothing is sent until you tap."],
       );
       const { decision } = await open("commit", body, r.screenshot);

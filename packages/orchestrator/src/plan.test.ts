@@ -155,6 +155,17 @@ function recordedTeachDraft(): SkillDraft {
 }
 
 describe("buildPlan: register_deal from the recorded live teach draft", () => {
+  it("uses the request's seats when a live draft guessed the wrong type for them (seats: boolean)", () => {
+    const recorded = recordedTeachDraft();
+    const wrong = {
+      ...recorded,
+      params: recorded.params.map((p) => (p.name === "seats" ? { ...p, type: "boolean" as const } : p)),
+    };
+    const out = buildPlan(cafe, ctx(store({ draft: wrong })));
+    const action = out.type === "plan" ? out.plan.actions[0] : undefined;
+    expect(action?.kind === "computer_use" ? action.params.seats : undefined).toBe(25);
+  });
+
   it("treats the video's enum values as examples and the consent box as a constant tick", () => {
     const recorded = recordedTeachDraft();
     expect(recorded.params.find((p) => p.name === "country")?.enumValues).not.toContain("United States");

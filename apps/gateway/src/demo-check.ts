@@ -462,6 +462,24 @@ function fieldsMatch(actual: Record<string, unknown>, want: Record<string, unkno
   for (const [k, v] of Object.entries(want)) if (!freeText.includes(k)) same(actual[k], v, `${what}.${k}`);
 }
 
+/**
+ * Waits for the run's receipt. A live model can miss the submit button after an approval, and the gate then asks
+ * again (one approval releases one click): in record and cassette mode up to two repeats are approved; the
+ * stand-ins must never need one.
+ */
+async function approveRepeats(w: World, receipt: RegExp): Promise<ChatEntry> {
+  const done = (e: ChatEntry) => e.type === "image" && receipt.test(e.caption ?? "");
+  const again = (e: ChatEntry) =>
+    w.o.mode !== "fake" && e.type === "interactive" && /^Ready to submit/.test(e.text ?? "");
+  let next = await w.rep.expect(`a receipt matching ${receipt}`, (e) => done(e) || again(e), 240_000);
+  for (let n = 0; !done(next) && n < 2; n++) {
+    await w.rep.tap(next, "Approve");
+    next = await w.rep.expect(`a receipt matching ${receipt}`, (e) => done(e) || again(e), 240_000);
+  }
+  check(done(next), "the run kept asking to submit");
+  return next;
+}
+
 type Step = { name: string; run: (w: World) => Promise<void> };
 
 const STEPS: Step[] = [
@@ -506,7 +524,7 @@ const STEPS: Step[] = [
       same((await submissions(w.partner)).length, before, "partner submissions before the submit tap");
       await rep.shot("first-run-submit-card");
       await rep.tap(commit, "Approve");
-      const receipt = await rep.image(/First run · computer use/);
+      const receipt = await approveRepeats(w, /First run · computer use/);
       const id = REG_ID.exec(receipt.caption ?? "")?.[0];
       check(id, `the first-run receipt has no registration ID: ${receipt.caption}`);
       const skill = await rep.image(`New skill: ${w.skill} v1.`);
@@ -640,26 +658,7 @@ const STEPS: Step[] = [
       same((await submissions(w.supplier)).length, before, "supplier submissions before the submit tap");
       await rep.shot("supplier-submit-card");
       await rep.tap(commit, "Approve");
-      // A live model can miss the submit button after the approval; the gate then asks again (one approval
-      // releases one click). Approve up to two retries in record/cassette mode; the stand-ins must not need any.
-      let receipt = await rep.expect(
-        "the first-run receipt",
-        (e) =>
-          (e.type === "image" && /First run · computer use/.test(e.caption ?? "")) ||
-          (w.o.mode !== "fake" && e.type === "interactive" && /^Ready to submit/.test(e.text ?? "")),
-        240_000,
-      );
-      for (let retry = 0; receipt.type === "interactive" && retry < 2; retry++) {
-        await rep.tap(receipt, "Approve");
-        receipt = await rep.expect(
-          "the first-run receipt",
-          (e) =>
-            (e.type === "image" && /First run · computer use/.test(e.caption ?? "")) ||
-            (e.type === "interactive" && /^Ready to submit/.test(e.text ?? "")),
-          240_000,
-        );
-      }
-      check(receipt.type === "image", "the supplier run kept asking to submit");
+      const receipt = await approveRepeats(w, /First run · computer use/);
       check(/SG-ACME-\d{6}/.test(receipt.caption ?? ""), `no supplier ID on the receipt: ${receipt.caption}`);
       await rep.image(/^New skill: supplier_onboarding v1\b/, 240_000);
       await rep.shot("supplier-receipt");
@@ -746,6 +745,23 @@ function modelCost(dbPath: string): number {
   const db = new DatabaseSync(dbPath, { readOnly: true });
   try {
     return (db.prepare("SELECT COALESCE(SUM(cost_usd), 0) AS c FROM model_calls").get() as { c: number }).c;
+  } finally {
+    db.close();
+  }
+}
+
+/** Model calls that reached a provider (anything but a tape, the stand-ins or the scripted model). */
+function liveCalls(dbPath: string): number {
+  if (!existsSync(dbPath)) return 0;
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    return (
+      db
+        .prepare(
+          "SELECT COUNT(*) AS n FROM model_calls WHERE provider NOT IN ('cassette', 'fake', 'scripted')",
+        )
+        .get() as { n: number }
+    ).n;
   } finally {
     db.close();
   }
@@ -850,6 +866,17 @@ async function main(): Promise<number> {
         : `replayed from tapes, nothing spent (the same calls live: $${spent.toFixed(3)} at list price)`;
     process.stdout.write(`${what}${costAbort ? ` - ABORTED: ${costAbort}` : ""}\n`);
     if (costAbort) results.push({ name: "cost cap", ok: false, ms: 0, error: costAbort });
+    if (o.mode === "cassette") {
+      // No network: every model call must have come off a tape.
+      const live = liveCalls(join(o.varDir, "dockhand.sqlite"));
+      results.push({
+        name: "every model call replayed from a tape",
+        ok: live === 0,
+        ms: 0,
+        ...(live > 0 ? { error: `${live} model calls went to a provider` } : {}),
+      });
+      process.stdout.write(`  ${live === 0 ? "ok  " : "FAIL"}  every model call replayed from a tape\n`);
+    }
   }
   const failed = results.filter((r) => !r.ok);
   const skipped = STEPS.length - results.filter((r) => STEPS.some((s) => s.name === r.name)).length;

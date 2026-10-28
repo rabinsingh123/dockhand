@@ -148,6 +148,10 @@ function finish(specs: ParamSpec[], found: Map<string, unknown>, o: MapOptions =
   for (const spec of specs) {
     const raw = found.get(spec.name);
     let value = coerce(spec, raw);
+    // A draft's types are the model's guess from a video (live Wonder once typed seats as boolean): a value
+    // the request gives wins over a type that cannot hold it.
+    if (value === null && o.fromDraft && (typeof raw === "number" || (typeof raw === "string" && raw !== "")))
+      value = raw;
     if (value !== null && spec.type === "enum" && typeof value === "string") {
       const option = matchEnum(value, spec.enumValues);
       if (option !== null) value = option;
@@ -157,7 +161,7 @@ function finish(specs: ParamSpec[], found: Map<string, unknown>, o: MapOptions =
       }
     }
     if (value === null) {
-      if (o.fromDraft && spec.type === "boolean" && spec.required) {
+      if (o.fromDraft && spec.type === "boolean" && spec.required && !found.has(spec.name)) {
         params[spec.name] = true;
         continue;
       }
@@ -222,6 +226,16 @@ export function paramsFromProfile(
     }
   }
   return finish(specs, found);
+}
+
+/** Draft specs with each type corrected to the value a run actually used, where the guessed type cannot hold it. */
+export function fitSpecsToValues(specs: ParamSpec[], values: Record<string, ParamValue>): ParamSpec[] {
+  return specs.map((spec) => {
+    const v = values[spec.name];
+    if (v === undefined || coerce(spec, v) !== null) return spec;
+    const [inferred] = inferSpecs({ [spec.name]: v });
+    return inferred ? { ...spec, type: inferred.type } : spec;
+  });
 }
 
 /** Specs for run params that came without a draft (zero-shot runs). */
