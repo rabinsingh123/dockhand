@@ -542,6 +542,18 @@ function gatesRepo(db: Db, clock: Clock) {
       ).map(toGate);
     },
 
+    /** The rep's pending gates, newest first. */
+    pendingForRep(rep: string): GateRow[] {
+      return (
+        db.raw
+          .prepare(
+            `SELECT g.* FROM gates g JOIN jobs j ON j.id = g.job_id
+             WHERE j.rep = ? AND g.status = 'pending' ORDER BY g.created_at DESC, g.rowid DESC`,
+          )
+          .all(rep) as Row[]
+      ).map(toGate);
+    },
+
     pendingForJob(jobId: string): GateRow[] {
       return (
         db.raw

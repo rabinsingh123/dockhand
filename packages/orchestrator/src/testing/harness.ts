@@ -35,7 +35,7 @@ import { createRepos, type Repos } from "../repo.ts";
 import { createFakeCrm } from "../tools/crm-fake.ts";
 import { createQuoteService } from "../tools/quotes.ts";
 import { portalDirectory } from "../wiring.ts";
-import { fixtureStructured } from "./stand-ins.ts";
+import { fixtureStructured, standInComputerUse } from "./stand-ins.ts";
 
 export const TEST_REP = "5511999990001";
 const SECRET = "test-app-secret";
@@ -191,8 +191,9 @@ export async function createTestSystem(opts: TestSystemOptions = {}): Promise<Te
     log,
     wa,
     models,
-    cu: scripted("cu_first_run"),
-    repairCu: scripted("cu_repair"),
+    // Without a script, computer use follows the stand-ins (scripts built from each run's values).
+    cu: scripts === undefined ? standInComputerUse("cu_first_run", { ledger }) : scripted("cu_first_run"),
+    repairCu: scripts === undefined ? standInComputerUse("cu_repair", { ledger }) : scripted("cu_repair"),
     pool,
     skills,
     crm,

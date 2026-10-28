@@ -13,6 +13,7 @@ import type {
   Transcript,
   Understanding,
 } from "@dockhand/core";
+import { cardBody } from "./messages.ts";
 import {
   type FileParam,
   humanize,
@@ -171,11 +172,11 @@ function planRegisterDeal(u: Understanding, ctx: BuildPlanContext): PlanOutcome 
       u,
       [{ kind: "skill_replay", skill: skill.name, version: skill.version, params: m.params }],
       true,
-      [
-        `Register this deal on ${portal.name} (${skill.name} v${skill.version}):`,
-        ...valueLines(m.params),
-        "I'll fill the form and show you the filled form before submitting.",
-      ].join("\n"),
+      cardBody(
+        [`Register this deal on ${portal.name} (${skill.name} v${skill.version}):`],
+        valueLines(m.params),
+        ["I'll fill the form and show it to you before submitting."],
+      ),
     );
   }
 
@@ -205,11 +206,13 @@ function planRegisterDeal(u: Understanding, ctx: BuildPlanContext): PlanOutcome 
         },
       ],
       true,
-      [
-        `Register this deal on ${portal.name}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
-        ...valueLines(m.params),
-        "I'll show you the filled form before submitting.",
-      ].join("\n"),
+      cardBody(
+        [
+          `Register this deal on ${portal.name}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
+        ],
+        valueLines(m.params),
+        ["I'll show you the filled form before submitting."],
+      ),
     );
   }
 

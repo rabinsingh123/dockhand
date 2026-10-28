@@ -40,6 +40,7 @@ import {
   transcriptionKeywords,
   UNSUPPORTED_MEDIA,
 } from "./intake.ts";
+import { intakeFailure, isCancelText, isSkipText } from "./messages.ts";
 import { buildPlan } from "./plan.ts";
 import type { PortalDirectory, PortalInfo } from "./portals.ts";
 import { type CompanyKit, loadCompanyKit, repProfile } from "./profile.ts";
@@ -56,7 +57,7 @@ export interface OrchestratorDeps {
   models: ModelGateway;
   /** First-run computer use. Default: models.computerUse({ model: "muse-spark-1.3" }). */
   cu?: CuModelSource;
-  /** Rung-3 repair. Default: models.computerUse({ model: "muse-wonder-1.0" }). */
+  /** Rung-3 repair. Default: models.computerUse({ model: "muse-spark-1.3" }) (muse-wonder-1.0 refuses the computer tool). */
   repairCu?: CuModelSource;
   pool: BrowserPool & { renderHtml?: RenderHtml };
   skills: SkillStore;
@@ -87,6 +88,9 @@ export interface Orchestrator {
 
 export const RESTART_MESSAGE =
   "I restarted while working on this request, so I stopped it. If it may have been submitted, check the portal or HubSpot before sending it again.";
+
+export const WAITING_ON_CARD =
+  'A request of yours is waiting on the card above. Tap a button there, or reply "cancel" to stop it.';
 
 export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   const { db, clock, config, log, wa, models, approvals } = deps;
@@ -164,7 +168,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     cards: createCardRenderer({ artifacts: deps.artifacts, render }),
     company,
     cu: deps.cu ?? models.computerUse({ model: "muse-spark-1.3" }),
-    repairCu: deps.repairCu ?? models.computerUse({ model: "muse-wonder-1.0" }),
+    repairCu: deps.repairCu ?? models.computerUse({ model: "muse-spark-1.3" }),
     park,
     textAnswers,
     gateTtlMs: approvals.defaultTtlMs,
@@ -199,7 +203,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   type Route =
     | { type: "skip" | "button" | "command" | "unsupported" }
     | { type: "new" | "input"; jobId: Id }
-    | { type: "edit" | "answer"; jobId: Id; gateId: Id };
+    | { type: "edit" | "answer" | "cancel"; jobId: Id; gateId: Id };
 
   function routeMessage(msg: InboundMessage): Route {
     return db.tx((): Route => {
@@ -213,6 +217,15 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         return newJob(msg);
       }
       const replied = msg.replyTo ? repos.messages.get(msg.replyTo)?.jobId : null;
+      // "cancel" typed at a card stops it like the Cancel button (question gates take text as the answer).
+      if (isCancelText(msg.text)) {
+        const pending = repos.gates.pendingForRep(msg.from).filter((g) => g.kind !== "question");
+        const gate = pending.find((g) => g.jobId === replied) ?? pending[0];
+        if (gate) {
+          repos.messages.linkJob(msg.waId, gate.jobId);
+          return { type: "cancel", jobId: gate.jobId, gateId: gate.id };
+        }
+      }
       const target =
         (replied ? attachable(repos.jobs.get(replied)) : undefined) ?? repos.jobs.attachableFor(msg.from);
       if (!target) return newJob(msg);
@@ -225,6 +238,8 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         .pendingForJob(target.id)
         .find((g) => g.kind === "plan" || g.kind === "question");
       if (!gate) return newJob(msg);
+      if (gate.kind === "question" && isSkipText(msg.text))
+        return { type: "cancel", jobId: target.id, gateId: gate.id };
       return { type: gate.kind === "plan" ? "edit" : "answer", jobId: target.id, gateId: gate.id };
     });
   }
@@ -276,6 +291,9 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         await wa.sendText(msg.from, UNSUPPORTED_MEDIA);
         return;
       case "skip":
+        return;
+      case "cancel":
+        approvals.resolve(route.gateId, "rejected", msg.from, msg.waId);
         return;
       case "answer":
         textAnswers.set(route.gateId, (msg.text ?? "").trim());
@@ -410,7 +428,12 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       }
       if (outcome.type === "reply") {
         repos.jobs.apply(jobId, { type: "understood", missing: [], writes: false });
-        await sendText(env, job, outcome.text);
+        // Not a task, while a card is waiting for the rep: point at the card instead of the help text.
+        const waiting =
+          u.intent === "unknown" || u.intent === "question"
+            ? repos.gates.pendingForRep(job.rep.phone).find((g) => g.jobId !== jobId)
+            : undefined;
+        await sendText(env, job, waiting ? WAITING_ON_CARD : outcome.text);
         finish(jobId, { ok: true });
         return;
       }
@@ -435,7 +458,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const code = codeOf(err);
       repos.jobs.update(jobId, { error: { code, message: messageOf(err) } });
       repos.jobs.apply(jobId, { type: "finished", ok: false, errorCode: code });
-      await trySend(env, job, `Sorry, I couldn't process that (${messageOf(err)}). Nothing was written.`);
+      await trySend(env, job, intakeFailure(code));
     }
   }
 
@@ -475,7 +498,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       log.error("execution failed", { jobId, err });
       outcome = { ok: false, errorCode: codeOf(err) };
       repos.jobs.update(jobId, { error: { code: codeOf(err), message: messageOf(err) } });
-      await trySend(env, job, `Something went wrong: ${messageOf(err)}. Nothing else was submitted.`);
+      await trySend(env, job, "Something went wrong on my side, so I stopped. Nothing else was submitted.");
     }
     finish(jobId, outcome);
   }

@@ -28,6 +28,7 @@ import {
   runCanary,
   runSkill,
 } from "@dockhand/skills";
+import { firstRunStop, stopReason } from "../messages.ts";
 import { inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
@@ -244,7 +245,7 @@ export async function runFirstRun(
   if (outcome !== "success") {
     const code = res.outcome === "budget_exceeded" ? "BUDGET_EXCEEDED" : "TOOL_ERROR";
     finishRun(undefined, code);
-    const why = res.message ?? (committed ? "unknown" : "the run ended without submitting");
+    const why = firstRunStop(res.message, res.outcome === "budget_exceeded");
     await sendText(env, job, `The first run on ${portal.name} stopped: ${why}. Nothing was submitted.`);
     if (res.trace.final.screenshot) await sendImage(env, job, res.trace.final.screenshot, "Where it stopped");
     return { ok: false, errorCode: code };
@@ -535,10 +536,7 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
         await sendImage(env, job, result.finalScreenshot, "The page after submitting");
       return { ok: false, errorCode: "UNKNOWN_OUTCOME" };
     default: {
-      const why =
-        result.outcome === "needs_input"
-          ? `${portal.name} needs information I don't have (${result.error ?? "a new field"})`
-          : (result.error ?? result.outcome);
+      const why = stopReason(portal.name, result.errorCode, result.error);
       await sendText(env, job, `Stopped before submitting: ${why}. Nothing was submitted.`);
       if (result.finalScreenshot) await sendImage(env, job, result.finalScreenshot, "Where it stopped");
       return { ok: false, errorCode: result.errorCode ?? "TOOL_ERROR" };

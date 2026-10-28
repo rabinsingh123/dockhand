@@ -25,6 +25,7 @@ import type {
 } from "@dockhand/core";
 import type { Page } from "playwright";
 import type { DockhandApprovalBroker, GateDecision } from "../approvals.ts";
+import { cardBody, clipText } from "../messages.ts";
 import type { PortalDirectory } from "../portals.ts";
 import type { CompanyKit } from "../profile.ts";
 import type { Repos } from "../repo.ts";
@@ -175,13 +176,12 @@ export function gateHooks(
   };
   return {
     async approveCommit(r) {
-      const lines = (r.readback ?? []).filter((f) => f.value.trim() !== "");
-      const body = [
-        `Ready to submit on ${run.portalName}. Check the filled form:`,
-        ...lines.map((f) => `• ${f.label}: ${f.value}`),
-        "",
-        "Approve to submit. Nothing is sent until you tap.",
-      ].join("\n");
+      const lines = (r.readback ?? []).filter((f) => f.value.trim() !== "" && f.value !== "false");
+      const body = cardBody(
+        [`Ready to submit on ${run.portalName}. Check the filled form:`],
+        lines.map((f) => `• ${f.label}: ${f.value === "true" ? "yes" : f.value}`),
+        ["", "Approve to submit. Nothing is sent until you tap."],
+      );
       const { decision } = await open("commit", body, r.screenshot);
       return asDecision(decision);
     },
@@ -201,10 +201,12 @@ export function gateHooks(
           ? options.map((o, i) => ({ id: `opt${i}` as const, title: o }))
           : undefined;
       const body = [
-        `${run.portalName} now asks for "${q.label}", which this skill has no value for.`,
-        options.length > 3 ? `Options: ${options.join(", ")}.` : "",
-        buttons ? "Tap one, or reply with the value." : "Reply with the value.",
-        "I'll remember it as a new param of the skill.",
+        `${run.portalName} now asks for "${q.label}", and I have no value for it.`,
+        options.length > 3 ? clipText(`Options: ${options.join(", ")}.`, 400) : "",
+        buttons
+          ? 'Tap one, or reply with the value ("skip" stops here).'
+          : 'Reply with the value ("skip" stops here).',
+        "I'll remember it for next time.",
       ]
         .filter(Boolean)
         .join("\n");
