@@ -1,0 +1,41 @@
+{
+  "key": "heal_match-7264a7fd5640bbde",
+  "purpose": "heal_match",
+  "recordedAt": "2026-10-28T05:09:10.343Z",
+  "exchanges": [
+    {
+      "response": {
+        "id": "chatcmpl-3d226f662c024abfad5f89ca318e2245",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "content": "{\"index\":null,\"confidence\":0.99,\"reason\":\"No Product combobox exists on the page now. The only available combobox is Country in End customer section (placeholder Select a country), which is a different field and purpose and cannot substitute for Product in Opportunity.\"}",
+              "role": "assistant",
+              "reasoning_content": "We need to pick element for Select 'Product'. Options: only index 6, which is Country combobox. Clearly not product. The step wants product, section Opportunity, testId nw-product. Now we have Country. That's different kind? But role same combobox, but name different. Should not pick similar but does something else. So null.\n\nWe must return JSON with index null, confidence high, reason.\n\nConfidence? Should be high that none matches. Probably 0.95 or 0.99.\n\nReason: No element with product.\n\nWe must not pick Country.\n\nReturn null.\n\n"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "created": 1793164148,
+        "model": "meta-models/muse-spark-open",
+        "object": "chat.completion",
+        "usage": {
+          "prompt_tokens": 418,
+          "completion_tokens": 186,
+          "total_tokens": 604,
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cached_tokens": 384
+          },
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 121,
+            "audio_tokens": 0,
+            "reasoning_tokens": 120,
+            "rejected_prediction_tokens": 334
+          }
+        }
+      }
+    }
+  ]
+}

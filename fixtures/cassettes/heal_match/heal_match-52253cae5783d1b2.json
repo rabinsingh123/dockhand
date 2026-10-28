@@ -1,0 +1,41 @@
+{
+  "key": "heal_match-52253cae5783d1b2",
+  "purpose": "heal_match",
+  "recordedAt": "2026-10-28T05:08:53.355Z",
+  "exchanges": [
+    {
+      "response": {
+        "id": "chatcmpl-8a4565c6c4824cebb59fcf184ad3ed9a",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "content": "{\"index\":19,\"confidence\":0.9,\"reason\":\"Same role (button) and same section 'Register a deal' as original. Name changed from 'Submit registration' to 'Submit deal' is a synonymous rename for the primary submit action in that form; no other button in that section performs a submit.\"}",
+              "role": "assistant",
+              "reasoning_content": "We need to pick element that step should use now. Step: Click 'Submit registration'. Previous element testId nw-submit, name Submit registration. Now options: index 19 is button name \"Submit deal\" section Register a deal. Likely this is renamed from Submit registration to Submit deal. It's same section. So should pick index 19.\n\nWe must not pick similar but different functionality. Is Submit deal same as Submit registration? Likely yes - synonymous rename. The section matches \"Register a deal\". So it's the same function.\n\nOther button is Cancel. Links irrelevant.\n\nSo answer index 19. Confidence high maybe 0.85-0.9. Reason: same role button, same section Register a deal, name semantically equivalent, testId missing but... Could be.\n\nWe should provide JSON.\n\n"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "created": 1793164131,
+        "model": "meta-models/muse-spark-open",
+        "object": "chat.completion",
+        "usage": {
+          "prompt_tokens": 514,
+          "completion_tokens": 239,
+          "total_tokens": 753,
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cached_tokens": 0
+          },
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 159,
+            "audio_tokens": 0,
+            "reasoning_tokens": 164,
+            "rejected_prediction_tokens": 401
+          }
+        }
+      }
+    }
+  ]
+}

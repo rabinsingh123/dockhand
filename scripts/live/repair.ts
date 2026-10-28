@@ -43,7 +43,7 @@ const { values } = parseArgs({
 });
 process.env.DOCKHAND_VAR_DIR ||= LIVE_VAR_DIR;
 const config = loadConfig();
-if (config.meta.mode !== "live") throw new Error("run with META_MODE=live");
+if (config.meta.mode === "fake") throw new Error("run with META_MODE=live, record or cassette");
 const dir = join(process.env.DOCKHAND_VAR_DIR, "evals");
 mkdirSync(dir, { recursive: true });
 const db = openDb(join(process.env.DOCKHAND_VAR_DIR, "evals.sqlite"));

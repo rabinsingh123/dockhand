@@ -1,0 +1,41 @@
+{
+  "key": "heal_match-b491788db379bd9a",
+  "purpose": "heal_match",
+  "recordedAt": "2026-10-28T05:08:41.446Z",
+  "exchanges": [
+    {
+      "response": {
+        "id": "chatcmpl-242d812eb44946ad8db6644724c2579c",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "content": "{\"index\":19,\"confidence\":0.88,\"reason\":\"No \\\"Submit registration\\\" button remains. The button \\\"Confirm registration\\\" (index 19) is in the same section \\\"Register a deal\\\" and same element kind (button) as the original \\\"Submit registration\\\" (testId nw-submit), representing a rename of the final submission action. \\\"Cancel\\\" in the same section is a dismissive action, not a match, and other elements are navigation links/sign out.\"}",
+              "role": "assistant",
+              "reasoning_content": "We need to pick element for 'Submit registration'.\n\nOld was button Submit registration, section Register a deal, testId nw-submit.\n\nNew elements: we have Cancel button in Register a deal section, and Confirm registration button in same section.\n\nWhich is likely transformation? Submit registration → Confirm registration. Very common rename. Same section Register a deal. It's a button. So index 19 is candidate.\n\nConfidence? Not 100% but high. Need to ensure not picking wrong. The other options are links and Sign out, Cancel. Cancel is clearly different action.\n\nSo index 19 is best match. It's same kind (button), same section, similar semantic: Submit registration vs Confirm registration.\n\nCould be considered null? But instruction says pick element that step should use now. The wording \"Never pick an element that only looks similar but does something else (for example 'Save draft' instead of 'Submit', or a different field...)\" Here Confirm registration is essentially same as Submit registration, just renamed.\n\nThus answer index 19.\n\nConfidence 0.85 maybe? Let's assess. Could be 0.9? Need to be cautious.\n\nWe have no Submit registration anymore, so presumably renamed to Confirm registration. Section matches.\n\nGive confidence 0.88.\n\nProvide reason.\n\n"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "created": 1793164119,
+        "model": "meta-models/muse-spark-open",
+        "object": "chat.completion",
+        "usage": {
+          "prompt_tokens": 514,
+          "completion_tokens": 363,
+          "total_tokens": 877,
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cached_tokens": 512
+          },
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 247,
+            "audio_tokens": 0,
+            "reasoning_tokens": 255,
+            "rejected_prediction_tokens": 565
+          }
+        }
+      }
+    }
+  ]
+}
