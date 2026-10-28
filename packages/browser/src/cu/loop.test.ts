@@ -396,7 +396,9 @@ describe("runComputerUse: limits and rollover", () => {
     };
     const r = await runComputerUse(
       model,
-      cuInput(page, { limits: { maxActions: 80, maxWallMs: 50_000, maxCostUsd: 1, rolloverAfterImages: 50 } }),
+      cuInput(page, {
+        limits: { maxActions: 80, maxWallMs: 50_000, maxCostUsd: 1, rolloverAfterImages: 50 },
+      }),
       hooks,
       CTX,
       { clock },
@@ -408,7 +410,10 @@ describe("runComputerUse: limits and rollover", () => {
 
   it("resends once on an incomplete response, then fails", async () => {
     await page.goto(`${FIXTURE_ORIGIN}/form`);
-    const once = cannedModel([[{ kind: "incomplete", reason: "max_output_tokens" }], [{ kind: "final", text: "ok" }]]);
+    const once = cannedModel([
+      [{ kind: "incomplete", reason: "max_output_tokens" }],
+      [{ kind: "final", text: "ok" }],
+    ]);
     expect((await runComputerUse(once, cuInput(page), recordingHooks(), CTX)).outcome).toBe("done");
     expect(once.replies.map((r) => r.kind)).toEqual(["start", "start"]);
     const twice = cannedModel([
@@ -424,7 +429,10 @@ describe("runComputerUse: limits and rollover", () => {
     await page.goto(`${FIXTURE_ORIGIN}/form`);
     const controller = new AbortController();
     controller.abort();
-    const r = await runComputerUse(cannedModel([]), cuInput(page), recordingHooks(), { ...CTX, signal: controller.signal });
+    const r = await runComputerUse(cannedModel([]), cuInput(page), recordingHooks(), {
+      ...CTX,
+      signal: controller.signal,
+    });
     expect(r).toMatchObject({ outcome: "failed", message: "aborted" });
     expect(r.trace.final.screenshot.mime).toBe("image/png");
   });
@@ -435,5 +443,46 @@ describe("runComputerUse: limits and rollover", () => {
     const r = await runComputerUse(model, cuInput(page), recordingHooks(), CTX);
     expect(r.outcome).toBe("failed");
     expect(r.message).toMatch(/Partner tier/);
+  });
+});
+
+describe("runComputerUse: Meta computer-tool conventions seen live", () => {
+  const routine = {
+    id: "cu_sc_1",
+    code: "computer_action_requires_confirmation",
+    message: "Review and confirm before executing this computer action.",
+  };
+
+  it("reads small scroll deltas as wheel notches of 100 px and large ones as pixels", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/long`);
+    const scroll = (callId: string, dy: number): CuTurn[] => [
+      {
+        kind: "computer_call",
+        callId,
+        safetyChecks: [],
+        actions: [{ type: "scroll", x: 640, y: 400, scroll_x: 0, scroll_y: dy }],
+      },
+    ];
+    const model = cannedModel([scroll("s1", 4), scroll("s2", -200)]);
+    await runComputerUse(model, cuInput(page), recordingHooks(), CTX);
+    expect(await page.evaluate(() => window.scrollY)).toBe(200);
+  });
+
+  it("acknowledges computer_action_requires_confirmation by policy and asks the human for any other check", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/long`);
+    const unsafe = {
+      id: "cu_sc_2",
+      code: "malicious_instructions",
+      message: "Potentially unsafe action detected.",
+    };
+    const model = cannedModel([
+      [{ kind: "computer_call", callId: "c1", safetyChecks: [routine], actions: [{ type: "wait" }] }],
+      [{ kind: "computer_call", callId: "c2", safetyChecks: [routine, unsafe], actions: [{ type: "wait" }] }],
+    ]);
+    const hooks = recordingHooks();
+    await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(hooks.safety.map((s) => s.checks)).toEqual([[unsafe]]);
+    const acks = model.replies.map((r) => (r.kind === "computer_output" ? r.acknowledged : null));
+    expect(acks).toEqual([null, [routine], [routine, unsafe]]);
   });
 });

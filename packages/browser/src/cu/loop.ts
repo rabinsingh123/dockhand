@@ -61,6 +61,22 @@ type FunctionCall = Extract<CuTurn, { kind: "function_call" }>;
 
 const FINAL_TEXT_BYTES = 4096;
 const TRACKED_REQUESTS = new Set(["document", "fetch", "xhr"]);
+// Meta's computer tool sends scroll deltas in mouse-wheel notches, not pixels: asked to scroll "about half a
+// screen", muse-spark-1.3 sent scroll_y 4, and runs that executed 4-8 px never moved the form. Small deltas
+// are notches of Chromium's 100 px; large ones (the model also sent -800 to jump to the top) are pixels.
+const WHEEL_NOTCH_PX = 100;
+const MAX_NOTCHES = 50;
+// Meta attaches this check to every computer_call that acts (seen live on every turn, even a scroll), so it
+// carries no information about the action. Dockhand's own gates are the confirmation it asks for: the rep
+// approved the plan, commit controls are blocked without an approval token and the write guard holds every
+// write. These are acknowledged by that policy; any other check code goes to the human (approveSafety).
+const POLICY_ACKNOWLEDGED_CHECKS = new Set(["computer_action_requires_confirmation"]);
+/** How long the page may keep scrolling (keyboard and wheel scrolls are smooth) before a screenshot. */
+const SCROLL_IDLE_MS = 800;
+
+function wheelPixels(delta: number): number {
+  return Math.abs(delta) < MAX_NOTCHES ? delta * WHEEL_NOTCH_PX : delta;
+}
 const FIELD_ROLES = new Set([
   "textbox",
   "searchbox",
@@ -436,16 +452,19 @@ class ComputerUseRun {
   private async onComputerCall(call: ComputerCall, session: CuSession): Promise<CuReply> {
     let acknowledged: SafetyCheck[] = [];
     if (call.safetyChecks.length > 0) {
-      const shot = this.lastShot ?? (await this.capture());
-      const decision = await this.human(() =>
-        this.hooks.approveSafety({ checks: call.safetyChecks, screenshot: shot.ref }),
-      );
-      if (decision !== "approved") {
-        const codes = call.safetyChecks.map((c) => c.code).join(", ");
-        throw new StopRun(
-          decision === "expired" ? "expired" : "rejected",
-          `safety check ${decision}: ${codes}`,
+      const forHuman = call.safetyChecks.filter((c) => !POLICY_ACKNOWLEDGED_CHECKS.has(c.code));
+      if (forHuman.length > 0) {
+        const shot = this.lastShot ?? (await this.capture());
+        const decision = await this.human(() =>
+          this.hooks.approveSafety({ checks: forHuman, screenshot: shot.ref }),
         );
+        if (decision !== "approved") {
+          const codes = forHuman.map((c) => c.code).join(", ");
+          throw new StopRun(
+            decision === "expired" ? "expired" : "rejected",
+            `safety check ${decision}: ${codes}`,
+          );
+        }
       }
       acknowledged = call.safetyChecks;
     }
@@ -528,6 +547,17 @@ class ComputerUseRun {
         await this.page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => {});
       }
     }
+  }
+
+  /** Waits until the window (and the scroll containers at the viewport centre) stop moving. */
+  private async scrollIdle(): Promise<void> {
+    await this.page
+      .evaluate(([x, y, ms]) => window.__dh?.waitScrollIdle(x, y, ms), [
+        VIEWPORT.w / 2,
+        VIEWPORT.h / 2,
+        SCROLL_IDLE_MS,
+      ] as const)
+      .catch(() => {});
   }
 
   private async signature(): Promise<PageSignature | null> {
@@ -719,7 +749,7 @@ class ComputerUseRun {
       case "scroll":
         if (!pt) return;
         await mouse.move(pt.x, pt.y);
-        await mouse.wheel(a.scroll_x, a.scroll_y);
+        await mouse.wheel(wheelPixels(a.scroll_x), wheelPixels(a.scroll_y));
         // mouse.wheel returns before the scroll is applied; wait until the offsets stop changing.
         await this.page
           .evaluate(([x, y]) => window.__dh?.waitScrollIdle(x, y, 500), [pt.x, pt.y] as const)
@@ -736,6 +766,8 @@ class ComputerUseRun {
       }
       case "keypress":
         for (const chord of planKeys(a.keys).chords) await keyboard.press(chord);
+        // PageDown, Space, arrows, Home and End scroll smoothly: let the page come to rest first.
+        await this.scrollIdle();
         return;
       case "wait": {
         const mark = this.mark();
@@ -763,6 +795,9 @@ class ComputerUseRun {
   private async capture(): Promise<{ bytes: Uint8Array; ref: ArtifactRef }> {
     const page = this.page;
     await this.frames();
+    // A screenshot taken mid smooth-scroll shows the page where it no longer is: live, the model then
+    // clicked labels and section gaps for whole turns after a PageDown.
+    await this.scrollIdle();
     const png = await page.screenshot({
       type: "png",
       scale: "css",
