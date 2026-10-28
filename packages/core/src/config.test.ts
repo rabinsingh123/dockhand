@@ -20,7 +20,7 @@ describe("loadConfig", () => {
     const c = loadConfig({});
     expect(c.meta).toEqual({ mode: "fake", apiKey: undefined, baseUrl: "https://api.meta.ai/v1" });
     expect(c.openWeights).toMatchObject({
-      model: "meta-models/muse-spark-open-1026",
+      model: "meta-models/muse-spark-open",
       apiKey: undefined,
       baseUrl: "https://inference.baseten.co/v1",
     });
@@ -166,7 +166,7 @@ describe("modeBanner", () => {
     expect(banner).toContain("whatsapp=cloud");
     expect(banner).toContain("crm=hubspot");
     expect(banner).toContain("muse-spark-1.3");
-    expect(banner).toContain("meta-models/muse-spark-open-1026");
+    expect(banner).toContain("meta-models/muse-spark-open");
     expect(banner).toContain("gateway=8787");
     expect(banner).toContain("MODEL_API_KEY=set");
     expect(banner).not.toContain("NOT LIVE");

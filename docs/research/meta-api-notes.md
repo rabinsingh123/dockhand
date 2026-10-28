@@ -81,4 +81,4 @@ All pages are on dev.meta.ai. Re-check the page before relying on a detail that 
 - Muse Image: `/v1/images/generations` and `/v1/images/edits`. No real job in Dockhand.
 - SAM 3.1: noun phrase → boxes/masks, video tracking. No real job in Dockhand.
 - Muse Code: terminal coding agent (`irm https://dev.meta.ai/install.ps1 | iex`), build-time only.
-- Open weights: Muse Spark Open, Muse Glimmer. Baseten tag for the hackathon: `meta-models/muse-spark-open-1026` (not the docs' `meta-models/muse-spark-open`).
+- Open weights: Muse Spark Open, Muse Glimmer. Baseten tag: `meta-models/muse-spark-open` (verified 2026-10-28 with GET /v1/models on Baseten; the participant guide's `-1026` suffix is not in the catalog).

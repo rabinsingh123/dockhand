@@ -139,7 +139,7 @@ describe("createModelGateway", () => {
   });
   const config = (mode: "live" | "record" | "cassette" | "fake", apiKey?: string) => ({
     meta: { mode, baseUrl: "http://127.0.0.1:9/v1", ...(apiKey ? { apiKey } : {}) },
-    openWeights: { model: "meta-models/muse-spark-open-1026", baseUrl: "http://127.0.0.1:9/baseten/v1" },
+    openWeights: { model: "meta-models/muse-spark-open", baseUrl: "http://127.0.0.1:9/baseten/v1" },
   });
 
   it("fails at construction in live and record modes without MODEL_API_KEY", () => {

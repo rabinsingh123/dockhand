@@ -103,7 +103,7 @@ describe("runDoctor", () => {
           });
         }
         if (url === "https://baseten.test/v1/models")
-          return json({ data: [{ id: "meta-models/muse-spark-open-1026" }] });
+          return json({ data: [{ id: "meta-models/muse-spark-open" }] });
         if (url.startsWith("https://hubspot.test/crm/v3/objects/companies")) {
           return json(
             { status: "error", message: "Authentication credentials not found for pat-SECRET" },

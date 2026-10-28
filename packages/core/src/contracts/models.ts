@@ -6,7 +6,7 @@ export type ModelId =
   | "muse-spark-1.3-contributor"
   | "muse-wonder-1.0"
   | "muse-voice-transcribe-1.0"
-  | (string & {}); // e.g. the open-weights tag "meta-models/muse-spark-open-1026"
+  | (string & {}); // e.g. the open-weights tag "meta-models/muse-spark-open"
 
 export type Effort = "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 

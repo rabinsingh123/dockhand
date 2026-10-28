@@ -50,7 +50,7 @@ Sources:
 
 Facts:
 - Base URL and slug. https://dev.meta.ai/docs/muse-spark-open/deploy (Baseten): model string `meta-models/muse-spark-open`; "The endpoint is OpenAI-compatible. Point any OpenAI client at Baseten" with `base_url="https://inference.baseten.co/v1"`.
-- Hackathon tag `meta-models/muse-spark-open-1026` appears only in the participant guide ("The docs list `meta-models/muse-spark-open`. For the hackathon, use `meta-models/muse-spark-open-1026` instead."). Not in Baseten docs or model page. **UNVERIFIED**: check with `curl https://inference.baseten.co/v1/models -H "Authorization: Bearer $BASETEN_API_KEY"` (the catalog needs a key; unauthenticated call returns 401).
+- **Verified 2026-10-28:** Baseten `GET /v1/models` lists `meta-models/muse-spark-open` (text+image input; tools, json_mode, reasoning; no structured_outputs; $1.25/M in, $4.25/M out). The `-1026` tag below is not in the catalog. Historical note: the tag `meta-models/muse-spark-open-1026` appeared only in the participant guide ("The docs list `meta-models/muse-spark-open`. For the hackathon, use `meta-models/muse-spark-open-1026` instead."). Not in Baseten docs or model page. **UNVERIFIED**: check with `curl https://inference.baseten.co/v1/models -H "Authorization: Bearer $BASETEN_API_KEY"` (the catalog needs a key; unauthenticated call returns 401).
 - Auth. https://docs.baseten.co/organization/api-keys: "Pass your API key in the `Authorization` header using the `Bearer` scheme" ... "Baseten also accepts the legacy `Api-Key` scheme on every endpoint".
 - Limits (Baseten model table, https://docs.baseten.co/inference/model-apis/overview): "Muse Spark Open | meta-models/muse-spark-open | 1048k | 1048k" (context, max output).
 - Media limits for Spark Open (https://docs.baseten.co/inference/model-apis/vision): "Max images per request | ... | 8"; "Max size per image (URL) | ... | 10 MB"; "Max request body (base64) | ... | 100 MiB"; "Max video duration | ... | 300 seconds". "Muse Spark Open doesn't accept PDF files. Extract their text before sending it." Image URLs must be reachable from Baseten: "Baseten retrieves image URLs from the inference service".
@@ -84,7 +84,7 @@ curl https://inference.baseten.co/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $BASETEN_API_KEY" \
   -d '{
-    "model": "meta-models/muse-spark-open-1026",
+    "model": "meta-models/muse-spark-open",
     "reasoning_effort": "low",
     "max_tokens": 4096,
     "messages": [{"role": "user", "content": [
@@ -619,7 +619,7 @@ Privately distributed apps (service keys use these limits): "(Any Hub) Free and 
 
 ## Open items to confirm
 
-1. Baseten catalog lists `meta-models/muse-spark-open-1026` (`GET /v1/models` with our key).
+1. Baseten catalog lists `meta-models/muse-spark-open` (`GET /v1/models` with our key): verified 2026-10-28.
 2. Bonus verification: does a partner-served Model API call (Baseten `-1026`) count, and does laptop-hosted Glimmer count? Ask in Discord.
 3. Hackathon Modal credits vs "Credits included with your plan cannot be used for Shared Endpoint usage."
 4. WhatsApp test-number recipient cap (old docs: 5).

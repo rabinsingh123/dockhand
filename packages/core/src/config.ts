@@ -84,7 +84,7 @@ const EnvSchema = z.object({
   ),
   MODEL_API_KEY: z.string().optional(),
   META_BASE_URL: z.url().default("https://api.meta.ai/v1"),
-  OPEN_WEIGHTS_MODEL: z.string().default("meta-models/muse-spark-open-1026"),
+  OPEN_WEIGHTS_MODEL: z.string().default("meta-models/muse-spark-open"),
   BASETEN_API_KEY: z.string().optional(),
   BASETEN_BASE_URL: z.url().default("https://inference.baseten.co/v1"),
   OPEN_WEIGHTS_PRICE_IN: z.coerce.number().nonnegative().optional(),

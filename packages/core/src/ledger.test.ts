@@ -34,9 +34,9 @@ describe("costOf", () => {
   });
 
   it("accepts a price table (open weights) and never goes negative on odd usage", () => {
-    const prices = { "meta-models/muse-spark-open-1026": { inPerM: 0.5, outPerM: 1.5, cachedPerM: 0.5 } };
+    const prices = { "meta-models/muse-spark-open": { inPerM: 0.5, outPerM: 1.5, cachedPerM: 0.5 } };
     // 2M * 0.5 + 1M * 1.5 = 2.5
-    expect(costOf("meta-models/muse-spark-open-1026", usage(2_000_000, 0, 1_000_000), prices)).toBeCloseTo(
+    expect(costOf("meta-models/muse-spark-open", usage(2_000_000, 0, 1_000_000), prices)).toBeCloseTo(
       2.5,
       12,
     );

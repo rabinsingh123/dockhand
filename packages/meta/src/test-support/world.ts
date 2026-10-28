@@ -22,7 +22,7 @@ import { type MockServer, startMockServer } from "./mock-server.ts";
 
 export const META_KEY = "test-meta-key-0123456789";
 export const BASETEN_KEY = "test-baseten-key-9876543210";
-export const OPEN_WEIGHTS_MODEL = "meta-models/muse-spark-open-1026";
+export const OPEN_WEIGHTS_MODEL = "meta-models/muse-spark-open";
 
 /** A ledger that keeps rows in memory so tests can read each one. */
 export function memoryLedger(): Ledger & { rows: ModelCallRecord[] } {
