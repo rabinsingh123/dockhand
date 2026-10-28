@@ -1,7 +1,8 @@
 // What the rep reads when something did not go to plan, and the small helpers that keep every card short:
 // plain sentences, no step ids, no stack traces, no raw errors. Pure functions.
 
-import type { ErrorCode } from "@dockhand/core";
+import type { ErrorCode, HealRung, Step, StepResult } from "@dockhand/core";
+import { displayName, stepTarget } from "@dockhand/skills";
 
 /** WhatsApp caps interactive bodies at 1024 characters; cards stay well under it. */
 export const CARD_BODY_MAX = 1024;
@@ -116,4 +117,43 @@ export function firstRunStop(message: string | undefined, budget: boolean): stri
   const said = (message ?? "").replace(/^BLOCKED:\s*/i, "").trim();
   if (!said || /script error|^unknown$/i.test(said)) return "it ended without submitting";
   return clipText(said.charAt(0).toLowerCase() + said.slice(1), 200).replace(/[.\s]+$/, "");
+}
+
+const RUNG_GROUP: Record<HealRung, string> = {
+  fallback: "free from stored selectors",
+  similarity: "free by similarity",
+  open_weights: "by Muse Spark Open",
+  computer_use: "by Muse computer use",
+  ask_rep: "from your answer",
+};
+const RUNG_ORDER: HealRung[] = ["fallback", "similarity", "open_weights", "computer_use", "ask_rep"];
+
+/**
+ * Repairs grouped by rung, cheapest first, with what changed for the rungs that found something new:
+ * "12 steps repaired: 10 free from stored selectors, 2 by Muse Spark Open ('Product' → 'Solution', …)".
+ * Null when nothing was repaired.
+ */
+export function repairSummary(results: StepResult[], before: Step[], after: Step[]): string | null {
+  const healed = results.filter((s) => s.rung);
+  if (healed.length === 0) return null;
+  const nameOf = (steps: Step[], id: string): string | undefined => {
+    const step = steps.find((s) => s.id === id);
+    const target = step ? stepTarget(step) : undefined;
+    return target ? displayName(target.fingerprint) : undefined;
+  };
+  const parts = RUNG_ORDER.flatMap((rung) => {
+    const group = healed.filter((s) => s.rung === rung);
+    if (group.length === 0) return [];
+    const changes =
+      rung === "fallback"
+        ? []
+        : group.flatMap((s) => {
+            const was = nameOf(before, s.stepId);
+            const now = nameOf(after, s.stepId);
+            if (was && now && was !== now) return [`'${was}' → '${now}'`];
+            return !was && now ? [`'${now}'`] : [];
+          });
+    return [`${group.length} ${RUNG_GROUP[rung]}${changes.length ? ` (${changes.join(", ")})` : ""}`];
+  });
+  return `${healed.length} step${healed.length === 1 ? "" : "s"} repaired: ${parts.join(", ")}`;
 }

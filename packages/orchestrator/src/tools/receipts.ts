@@ -63,6 +63,11 @@ td.k{font-family:Consolas,monospace;color:#0b3048;white-space:nowrap}
 .muted{color:#5b6b78;font-size:13px}
 .foot{display:flex;justify-content:space-between;padding:10px 24px;background:#f7f9fa;color:#5b6b78;font-size:12px}
 .credit{font-weight:600;color:#0b3048}
+.big .hero-id{font:700 46px/1.1 Consolas,"Cascadia Mono",monospace;color:#0b3048;letter-spacing:.01em;margin:2px 0 14px}
+.tiles{display:flex;gap:12px;margin-bottom:12px}
+.tile{flex:1;background:#eef5f5;border-radius:14px;padding:12px 14px}
+.tile b{display:block;font-size:34px;line-height:1.1;color:#0b3048}.tile span{font-size:17px;color:#41606f}
+.note{font-size:20px;line-height:1.35;color:#24343f;margin:2px 0 6px}
 code{font-family:Consolas,monospace;font-size:13px;background:#f3f6f8;padding:1px 5px;border-radius:4px}
 `;
 
@@ -91,21 +96,32 @@ export interface ReceiptView {
   screenshot?: Uint8Array;
 }
 
+/**
+ * Built to be read on a phone, where the image shows at about half size: a big header (the record ID, fields
+ * verified, machine time, cost), one short line, then the portal's own confirmation screenshot. No long lists.
+ */
 export function receiptHtml(r: ReceiptView): string {
-  const stats = [
-    [seconds(r.seconds), "wall time"],
-    [usd(r.execCostUsd), "execution cost"],
-    [usd(r.intakeCostUsd), "intake cost"],
-    ...(r.verified ? [[`${r.verified.matched}/${r.verified.checked}`, "fields verified before submit"]] : []),
-    ...(r.skill ? [[`${r.skill.name} v${r.skill.version}`, "skill"]] : []),
+  const total = r.execCostUsd + r.intakeCostUsd;
+  const tiles = [
+    ...(r.verified ? [[`${r.verified.matched}/${r.verified.checked}`, "fields verified"]] : []),
+    [seconds(r.seconds), "machine time"],
+    [usd(total), "cost"],
   ];
+  const note = r.lines.slice(0, 2);
   const inner = `<div class="top"><div class="brand">Dockhand receipt</div><h1>${esc(r.title)}</h1><span class="badge ${r.tier}">${esc(TIER_LABEL[r.tier])}</span></div>
-<div class="body">${r.headline ? `<div class="id">${esc(r.headline)}</div>` : ""}<ul>${r.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
-<div class="stats">${stats.map(([v, k]) => `<div class="stat"><b>${esc(v ?? "")}</b><span>${esc(k ?? "")}</span></div>`).join("")}</div>
+<div class="body big">${r.headline ? `<div class="hero-id">${esc(r.headline)}</div>` : ""}
+<div class="tiles">${tiles.map(([v, k]) => `<div class="tile"><b>${esc(v ?? "")}</b><span>${esc(k ?? "")}</span></div>`).join("")}</div>
+${note.map((l) => `<div class="note">${esc(l)}</div>`).join("")}
 ${r.screenshot ? `<img class="shot" src="${dataUri("image/png", r.screenshot)}">` : ""}</div>`;
+  const parts = [
+    ...(r.skill ? [`${r.skill.name} v${r.skill.version}`] : []),
+    `execution ${usd(r.execCostUsd)} + intake ${usd(r.intakeCostUsd)}`,
+  ];
   return page(
     inner,
-    r.usedOpenWeights ? `<span class="credit">${OPEN_WEIGHTS_CREDIT}</span>` : "Tidewater Cloud · Dockhand",
+    r.usedOpenWeights
+      ? `<span class="credit">${OPEN_WEIGHTS_CREDIT}</span> · ${esc(parts.join(" · "))}`
+      : esc(parts.join(" · ")),
   );
 }
 

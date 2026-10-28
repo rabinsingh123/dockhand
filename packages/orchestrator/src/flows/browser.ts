@@ -28,7 +28,7 @@ import {
   runCanary,
   runSkill,
 } from "@dockhand/skills";
-import { firstRunStop, stopReason } from "../messages.ts";
+import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
 import { inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
@@ -304,6 +304,11 @@ export async function runFirstRun(
   return { ok: true };
 }
 
+/** At most `n` lines, the rest counted in the last one. */
+function capLines(lines: string[], n: number): string[] {
+  return lines.length <= n ? lines : [...lines.slice(0, n - 1), `…and ${lines.length - n + 1} more changes`];
+}
+
 function firstMatch(text: string, regex: string | undefined): string | undefined {
   if (!regex) return undefined;
   try {
@@ -499,22 +504,14 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
   switch (result.outcome) {
     case "success": {
       const id = Object.values(result.extracted)[0];
-      const healed = result.steps.filter((s) => s.rung);
-      const intentOf = new Map(
-        [...skill.steps, ...(result.patched?.steps ?? [])].map((s) => [s.id, s.intent]),
-      );
+      const summary = repairSummary(result.steps, skill.steps, result.patched?.steps ?? skill.steps);
       const receipt = await env.cards.receipt(job.id, {
         title: skill.title,
         tier: repaired ? "repair" : "replay",
         ...(id ? { headline: id } : {}),
         lines: [
           `Submitted on ${portal.name} after your approval`,
-          ...(healed.length > 0
-            ? healed.map(
-                (s) =>
-                  `${intentOf.get(s.stepId) ?? s.stepId}: ${s.status} by ${RUNG_WORDS[s.rung as HealRung]}`,
-              )
-            : ["Every step matched the compiled program: no model calls"]),
+          summary ?? "Every step matched the compiled program: no model calls",
         ],
         seconds: result.ms / 1000,
         execCostUsd: totals.costUsd,
@@ -536,6 +533,7 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
           answers,
           portal,
           rungs,
+          summary,
         });
       return { ok: true };
     }
@@ -575,6 +573,7 @@ async function promotePatch(
     answers: { label: string; answer: string }[];
     portal: PortalTarget;
     rungs: HealRung[];
+    summary: string | null;
   },
 ): Promise<void> {
   const patched = o.result.patched;
@@ -617,7 +616,10 @@ async function promotePatch(
       title: saved.title,
       from: parent.version,
       to: saved.version,
-      lines: saved.changelog.split("\n").filter((l) => l.trim() !== ""),
+      lines: capLines(
+        saved.changelog.split("\n").filter((l) => l.trim() !== ""),
+        6,
+      ),
       rungs: o.rungs.map((r) => RUNG_WORDS[r]),
       canary: { passed: canary.passed, total: canary.total },
       usedOpenWeights: realOpenWeights(env, job.id, o.runId),
@@ -627,6 +629,10 @@ async function promotePatch(
     env,
     job,
     card,
-    `Portal changed: ${o.portal.name}. Fixed by ${how}, checked on ${canary.passed}/${canary.total} dry runs. Saved ${saved.name} v${saved.version} (v${parent.version} kept: /rollback ${saved.name} ${parent.version}).`,
+    [
+      `Portal changed: ${o.portal.name}.`,
+      o.summary ?? `Fixed by ${how}.`,
+      `Checked on ${canary.passed}/${canary.total} dry runs. Saved ${saved.name} v${saved.version} (v${parent.version} kept: /rollback ${saved.name} ${parent.version}).`,
+    ].join("\n"),
   );
 }
