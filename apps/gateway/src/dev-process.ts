@@ -30,6 +30,7 @@ import { createEmulator, createWhatsAppClient, type Emulator } from "@dockhand/w
 import { type ServerType, serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { createGatewayApp, type OnMessages } from "./app.ts";
+import { createRecorder } from "./recorder/index.ts";
 
 export const GRAPH_BASE_URL = "https://graph.facebook.com";
 const DRAIN_ON_CLOSE_MS = 3_000;
@@ -115,6 +116,15 @@ export async function startDevProcess(opts: DevProcessOptions = {}): Promise<Dev
     });
     const root = new Hono();
     root.route("/", gateway.app);
+    root.route(
+      "/recorder",
+      createRecorder({
+        db,
+        artifacts,
+        cacheDir: join(varDir(), "tmp", "recorder"),
+        ffmpegPath: config.ffmpegPath,
+      }),
+    );
     if (opts.routes) root.route("/", opts.routes);
 
     let emulator: Emulator | undefined;
