@@ -25,7 +25,13 @@ export interface Config {
     verifyToken?: string;
     graphVersion: string;
   };
-  crm: { mode: CrmMode; hubspotToken?: string };
+  crm: {
+    mode: CrmMode;
+    hubspotToken?: string;
+    pipeline?: string;
+    dealStage?: string;
+    dealCurrency?: boolean;
+  };
   reps: { allowlist: string[] };
   ports: { gateway: number; partnerPortal: number; supplierPortal: number };
   ffmpegPath: string;
@@ -101,6 +107,9 @@ const EnvSchema = z.object({
   REP_ALLOWLIST: phoneList,
   CRM_MODE: z.enum(["hubspot", "fake"]).default("fake"),
   HUBSPOT_TOKEN: z.string().optional(),
+  HUBSPOT_PIPELINE: z.string().optional(),
+  HUBSPOT_DEAL_STAGE: z.string().optional(),
+  HUBSPOT_DEAL_CURRENCY: flag(false),
   GATEWAY_PORT: port(8787),
   PARTNER_PORTAL_PORT: port(5101),
   SUPPLIER_PORTAL_PORT: port(5102),
@@ -171,7 +180,13 @@ export function loadConfig(env?: Record<string, string | undefined>): Config {
       verifyToken: e.WHATSAPP_VERIFY_TOKEN ?? (emulator ? EMULATOR_DEFAULTS.verifyToken : undefined),
       graphVersion: e.WHATSAPP_GRAPH_VERSION,
     },
-    crm: { mode: e.CRM_MODE, hubspotToken: e.HUBSPOT_TOKEN },
+    crm: {
+      mode: e.CRM_MODE,
+      hubspotToken: e.HUBSPOT_TOKEN,
+      pipeline: e.HUBSPOT_PIPELINE,
+      dealStage: e.HUBSPOT_DEAL_STAGE,
+      dealCurrency: e.HUBSPOT_DEAL_CURRENCY,
+    },
     reps: { allowlist: e.REP_ALLOWLIST },
     ports: {
       gateway: e.GATEWAY_PORT,

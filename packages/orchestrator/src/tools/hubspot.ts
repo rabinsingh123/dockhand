@@ -25,6 +25,10 @@ export interface HubSpotOptions {
   baseUrl?: string;
   /** Hub (account) id, for record links. */
   hubId?: string;
+  /** App origin for record links; accounts outside na1 live on e.g. https://app-na2.hubspot.com. */
+  appUrl?: string;
+  /** Read hubId and appUrl from GET /account-info/v3/details once, on the first link (when hubId is unset). */
+  lookupAccount?: boolean;
   pipeline?: string;
   /** Internal stage id; ids vary by account (fetch them with GET /crm/v3/pipelines/deals). */
   dealStage?: string;
@@ -48,8 +52,29 @@ export function createHubSpotCrm(o: HubSpotOptions): CrmClient {
   const clock = o.clock ?? systemClock;
   const repos = createRepos(o.db, clock);
   const timeoutMs = o.timeoutMs ?? 20_000;
-  const link = (objectType: "0-2" | "0-3", id: string) =>
-    `https://app.hubspot.com/contacts/${o.hubId ?? "_"}/record/${objectType}/${id}`;
+  let account: Promise<{ hubId: string; appUrl: string }> | undefined;
+  const accountInfo = () => {
+    const fallback = { hubId: o.hubId ?? "_", appUrl: o.appUrl ?? "https://app.hubspot.com" };
+    account ??=
+      o.hubId || !o.lookupAccount
+        ? Promise.resolve(fallback)
+        : (
+            send("/account-info/v3/details", { method: "GET" }) as Promise<{
+              portalId?: number;
+              uiDomain?: string;
+            }>
+          )
+            .then((a) => ({
+              hubId: a.portalId ? String(a.portalId) : fallback.hubId,
+              appUrl: a.uiDomain ? `https://${a.uiDomain}` : fallback.appUrl,
+            }))
+            .catch(() => fallback); // a link is cosmetic; never fail a write over it
+    return account;
+  };
+  const link = async (objectType: "0-2" | "0-3", id: string) => {
+    const a = await accountInfo();
+    return `${a.appUrl}/contacts/${a.hubId}/record/${objectType}/${id}`;
+  };
 
   async function send(
     path: string,
@@ -125,7 +150,7 @@ export function createHubSpotCrm(o: HubSpotOptions): CrmClient {
         },
       })) as { results?: { id: string }[] };
       const hit = found.results?.[0];
-      if (hit) return { id: hit.id, created: false, url: link("0-2", hit.id) };
+      if (hit) return { id: hit.id, created: false, url: await link("0-2", hit.id) };
       const properties: Record<string, string> = { name: c.name };
       if (c.city) properties.city = c.city;
       if (c.country) properties.country = c.country;
@@ -134,7 +159,7 @@ export function createHubSpotCrm(o: HubSpotOptions): CrmClient {
         const res = (await send("/crm/v3/objects/companies", { method: "POST", json: { properties } })) as {
           id: string;
         };
-        return { id: String(res.id), created: true, url: link("0-2", String(res.id)) };
+        return { id: String(res.id), created: true, url: await link("0-2", String(res.id)) };
       });
     },
 
@@ -162,7 +187,7 @@ export function createHubSpotCrm(o: HubSpotOptions): CrmClient {
       };
       return write(key, "hubspot.deal.create", body, async () => {
         const res = (await send("/crm/v3/objects/deals", { method: "POST", json: body })) as { id: string };
-        return { id: String(res.id), url: link("0-3", String(res.id)) };
+        return { id: String(res.id), url: await link("0-3", String(res.id)) };
       });
     },
 

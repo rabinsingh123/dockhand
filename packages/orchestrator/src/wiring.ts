@@ -112,7 +112,17 @@ export function createOrchestratorFromDev(dev: DevLike, o: FromDevOptions): Wire
   const crm: CrmClient =
     o.crm ??
     (config.crm.mode === "hubspot" && config.crm.hubspotToken
-      ? createHubSpotCrm({ token: config.crm.hubspotToken, db, artifacts, clock, log })
+      ? createHubSpotCrm({
+          token: config.crm.hubspotToken,
+          db,
+          artifacts,
+          clock,
+          log,
+          lookupAccount: true,
+          pipeline: config.crm.pipeline,
+          dealStage: config.crm.dealStage,
+          currencyCode: config.crm.dealCurrency,
+        })
       : createFakeCrm());
   const approvals =
     o.approvals ??

@@ -30,7 +30,7 @@ describe("loadConfig", () => {
     expect(c.whatsapp.phoneNumberId).toMatch(/^\d+$/);
     expect(c.whatsapp.appSecret).toBeTruthy();
     expect(c.whatsapp.verifyToken).toBeTruthy();
-    expect(c.crm).toEqual({ mode: "fake", hubspotToken: undefined });
+    expect(c.crm).toEqual({ mode: "fake", hubspotToken: undefined, dealCurrency: false });
     expect(c.reps.allowlist).toEqual([]);
     expect(c.ports).toEqual({ gateway: 8787, partnerPortal: 5101, supplierPortal: 5102 });
     expect(c.ffmpegPath).toBe("ffmpeg");
@@ -154,7 +154,7 @@ describe("loadConfig", () => {
       verifyToken: "verify-SECRET-4",
       graphVersion: "v26.0",
     });
-    expect(c.crm).toEqual({ mode: "hubspot", hubspotToken: "pat-SECRET-5" });
+    expect(c.crm).toEqual({ mode: "hubspot", hubspotToken: "pat-SECRET-5", dealCurrency: false });
     expect(c.openWeights.apiKey).toBe("bt-SECRET-6");
   });
 });

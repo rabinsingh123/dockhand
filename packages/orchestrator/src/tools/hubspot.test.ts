@@ -271,3 +271,70 @@ describe("fake CRM", () => {
     expect(crm.writes()).toBe(2);
   });
 });
+
+describe("HubSpot record links", () => {
+  it("reads the portal id and app domain once when lookupAccount is set", async () => {
+    const mock = mockHubSpot({
+      "GET /account-info/v3/details": () => ({
+        status: 200,
+        body: { portalId: 247822536, uiDomain: "app-na2.hubspot.com" },
+      }),
+      "POST /crm/v3/objects/companies/search": () => ({
+        status: 200,
+        body: { total: 1, results: [{ id: "9001" }] },
+      }),
+      "POST /crm/v3/objects/deals": () => ({ status: 201, body: { id: "7001" } }),
+    });
+    const jobId = newJob();
+    const crm = createHubSpotCrm({
+      token: "pat-na2-test",
+      db,
+      artifacts: createMemoryArtifactStore(clock),
+      clock,
+      fetch: mock.fetch,
+      lookupAccount: true,
+      dealStage: "qualifiedtobuy",
+      currencyCode: true,
+    });
+    const company = await crm.upsertCompany({ name: "Café Aurora" }, idemKey(jobId, 0));
+    expect(company.url).toBe("https://app-na2.hubspot.com/contacts/247822536/record/0-2/9001");
+    const deal = await crm.createDeal(
+      {
+        name: "Café Aurora",
+        amountMinor: 3_570_000,
+        currency: "BRL",
+        closeDate: "2027-01-29",
+        companyId: "9001",
+      },
+      idemKey(jobId, 1),
+    );
+    expect(deal.url).toBe("https://app-na2.hubspot.com/contacts/247822536/record/0-3/7001");
+    expect(mock.seen.filter((s) => s.path === "/account-info/v3/details")).toHaveLength(1);
+    const dealBody = mock.seen.find((s) => s.path === "/crm/v3/objects/deals")?.json as {
+      properties: Record<string, string>;
+    };
+    expect(dealBody.properties).toMatchObject({ dealstage: "qualifiedtobuy", deal_currency_code: "BRL" });
+  });
+
+  it("falls back to the default link when the account lookup fails, without failing the write", async () => {
+    const mock = mockHubSpot({
+      "GET /account-info/v3/details": () => ({ status: 403, body: { category: "MISSING_SCOPES" } }),
+      "POST /crm/v3/objects/companies/search": () => ({ status: 200, body: { total: 0, results: [] } }),
+      "POST /crm/v3/objects/companies": () => ({ status: 201, body: { id: "9002" } }),
+    });
+    const crm = createHubSpotCrm({
+      token: "pat-na2-test",
+      db,
+      artifacts: createMemoryArtifactStore(clock),
+      clock,
+      fetch: mock.fetch,
+      lookupAccount: true,
+    });
+    const company = await crm.upsertCompany({ name: "Vila Nova Logística" }, idemKey(newJob(), 0));
+    expect(company).toMatchObject({
+      id: "9002",
+      created: true,
+      url: "https://app.hubspot.com/contacts/_/record/0-2/9002",
+    });
+  });
+});
