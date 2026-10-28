@@ -107,6 +107,9 @@ First live runs against api.meta.ai and Baseten with our keys. Raw evidence: `sc
 | Latency tail | One computer-use turn in ~190 took 108 s (p99 ~21 s) | A turn slower than 40 s is resent once when the deadline allows |
 | Smooth scrolling | A screenshot right after PageDown showed the page mid-scroll; the model then clicked labels for several turns | Screenshots and keypresses wait for scrolling to stop |
 | Spark Open on Baseten | Tag `meta-models/muse-spark-open`; `response_format` `json_schema` and `json_object` both accepted (schema not enforced); low effort reasons 120-390 tokens; 1-8 s per call | Same floor as Meta (rung 2's 400-token budget ended `length` on 2 of 8 calls); our zod validation stays the real check |
+| Screenshot after a function call | A user `input_image` after the first turn: HTTP 400 "native computer input images are supported only in the initial request" (hit after `attach_file`) | The function output says the screen changed; the model's next `screenshot` action returns the image |
+| Trimmed stateless history | When the first replayed turn after the opening message answered a function call: HTTP 400 "Invalid or missing computer safety acknowledgement" (2 of 2 supplier runs, ~75 actions in). Trims that start on a computer call were accepted | The window only cuts where a turn opens with a computer call |
+| Hung requests | On the supplier wizard one turn request hung twice until the 90 s deadline | 30 s per attempt, one resend, then MODEL_TIMEOUT; the loop starts a fresh conversation from its own summary (twice per run at most) and reports "waiting for the model (N s)" every 10 s meanwhile |
 | 50-image cap | Not reached: the stateless window keeps requests at ≤13 images | Rollover code kept for chained mode |
 
 ### Results (Standard list prices)
@@ -118,6 +121,8 @@ First live runs against api.meta.ai and Baseten with our keys. Raw evidence: `sc
 | Transcribe | voice-transcribe-1.0 | 13.7 s synthetic note in 3.3 s, $0.0006 |
 | First run, Caravela v1 (13 fields) | Spark, low | Before fixes 0/1 (60-action budget, 554 s, $0.38). After: **3/3**, 13/13 fields each, 29-31 actions, 14-20 calls, 0 rollovers, $0.105-0.196, 74-116 s. Commit gate rejected: 0 submissions |
 | First run | Wonder | 0/2: HTTP 400 on the computer tool |
+| First run, supplier wizard (Acme, 40 fields, 2 uploads, zero-shot) | Spark, low | Before fixes 0/4 (user image after attach_file: 400; a hung turn; safety-ack 400 twice). After: **3/3**, 40/40 fields each, 85-98 actions, 39-50 calls, 0 rollovers, $0.32-0.49, 249-310 s, slowest turn 21 s |
+| Compile + Globex replay | annotate on Spark, low | One compile failed its 2 dry runs (a Next click that hit validation was compiled before the checkbox) and would not be saved; the other passed 2/2 and replayed on Globex at 40/40 fields, 0 model calls, 4.8 s. Annotating the 54-step skill needed > 4096 output tokens |
 | Rung 2 heal_match | Spark Open, low | button_rename 4/4 healed; combobox_to_radio 0/4 and v2 product widget 0/2 declined or rejected (role change), never a wrong submit; ~3 s, ~$0.002 per call |
 | Rung 3 cu_repair (≤8 actions) | Spark, low | After the off-screen fix: button_rename 2/2 (propose_only), v2 1/2 (other hit the 90 s budget on the 108 s turn); combobox_to_radio 0/2 ("the repair did not enter product") |
 | Full ladder, repair suite (6 cases) | rungs 2+3 | 4/6: v2 2/2, button_rename 2/2, combobox_to_radio 0/2 (safe stop); $0.002-0.026 per case |

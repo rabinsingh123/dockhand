@@ -161,7 +161,7 @@ function metaRoute<T>(
   return {
     provider: "meta",
     effort,
-    budget: outputBudget(req.maxOutputTokens, effort),
+    budget: outputBudget(req.maxOutputTokens, effort, ctx.purpose),
     async send(previous, budget) {
       userMessage ??= buildResponsesUserMessage(req.input, env, scope);
       return env.meta.postJson(

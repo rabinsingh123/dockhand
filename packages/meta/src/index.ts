@@ -77,6 +77,7 @@ export {
   MAX_OUTPUT_TOKENS_CAP,
   MIN_OUTPUT_TOKENS,
   outputBudget,
+  PURPOSE_MIN_OUTPUT_TOKENS,
 } from "./policy.ts";
 export {
   incompleteReason,

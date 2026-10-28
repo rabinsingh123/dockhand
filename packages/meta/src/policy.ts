@@ -37,6 +37,14 @@ export const MIN_OUTPUT_TOKENS: Readonly<Record<Effort, number>> = Object.freeze
   max: 32_768,
 });
 
+/**
+ * Purposes whose answer alone can be long. Live, annotating the 54-step supplier skill came back incomplete at
+ * 4096 tokens (1708 of them reasoning) and needed the 8192 retry.
+ */
+export const PURPOSE_MIN_OUTPUT_TOKENS: Readonly<Partial<Record<Purpose, number>>> = Object.freeze({
+  compile_annotate: 16_384,
+});
+
 /** The one retry after "incomplete: max_output_tokens" doubles the budget, up to this. */
 export const MAX_OUTPUT_TOKENS_CAP = 32_768;
 
@@ -46,10 +54,16 @@ export function effortFor(model: string, effort: Effort | undefined, purpose?: P
   return chosen === "max" && model.endsWith("-contributor") ? "xhigh" : chosen;
 }
 
-/** max_output_tokens to send: the caller's budget (or none), lifted to the reasoning floor of the effort. */
-export function outputBudget(requested: number | undefined, effort: Effort | undefined): number | undefined {
-  if (effort === undefined) return requested === undefined ? undefined : Math.max(16, requested);
-  return Math.max(requested ?? 0, MIN_OUTPUT_TOKENS[effort]);
+/** max_output_tokens to send: the caller's budget (or none), lifted to the floors of the effort and purpose. */
+export function outputBudget(
+  requested: number | undefined,
+  effort: Effort | undefined,
+  purpose?: Purpose,
+): number | undefined {
+  const purposeMin = purpose ? (PURPOSE_MIN_OUTPUT_TOKENS[purpose] ?? 0) : 0;
+  if (effort === undefined)
+    return requested === undefined && purposeMin === 0 ? undefined : Math.max(16, requested ?? 0, purposeMin);
+  return Math.max(requested ?? 0, MIN_OUTPUT_TOKENS[effort], purposeMin);
 }
 
 /** The budget for the single retry after an incomplete response. */

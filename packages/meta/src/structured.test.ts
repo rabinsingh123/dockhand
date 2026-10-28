@@ -563,3 +563,27 @@ describe("structured (Responses API)", () => {
     expect(logText).not.toContain("secret instructions text");
   });
 });
+
+describe("output budget floors", () => {
+  it("lift compile_annotate to its purpose floor whatever the caller asked", async () => {
+    world = await makeWorld();
+    world.server.on("/v1/responses", {
+      json: responseBody([messageItem('{"company":"Acme Group","seats":1}')]),
+    });
+    await world.gateway.structured(
+      {
+        model: "muse-spark-1.3",
+        instructions: "x",
+        input: [{ type: "text", text: "y" }],
+        schemaName: "Extraction",
+        schema: Extraction,
+        effort: "low",
+        maxOutputTokens: 4000,
+      },
+      ctx("compile_annotate"),
+    );
+    expect(
+      (world.server.requestsTo("/v1/responses")[0]?.json as { max_output_tokens: number }).max_output_tokens,
+    ).toBe(16_384);
+  });
+});
