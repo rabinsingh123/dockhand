@@ -87,6 +87,10 @@ interface BoxOpts {
   dark?: boolean;
   below?: boolean;
   pulse?: boolean;
+  /** Label at the box's left edge (default: right edge, away from field labels). */
+  left?: boolean;
+  /** Fade out after this many ms. */
+  ttl?: number;
 }
 interface HudPageApi {
   view(s: View): void;
@@ -108,6 +112,8 @@ interface HudPageApi {
   acted(target: Element, o: { click: boolean; write: boolean; key: string }): void;
   glideClick(x: number, y: number, ms?: number): Promise<void>;
   hintBottom(text: string, ms?: number): void;
+  pillOn(target: Element, key: string, text: string, tone: string): void;
+  retire(prefix: string, ms?: number): void;
 }
 type Method = keyof HudPageApi;
 
@@ -300,7 +306,8 @@ export class Hud {
   private readonly pauses: { start: number; end: number }[] = [];
   private pushQueued = false;
   private lastCuModel = "Muse computer use";
-  private readonly fixes = new Map<string, { label: string; sub?: string }>();
+  private readonly fixes = new Map<string, { label: string; sub?: string; rung?: HealRung }>();
+  private lastStep = -1;
   private typed = 0;
 
   constructor(
@@ -508,6 +515,7 @@ export class Hud {
     this.calls = 0;
     this.verified = null;
     this.fixes.clear();
+    this.lastStep = -1;
     this.ticker = `${o.skill.title} · v${o.skill.version}`;
     this.startClock();
     void this.call("clear", true);
@@ -519,6 +527,10 @@ export class Hud {
     const run = this.run;
     if (!run || run.mode === "cu") return;
     const step = steps[idx];
+    if (idx !== this.lastStep) {
+      if (this.lastStep >= 0) void this.call("retire", "heal:", this.paced() > 0 ? 500 : 900);
+      this.lastStep = idx;
+    }
     run.idx = idx;
     run.total = steps.length;
     if (step) this.ticker = clip(step.intent || stepVerb(step), 90);
@@ -541,33 +553,31 @@ export class Hud {
     const P = this.paced();
     let heldForHeal = 0;
     if (outcome.status === "healed" && outcome.rung && !this.fixes.has(step.id)) {
-      const old = targetOf(run.original.get(step.id));
+      // A free rung: the recorded selector missed, another stored one (or the fingerprint) found it at once.
       const rung = outcome.rung;
       const ms = performance.now() - started - this.pausedSince(started);
-      const brokenKey = `broken:${step.id}`;
-      const oldBox = docBox(old?.fingerprint.bbox);
-      if (oldBox) {
-        void this.call("box", brokenKey, oldBox, {
-          tone: "fail",
-          dashed: true,
-          dark: true,
-          label: `Step ${idx + 1} · '${nameOf(old?.fingerprint)}' not found as recorded`,
-        });
-      }
-      const label = `Fixed · rung ${RUNG_NO[rung]} · ${RUNG_HOW[rung]} · ${secs(ms)} · $0`;
+      const label = `Healed · rung ${RUNG_NO[rung]} · ${RUNG_HOW[rung]} · ${secs(ms)} · $0`;
       this.fixes.set(step.id, { label });
-      await this.onElement(locator, "boxOn", `fix:${step.id}`, { tone: "done", halo: true, label });
-      if (oldBox) void this.call("link", `link:${step.id}`, brokenKey, `fix:${step.id}`, "heal");
-      heldForHeal = P * 2;
+      this.ticker = `Step ${idx + 1}: the recorded selector for '${nameOf(targetOf(run.original.get(step.id))?.fingerprint)}' missed. ${label}`;
+      this.push();
+      await this.onElement(locator, "boxOn", `heal:fix:${step.id}`, {
+        tone: "heal",
+        halo: true,
+        label,
+        sub: "the recorded selector no longer matched",
+      });
+      void this.onElement(locator, "pillOn", step.id, `rung ${RUNG_NO[rung]}`, "heal");
+      heldForHeal = P * 1.6;
     } else if (this.fixes.has(step.id)) {
       // A paid rung fixed this step: anchor its label on the element the replacement step really uses.
       const fix = this.fixes.get(step.id);
-      void this.onElement(locator, "boxOn", `fix:${step.id}`, {
+      void this.onElement(locator, "boxOn", `heal:fix:${step.id}`, {
         tone: "done",
         halo: true,
         label: fix?.label ?? "Fixed",
         ...(fix?.sub ? { sub: fix.sub } : {}),
       });
+      if (fix?.rung) void this.onElement(locator, "pillOn", step.id, `rung ${RUNG_NO[fix.rung]}`, "heal");
     }
     if (heldForHeal > 0) await this.hold(heldForHeal);
     const glide = this.onElement(locator, "glideTo", P > 0 ? Math.min(760, Math.max(240, P * 0.6)) : 240);
@@ -599,7 +609,7 @@ export class Hud {
     if (!this.run || this.run.mode === "cu") return;
     const matched = items.filter((i) => i.ok).length;
     this.verified = { matched, checked: items.length };
-    this.ticker = `Read back every field before submitting: ${matched}/${items.length} match`;
+    this.ticker = `Read-back before submit: ${matched}/${items.length} fields match`;
     this.push();
     const P = this.paced();
     const gap = P > 0 ? Math.min(140, Math.max(60, P / 6)) : 0;
@@ -863,6 +873,7 @@ export class Hud {
         tone: "wait",
         label: "Submit waits for the rep's tap on WhatsApp",
         pulse: true,
+        below: true,
       });
     }
     this.push();
@@ -879,9 +890,10 @@ export class Hud {
           "commit",
           box,
           d === "approved"
-            ? { tone: "done", halo: true, label: "Approved on WhatsApp · submitting" }
+            ? { tone: "done", halo: true, below: true, label: "Approved on WhatsApp · submitting" }
             : {
                 tone: "fail",
+                below: true,
                 label: d === "edit" ? "The rep asked for changes · not submitted" : `Not submitted (${d})`,
               },
         );
@@ -902,7 +914,7 @@ export class Hud {
       const old = targetOf(step);
       const name = nameOf(old?.fingerprint);
       const P = this.paced();
-      const brokenKey = `broken:${step?.id ?? req.stepIdx}`;
+      const brokenKey = `heal:broken:${step?.id ?? req.stepIdx}`;
       const how = tagged
         ? tagged === "computer_use"
           ? this.lastCuModel
@@ -961,7 +973,11 @@ export class Hud {
         this.heal = null;
         if (res?.ok && step) {
           const fixLabel = `Fixed · ${label} · ${secs(ms)} · ${money(res.costUsd)}`;
-          this.fixes.set(step.id, { label: fixLabel, sub: res.note ? clip(res.note, 70) : "" });
+          this.fixes.set(step.id, {
+            label: fixLabel,
+            sub: res.note ? clip(res.note, 70) : "",
+            rung: res.rung,
+          });
           const fresh = targetOf(res.steps.at(-1));
           const freshBox = docBox(fresh?.fingerprint.bbox);
           if (oldBox) {
@@ -972,14 +988,23 @@ export class Hud {
               label: `Step ${req.stepIdx + 1} · '${name}' ${why}`,
             });
           }
+          const near =
+            oldBox &&
+            freshBox &&
+            Math.hypot(
+              oldBox.x + oldBox.w / 2 - freshBox.x - freshBox.w / 2,
+              oldBox.y + oldBox.h / 2 - freshBox.y - freshBox.h / 2,
+            ) < 40;
+          if (near) void this.call("unbox", brokenKey);
           if (freshBox) {
-            void this.call("box", `fix:${step.id}`, freshBox, {
+            void this.call("box", `heal:fix:${step.id}`, freshBox, {
               tone: "done",
               halo: true,
               label: fixLabel,
               ...(res.note ? { sub: clip(res.note, 70) } : {}),
             });
-            if (oldBox) void this.call("link", `link:${step.id}`, brokenKey, `fix:${step.id}`, "heal");
+            if (oldBox)
+              void this.call("link", `heal:link:${step.id}`, brokenKey, `heal:fix:${step.id}`, "heal");
           }
           this.ticker = `${fixLabel}. Continuing the replay`;
           this.push();

@@ -23,7 +23,7 @@
 .root{position:fixed;inset:0;pointer-events:none;overflow:hidden;font:500 13px/1.3 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;color:#f4f6fa;-webkit-font-smoothing:antialiased;letter-spacing:0}
 .root *{pointer-events:none}
 .num{font-variant-numeric:tabular-nums}
-.panel{position:absolute;top:9px;right:12px;width:578px;border-radius:14px;background:rgba(12,14,19,.9);backdrop-filter:blur(16px) saturate(150%);border:1px solid rgba(255,255,255,.13);box-shadow:0 12px 32px rgba(3,6,12,.42),0 2px 6px rgba(3,6,12,.3);overflow:hidden;opacity:0;transform:translateY(-6px)}
+.panel{position:absolute;top:9px;right:12px;width:640px;border-radius:14px;background:rgba(12,14,19,.9);backdrop-filter:blur(16px) saturate(150%);border:1px solid rgba(255,255,255,.13);box-shadow:0 12px 32px rgba(3,6,12,.42),0 2px 6px rgba(3,6,12,.3);overflow:hidden;opacity:0;transform:translateY(-6px)}
 .r1{display:flex;align-items:center;gap:11px;height:40px;padding:0 12px 0 11px}
 .brand{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:#fff;padding-right:11px;border-right:1px solid rgba(255,255,255,.12);height:20px;letter-spacing:.1px}
 .logo{width:18px;height:18px;flex:none}
@@ -40,8 +40,10 @@
 .stepn{font-weight:700;color:#fff;white-space:nowrap;flex:none}
 .stepn:empty{display:none}
 .ticker{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calls{flex:none;color:#9aa4b2;font-weight:650;font-size:12px;white-space:nowrap}
+.calls:empty{display:none}
 .tags{display:flex;gap:6px;flex:none}
-.tag{height:20px;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.2px;border:1px solid}
+.tag{height:20px;display:inline-flex;align-items:center;gap:5px;padding:0 7px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.2px;border:1px solid}
 .tag.slow{color:#fcd34d;border-color:rgba(252,211,77,.45);background:rgba(252,211,77,.1)}
 .tag.sim{color:#93c5fd;border-color:rgba(147,197,253,.42);background:rgba(147,197,253,.1)}
 .tag.ok{color:#86efac;border-color:rgba(134,239,172,.42);background:rgba(134,239,172,.1)}
@@ -63,6 +65,7 @@
 .label.dark .sub{color:var(--c);opacity:1}
 .links{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .flash{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 0 3px rgba(255,255,255,.95),inset 0 0 46px rgba(255,255,255,.28)}
+.pill{position:absolute;left:0;top:0;height:18px;display:inline-flex;align-items:center;padding:0 7px;border-radius:999px;background:var(--c);color:#0b0d12;font-size:10.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.25)}
 .hint{position:absolute;left:0;top:0;padding:3px 8px;border-radius:6px;background:rgba(12,14,19,.9);color:#fff;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid rgba(255,255,255,.16)}
 `;
   const ICON = {
@@ -104,7 +107,7 @@
       const layer = el('div', 'layer');
       const links = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); links.setAttribute('class', 'links');
       const cursor = el('div', 'cursor', '<div class="halo"></div>' + ARROW);
-      const panel = el('div', 'panel', `<div class="r1"><div class="brand">${LOGO}<span>Dockhand</span></div><div class="phase"><i class="dot"></i><span class="title"></span><span class="detail"></span></div><div class="metrics"><div class="m calls num">${ICON.calls}<span></span></div><div class="m clock num">${ICON.clock}<span></span></div><div class="m cost num">${ICON.coin}<span></span></div></div></div><div class="r2"><span class="stepn num"></span><span class="ticker"></span><span class="tags"></span></div>`);
+      const panel = el('div', 'panel', `<div class="r1"><div class="brand">${LOGO}<span>Dockhand</span></div><div class="phase"><i class="dot"></i><span class="title"></span><span class="detail"></span></div><div class="metrics"><div class="m clock num">${ICON.clock}<span></span></div><div class="m cost num">${ICON.coin}<span></span></div></div></div><div class="r2"><span class="stepn num"></span><span class="ticker"></span><span class="calls num"></span><span class="tags"></span></div>`);
       const flash = el('div', 'flash');
       r.append(layer, links, cursor, panel, flash);
       root.appendChild(r);
@@ -112,7 +115,7 @@
         title: panel.querySelector('.title'), detail: panel.querySelector('.detail'), dot: panel.querySelector('.dot'),
         clock: panel.querySelector('.clock span'), clockBox: panel.querySelector('.clock'),
         cost: panel.querySelector('.cost span'), costBox: panel.querySelector('.cost'),
-        calls: panel.querySelector('.calls span'), callsBox: panel.querySelector('.calls'),
+        calls: panel.querySelector('.calls'),
         stepn: panel.querySelector('.stepn'), ticker: panel.querySelector('.ticker'), tags: panel.querySelector('.tags') };
     }
     parent.appendChild(host);       // after <body>: outside body.innerText, body locators and form ordinals
@@ -200,8 +203,7 @@
     ui.ticker.textContent = s.ticker || '';
     ui.costBox.classList.toggle('off', s.cost == null);
     if (s.cost != null) ui.cost.textContent = fmtCost(s.cost);
-    ui.callsBox.classList.toggle('off', s.calls == null);
-    if (s.calls != null) ui.calls.textContent = `${s.calls} model call${s.calls === 1 ? '' : 's'}`;
+    ui.calls.textContent = s.calls == null ? '' : `${s.calls} model call${s.calls === 1 ? '' : 's'}`;
     ui.clockBox.classList.toggle('off', !s.clock);
     lastClockText = '';
     ui.tags.innerHTML = '';
@@ -295,7 +297,7 @@
         if (!vis) return true;
         const k = Math.min(1, (now() - t0) / 260), s = k < 1 ? .55 + .45 * (1 - Math.pow(1 - k, 3)) + Math.sin(k * Math.PI) * .18 : 1;
         const small = r.w < 44;
-        const bx = small ? r.x + r.w + 14 : r.x + r.w - 4, by = small ? r.y + r.h / 2 : r.y + 1;
+        const bx = small ? r.x - 15 : r.x + r.w - 4, by = small ? r.y + r.h / 2 : r.y + 1;
         node.style.transform = `translate(${Math.round(bx)}px,${Math.round(by)}px) scale(${s.toFixed(3)})`;
         if (callout) place(callout, Math.min(innerWidth - callout.offsetWidth - 8, Math.max(8, r.x)), r.y + r.h + 6);
         return true;
@@ -336,9 +338,12 @@
     label.style.display = o.label || o.sub ? '' : 'none';
     if (!frame.isConnected) ui.layer.append(frame, label);
     const t0 = prev ? prev.t0 : now();
+    frame.style.boxShadow = '';
     const it = {
-      frame, label, t0, target, dim: !!o.dim,
+      frame, label, t0, target, dim: !!o.dim, dieAt: o.ttl ? now() + o.ttl : 0,
       update(t) {
+        let fadeK = 1;
+        if (this.dieAt) { fadeK = Math.max(0, Math.min(1, (this.dieAt - t) / 350)); if (fadeK <= 0) return false; }
         const r = rectOf(target);
         const vis = onScreen(r);
         frame.style.display = vis ? '' : 'none';
@@ -348,17 +353,48 @@
         place(frame, r.x - 5, r.y - 5);
         const lw = label.offsetWidth, lh = label.offsetHeight;
         const above = !o.below && r.y - lh - 9 > 4;
-        const lx = Math.min(innerWidth - lw - 8, Math.max(8, r.x - 5));
+        const lx = o.left ? Math.min(innerWidth - lw - 8, Math.max(8, r.x - 5)) : Math.min(innerWidth - lw - 8, Math.max(8, r.x + r.w + 5 - lw));
         place(label, lx, above ? r.y - lh - 9 : r.y + r.h + 9);
         const k = Math.min(1, (t - this.t0) / 220);
         const base = this.dim ? .45 : 1;
-        frame.style.opacity = String(base * k); label.style.opacity = String((this.dim ? .75 : 1) * k);
+        frame.style.opacity = String(base * k * fadeK); label.style.opacity = String((this.dim ? .75 : 1) * k * fadeK);
         if (o.pulse) frame.style.boxShadow = `0 0 0 ${(4 + 3 * Math.sin(t / 240)).toFixed(1)}px color-mix(in srgb, ${color} 24%, transparent)`;
         return true;
       },
       remove() { frame.remove(); label.remove(); },
     };
     items.set('x:' + key, it);
+    kick();
+  }
+  function pill(target, key, text, tone) {
+    if (!ensure()) return;
+    const color = TONES[tone] || tone || TONES.heal;
+    const prev = items.get('p:' + key);
+    const node = prev ? prev.node : el('div', 'pill');
+    node.textContent = text; node.style.setProperty('--c', color);
+    if (!node.isConnected) ui.layer.appendChild(node);
+    const t0 = prev ? prev.t0 : now();
+    items.set('p:' + key, {
+      node, t0,
+      update(t) {
+        const r = rectOf(target);
+        if (!onScreen(r)) { node.style.display = 'none'; return true; }
+        node.style.display = '';
+        const small = r.w < 44, w = node.offsetWidth;
+        const x = small ? r.x - 28 - w : r.x + r.w - 18 - w, y = small ? r.y + r.h / 2 - 9 : r.y - 8;
+        place(node, x, y);
+        node.style.opacity = String(Math.min(1, (t - t0) / 220));
+        return true;
+      },
+      remove() { node.remove(); },
+    });
+    kick();
+  }
+  function retire(prefix, ms) {
+    const at = now() + (ms || 0);
+    for (const [k, it] of items) {
+      if ((k.startsWith('x:' + prefix) || k.startsWith('l:' + prefix)) && !it.dieAt) it.dieAt = at;
+    }
     kick();
   }
   function dim(key, on) { const it = items.get('x:' + key); if (it) { it.dim = on; kick(); } }
@@ -375,7 +411,9 @@
     ui.links.append(path, head);
     const t0 = now();
     put('l:' + key, {
+      dieAt: 0,
       update(t) {
+        if (this.dieAt && t >= this.dieAt) return false;
         const a = items.get('x:' + fromKey), b = items.get('x:' + toKey);
         const ra = a && rectOf(a.target), rb = b && rectOf(b.target);
         if (!ra || !rb || !onScreen(ra) || !onScreen(rb)) { path.style.display = head.style.display = 'none'; return true; }
@@ -426,7 +464,8 @@
     glideTo(target, ms) { const r = rectOf(target); if (!r || !onScreen(r)) return Promise.resolve(false); const p = aim(r, target); return glide(p.x, p.y, ms || 260).then(() => true); },
     ripple(x, y) { landAndRipple(x, y); },
     rippleOn(target) { const r = rectOf(target); if (!r || !onScreen(r)) return; const p = aim(r, target); landAndRipple(p.x, p.y); },
-    badge, glow, box, dim, link, hint, shutter, clear,
+    badge, glow, box, dim, link, hint, shutter, clear, pill, retire,
+    pillOn(target, key, text, tone) { pill(target, key, text, tone); },
     unbox(key) { drop('x:' + key); },
     // element-first variants (Node passes the element as the first argument)
     boxOn(target, key, o) { box(key, target, o); },
