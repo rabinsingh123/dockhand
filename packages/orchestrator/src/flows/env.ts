@@ -178,7 +178,12 @@ export function gateHooks(
     async approveCommit(r) {
       const lines = (r.readback ?? []).filter((f) => f.value.trim() !== "" && f.value !== "false");
       const body = cardBody(
-        [`Ready to submit on ${run.portalName}. Check the filled form:`],
+        // A wizard's review page has no fields to read back: the screenshot is the form to check.
+        [
+          lines.length > 0
+            ? `Ready to submit on ${run.portalName}. Check the filled form:`
+            : `Ready to submit on ${run.portalName}. Check the review page in the screenshot.`,
+        ],
         lines.map((f) => `• ${f.label}: ${f.value === "true" ? "yes" : f.value}`),
         ["", "Approve to submit. Nothing is sent until you tap."],
       );

@@ -640,7 +640,26 @@ const STEPS: Step[] = [
       same((await submissions(w.supplier)).length, before, "supplier submissions before the submit tap");
       await rep.shot("supplier-submit-card");
       await rep.tap(commit, "Approve");
-      const receipt = await rep.image(/First run · computer use/, 240_000);
+      // A live model can miss the submit button after the approval; the gate then asks again (one approval
+      // releases one click). Approve up to two retries in record/cassette mode; the stand-ins must not need any.
+      let receipt = await rep.expect(
+        "the first-run receipt",
+        (e) =>
+          (e.type === "image" && /First run · computer use/.test(e.caption ?? "")) ||
+          (w.o.mode !== "fake" && e.type === "interactive" && /^Ready to submit/.test(e.text ?? "")),
+        240_000,
+      );
+      for (let retry = 0; receipt.type === "interactive" && retry < 2; retry++) {
+        await rep.tap(receipt, "Approve");
+        receipt = await rep.expect(
+          "the first-run receipt",
+          (e) =>
+            (e.type === "image" && /First run · computer use/.test(e.caption ?? "")) ||
+            (e.type === "interactive" && /^Ready to submit/.test(e.text ?? "")),
+          240_000,
+        );
+      }
+      check(receipt.type === "image", "the supplier run kept asking to submit");
       check(/SG-ACME-\d{6}/.test(receipt.caption ?? ""), `no supplier ID on the receipt: ${receipt.caption}`);
       await rep.image(/^New skill: supplier_onboarding v1\b/, 240_000);
       await rep.shot("supplier-receipt");
