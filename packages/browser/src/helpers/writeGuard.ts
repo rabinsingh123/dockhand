@@ -14,6 +14,8 @@ export interface WriteGuard {
   dispose(): Promise<void>;
   /** Unused tokens. */
   tokens(): number;
+  /** Drops every unused token (an approval is for one page and one submit); returns how many. */
+  revoke(): number;
   /** Writes let through by a token so far. */
   released(): number;
 }
@@ -89,6 +91,11 @@ export async function installWriteGuard(
     },
     pending: () => held.length,
     tokens: () => tokens,
+    revoke() {
+      const n = tokens;
+      tokens = 0;
+      return n;
+    },
     released: () => released,
     async dispose() {
       await page.unroute(matches, handler).catch(() => {});

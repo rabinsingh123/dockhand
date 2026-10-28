@@ -416,6 +416,8 @@ class ComputerUseRun {
       }
     } finally {
       this.detach();
+      this.commitTokens = 0; // the run is over: no approval outlives it
+      this.guard?.revoke();
       await this.guard?.dispose();
     }
     const final = await this.finalState();
@@ -732,6 +734,11 @@ class ComputerUseRun {
     const requests = this.requestCount - mark.requests;
 
     if (commit) this.commitTokens--;
+    // An approval releases only the submit it was shown for: once the page navigates away, what is left is void.
+    if (navigated && (this.commitTokens > 0 || (this.guard?.tokens() ?? 0) > 0)) {
+      this.commitTokens = 0;
+      this.guard?.revoke();
+    }
     if (commit || released > 0) step.tags.push("commit");
     if (navigated) step.tags.push("navigation");
     const enterInListbox = active?.kind === "listbox" && a.type === "keypress" && planKeys(a.keys).enter;

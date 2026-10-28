@@ -22,6 +22,10 @@ const STALE_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui">
   <div style="padding:20px"><label for=city>City</label> <input id=city></div>
   <p style="padding:20px">Some text</p></body>`;
 
+const LEAVE_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui">
+  <div style="padding:20px"><label for=c>Company name</label> <input id=c value="Sabiá Foods Ltda"></div>
+  <a href="/form" style="display:block;padding:20px">Open the full form</a></body>`;
+
 const LONG_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui">
   <a href="/next" id=go style="display:block;padding:20px">Go to the next page</a>
   <button id=first style="margin:20px">First</button>
@@ -45,6 +49,7 @@ beforeEach(async () => {
     "/stale": STALE_PAGE,
     "/long": LONG_PAGE,
     "/next": "<!doctype html><h1>Next page</h1>",
+    "/leave": LEAVE_PAGE,
   }));
 });
 // One context per test, closed after it: 18 contexts left open in one Chromium add up under a loaded suite.
@@ -58,6 +63,28 @@ const notes = (replies: CuReply[]) =>
   replies.map((r) => (r.kind === "computer_output" ? (r.note ?? "") : "")).filter(Boolean);
 
 describe("runComputerUse: commit guard", () => {
+  it("voids an unused approval when the page navigates away: it cannot release a later submit", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/leave`);
+    const model = createScriptedModel(
+      [
+        { do: "call", name: "request_commit", args: { summary: "Register Sabiá Foods Ltda" } },
+        { do: "click", target: { role: "link", name: "Open the full form" } },
+        { do: "fill", target: { label: "Company name" }, text: "Sabiá Foods Ltda" },
+        { do: "click", target: { role: "button", name: "Submit registration" } },
+        { do: "done", text: "Stopped." },
+      ],
+      page,
+    );
+    const hooks = recordingHooks("approved");
+    const r = await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(hooks.commits).toHaveLength(1);
+    const submit = r.trace.steps.find(
+      (s) => s.action.type === "click" && s.target?.fingerprint.name === "Submit registration",
+    );
+    expect(submit?.tags).toEqual(["blocked"]);
+    expect(posts()).toHaveLength(0);
+  });
+
   it("blocks an unapproved submit click, then lets one approved click through", async () => {
     await page.goto(`${FIXTURE_ORIGIN}/form`);
     const model = createScriptedModel(
