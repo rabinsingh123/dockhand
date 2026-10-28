@@ -49,7 +49,8 @@ export type ArtifactKind =
   | "trace"
   | "skill_export"
   | "chart"
-  | "upload_fixture";
+  | "upload_fixture"
+  | "readback"; // the runner's pre-commit read-back of a run (JSON), dry runs and canaries included
 
 export interface ArtifactRef {
   id: Id;

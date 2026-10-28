@@ -147,6 +147,16 @@ export function indexView(d: RecorderData, base: string): string {
 
 // ---------- run ----------
 
+/** What the runner keeps per read-back (packages/skills runner, artifact kind "readback"). */
+export interface ReadBackDoc {
+  runId: string;
+  dryRun?: boolean;
+  at?: number;
+  checked: number;
+  matched: number;
+  rows: { stepId: string; label: string; expected: string; actual: string; ok: boolean }[];
+}
+
 interface ReadbackRow {
   label: string;
   actual: string;
@@ -402,7 +412,21 @@ function agenticTimeline(
   )}</section>`;
 }
 
-export function runView(d: RecorderData, base: string, run: RunRow, trace: Trace | null): string {
+function canaryPanel(docs: ReadBackDoc[], runId: string): Html {
+  if (docs.length === 0) return html``;
+  return html`<section class="panel"><h2>Dry runs before the new version went live <span>${docs.filter((x) => x.matched === x.checked).length}/${docs.length} read back clean</span></h2><table><tbody>${docs.map(
+    (x) =>
+      html`<tr><td class="mono">${x.runId.slice(runId.length + 1)}</td><td>${x.dryRun ? chip("dry run", COLORS.dry) : ""}</td><td class="num ${x.matched === x.checked ? "ok" : "bad"}"><b>${x.matched}/${x.checked}</b> verified</td></tr>`,
+  )}</tbody></table></section>`;
+}
+
+export function runView(
+  d: RecorderData,
+  base: string,
+  run: RunRow,
+  trace: Trace | null,
+  readbacks: ReadBackDoc[] = [],
+): string {
   const steps = d.steps(run.id);
   const calls = d.modelCalls(run.id);
   const gates = d.gates(run.id);
@@ -410,7 +434,12 @@ export function runView(d: RecorderData, base: string, run: RunRow, trace: Trace
   const used = versions.find((v) => v.version === run.skillVersion)?.skill;
   const created = d.skillFromRun(run.id);
   const skillForReadback = created?.skill ?? used;
-  const rb = readback(gates, skillForReadback, run.params);
+  // The runner's own read-back when it kept one (every run since it does), else the approval card's lines.
+  const own = readbacks.filter((x) => x.runId === run.id).at(-1);
+  const rb: ReadbackRow[] = own
+    ? own.rows.map((x) => ({ label: x.label, actual: x.actual, expected: x.expected, ok: x.ok }))
+    : readback(gates, skillForReadback, run.params);
+  const canaries = readbacks.filter((x) => x.runId !== run.id);
   const sim = simulated(calls);
   const heals = steps.filter((s) => s.rung);
   const verified = rb.filter((r) => r.ok !== null);
@@ -445,6 +474,7 @@ export function runView(d: RecorderData, base: string, run: RunRow, trace: Trace
     ${run.finalScreenshotId ? html`<section class="panel"><h2>Final page</h2><div class="pb">${img(base, run.finalScreenshotId)}</div></section>` : ""}
     ${commitGate?.imageArtifactId ? html`<section class="panel"><h2>On the approval card <span>${commitGate.status}</span></h2><div class="pb">${img(base, commitGate.imageArtifactId)}</div></section>` : ""}
     ${readbackPanel(rb)}
+    ${canaryPanel(canaries, run.id)}
     <section class="panel"><h2>Links</h2><div class="pb"><dl class="kv">
       ${run.skillName && run.skillVersion ? html`<dt>Skill run</dt><dd><a href="${base}skills/${run.skillName}${run.skillVersion ? `?v=${run.skillVersion}` : ""}">${run.skillName} v${run.skillVersion ?? "?"}</a></dd>` : ""}
       ${created ? html`<dt>Created</dt><dd><a href="${base}skills/${created.name}?v=${created.version}">${created.name} v${created.version}</a> <span class="muted">(${created.source})</span></dd>` : ""}

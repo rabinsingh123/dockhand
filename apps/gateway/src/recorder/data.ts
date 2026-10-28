@@ -208,6 +208,14 @@ export function createRecorderData(db: Db) {
         resolvedAt: num(r.resolved_at),
       }));
     },
+    /** Read-backs the runner kept for a run and for its canary dry runs ("<runId>-canary-c0", ...), oldest first. */
+    readbacks(runId: string): { id: string; runId: string; at: number }[] {
+      return all(
+        "SELECT id, run_id, created_at FROM artifacts WHERE kind = 'readback' AND (run_id = ? OR run_id LIKE ?) ORDER BY created_at, rowid",
+        runId,
+        `${runId.replace(/[%_\\]/g, "")}-%`,
+      ).map((r) => ({ id: String(r.id), runId: String(r.run_id), at: Number(r.created_at) }));
+    },
     /** Screenshots stored for a run, oldest first (trace steps point at the ones taken after each batch). */
     screenshots(runId: string): { id: string; at: number }[] {
       return all(

@@ -82,4 +82,49 @@ describe("runner timing", () => {
       await context.close();
     }
   });
+
+  it("keeps the read-back of every run as an artifact, dry runs included", async () => {
+    const runId = `readback-${process.pid}`;
+    const kept: { kind: string; runId?: string; doc: unknown }[] = [];
+    const store: typeof artifacts = {
+      ...artifacts,
+      put: (data, mime, meta) => {
+        kept.push({ kind: meta.kind, runId: meta.runId, doc: JSON.parse(new TextDecoder().decode(data)) });
+        return artifacts.put(data, mime, meta);
+      },
+    };
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      deviceScaleFactor: 1,
+    });
+    await context.addInitScript({ content: DH_SCRIPT });
+    await context.addCookies(await portal.session({ ui: "v1", mutation: null, runId }));
+    const page = await context.newPage();
+    try {
+      const r = await runSkill(
+        page,
+        skill,
+        params(),
+        { approveCommit: async () => "rejected", approveSafety: async () => "rejected" },
+        {
+          runId,
+          stepTimeoutMs: 2000,
+          screenshots: "fail_only",
+          allowFallbackHeal: true,
+          dryRun: true,
+          artifacts: store,
+        },
+      );
+      expect(r.outcome).toBe("dry_run_ok");
+      const readbacks = kept.filter((k) => k.kind === "readback");
+      expect(readbacks).toHaveLength(1);
+      expect(readbacks[0]?.runId).toBe(runId);
+      expect(readbacks[0]?.doc).toMatchObject({ runId, dryRun: true, checked: 13, matched: 13 });
+      expect((readbacks[0]?.doc as { rows: unknown[] }).rows).toContainEqual(
+        expect.objectContaining({ label: "City", expected: "Valparaíso", actual: "Valparaíso", ok: true }),
+      );
+    } finally {
+      await context.close();
+    }
+  });
 });

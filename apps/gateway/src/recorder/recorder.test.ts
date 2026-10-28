@@ -146,6 +146,30 @@ beforeAll(async () => {
       now + 60_000,
       now,
     );
+  const keep = (runId: string, dryRun: boolean) =>
+    artifacts.put(
+      new TextEncoder().encode(
+        JSON.stringify({
+          runId,
+          dryRun,
+          checked: 1,
+          matched: 1,
+          rows: [
+            {
+              stepId: "s2",
+              label: "Customer account name",
+              expected: "Café Aurora Ltda.",
+              actual: "Café Aurora Ltda.",
+              ok: true,
+            },
+          ],
+        }),
+      ),
+      "application/json",
+      { kind: "readback", runId },
+    );
+  await keep("R2", false);
+  await keep("R2-canary-c0", true);
   app = createRecorder({ db, artifacts, cacheDir: join(dir, "frames"), base: "/recorder/" });
 });
 
@@ -173,6 +197,8 @@ describe("flight recorder", () => {
     expect(page).toContain("NW-REG-48213");
     expect(page).toContain("Read-back before submit");
     expect(page).toContain("1/1 verified");
+    expect(page).toContain("Dry runs before the new version went live");
+    expect(page).toContain("canary-c0");
     expect(page).toContain(`/recorder/a/${shotId}`);
   });
 

@@ -14,7 +14,7 @@ import { promisify } from "node:util";
 import type { ArtifactStore, Db, Trace } from "@dockhand/core";
 import { Hono } from "hono";
 import { createRecorderData } from "./data.ts";
-import { indexView, runView, skillView, teachView } from "./views.ts";
+import { indexView, type ReadBackDoc, runView, skillView, teachView } from "./views.ts";
 
 const run = promisify(execFile);
 const ID = /^[0-9A-Za-z_-]{1,64}$/;
@@ -60,7 +60,15 @@ export function createRecorder(deps: RecorderDeps): Hono {
         trace = null;
       }
     }
-    return new Response(runView(data, base, r, trace), { headers: htmlHeaders });
+    const readbacks: ReadBackDoc[] = [];
+    for (const a of data.readbacks(r.id)) {
+      try {
+        readbacks.push(JSON.parse(new TextDecoder().decode(await deps.artifacts.read(a.id))) as ReadBackDoc);
+      } catch {
+        // a missing or unreadable read-back is shown as unknown
+      }
+    }
+    return new Response(runView(data, base, r, trace, readbacks), { headers: htmlHeaders });
   });
 
   app.get("/skills/:name", (c) => {

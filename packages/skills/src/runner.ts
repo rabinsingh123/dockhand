@@ -702,20 +702,42 @@ class SkillRun {
       if (ok) matched++;
       else mismatches.push({ stepId: step.id, label: w.label, expected: w.intended, actual: actual ?? "" });
       list.push({ label: w.label, value: actual ?? "" });
-      if (this.hud) {
-        shown.push({
-          stepId: step.id,
-          locator: w.locator,
-          ok,
-          label: w.label,
-          expected: w.intended,
-          actual: actual ?? "",
-        });
-      }
+      shown.push({
+        stepId: step.id,
+        locator: w.locator,
+        ok,
+        label: w.label,
+        expected: w.intended,
+        actual: actual ?? "",
+      });
     }
     this.readback = list;
+    await this.keepReadBack(shown, checked, matched);
     await this.hud?.verify(shown);
     return { checked, matched, mismatches };
+  }
+
+  /** Every read-back is kept as a run artifact (dry runs and canaries too), for the flight recorder. */
+  private async keepReadBack(
+    rows: { stepId: string; label: string; expected: string; actual: string; ok: boolean }[],
+    checked: number,
+    matched: number,
+  ): Promise<void> {
+    const doc = {
+      runId: this.opts.runId,
+      skill: { name: this.skill.name, version: this.skill.version },
+      dryRun: this.opts.dryRun === true,
+      at: Date.now(),
+      checked,
+      matched,
+      rows: rows.map(({ stepId, label, expected, actual, ok }) => ({ stepId, label, expected, actual, ok })),
+    };
+    await this.opts.artifacts
+      .put(new TextEncoder().encode(JSON.stringify(doc)), "application/json", {
+        kind: "readback",
+        runId: this.opts.runId,
+      })
+      .catch(() => undefined);
   }
 
   // ---------- validation and ask-rep ----------
