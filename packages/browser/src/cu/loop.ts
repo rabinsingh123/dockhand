@@ -74,6 +74,8 @@ const MAX_NOTCHES = 50;
 const POLICY_ACKNOWLEDGED_CHECKS = new Set(["computer_action_requires_confirmation"]);
 /** How long the page may keep scrolling (keyboard and wheel scrolls are smooth) before a screenshot. */
 const SCROLL_IDLE_MS = 800;
+/** Progress heartbeat while a model turn is outstanding. */
+const HEARTBEAT_MS = 10_000;
 
 function wheelPixels(delta: number): number {
   return Math.abs(delta) < MAX_NOTCHES ? delta * WHEEL_NOTCH_PX : delta;
@@ -129,6 +131,8 @@ class StopRun extends Error {
 
 export interface RunComputerUseOptions {
   clock?: Clock;
+  /** How often progress is reported while a model turn is outstanding. Default 10 s. */
+  heartbeatMs?: number;
 }
 
 /** Runs a computer-use session against `input.page` until the model finishes, a gate stops it, or a limit hits. */
@@ -139,7 +143,7 @@ export function runComputerUse(
   ctx: CallCtx,
   opts: RunComputerUseOptions = {},
 ): Promise<CuRunResult> {
-  return new ComputerUseRun(model, input, hooks, ctx, opts.clock ?? systemClock).run();
+  return new ComputerUseRun(model, input, hooks, ctx, opts.clock ?? systemClock, opts.heartbeatMs).run();
 }
 
 function clampPoint(x: number, y: number): { x: number; y: number } {
@@ -272,6 +276,7 @@ class ComputerUseRun {
     hooks: CuHooks,
     private readonly ctx: CallCtx,
     private readonly clock: Clock,
+    private readonly heartbeatMs = HEARTBEAT_MS,
   ) {
     this.page = input.page;
     this.hud = hudOf(input.page);
@@ -378,7 +383,7 @@ class ComputerUseRun {
       for (;;) {
         this.checkLimits();
         this.hud?.cuThinking();
-        const turns = await session.send(reply, this.ctx);
+        const turns = await this.sendTurn(session, reply);
         this.hud?.cuTurn(this.hud ? this.input.costSoFar?.() : undefined);
         this.checkCost();
         const call = turns.find(
@@ -835,6 +840,27 @@ class ComputerUseRun {
       }
       case "screenshot":
         return;
+    }
+  }
+
+  /**
+   * One model turn. While it is outstanding, progress is reported every HEARTBEAT_MS, so a slow turn (live, one
+   * in ~190 took 108 s before the gateway's resend) never looks like a stuck run to the rep or on the HUD.
+   */
+  private async sendTurn(session: CuSession, reply: CuReply): Promise<CuTurn[]> {
+    const t0 = Date.now();
+    const timer = setInterval(() => {
+      try {
+        const waited = Math.round((Date.now() - t0) / 1000);
+        this.hooks.progress?.({ action: this.actions, note: `waiting for the model (${waited} s)` });
+      } catch {
+        // progress is best effort
+      }
+    }, this.heartbeatMs);
+    try {
+      return await session.send(reply, this.ctx);
+    } finally {
+      clearInterval(timer);
     }
   }
 

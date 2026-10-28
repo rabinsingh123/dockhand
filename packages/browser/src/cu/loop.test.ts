@@ -593,3 +593,25 @@ describe("runComputerUse: points the model cannot have seen", () => {
     expect(r.proposed?.fingerprint.name).toBe("First");
   });
 });
+
+describe("runComputerUse: a slow model turn", () => {
+  it("keeps reporting progress while the turn is outstanding", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/long`);
+    const slow = cannedModel([[{ kind: "final", text: "Done." }]]);
+    const session = slow.open({ instructions: "", functions: [] });
+    const model = {
+      ...slow,
+      open: () => ({
+        imagesInChain: () => 1,
+        send: async (reply: CuReply, ctx: typeof CTX) => {
+          await new Promise((r) => setTimeout(r, 260));
+          return session.send(reply, ctx);
+        },
+      }),
+    };
+    const hooks = recordingHooks();
+    await runComputerUse(model, cuInput(page), hooks, CTX, { heartbeatMs: 60 });
+    expect(hooks.progressed.length).toBeGreaterThanOrEqual(2);
+    expect(hooks.progressed[0]?.note).toMatch(/^waiting for the model \(\d+ s\)$/);
+  });
+});
