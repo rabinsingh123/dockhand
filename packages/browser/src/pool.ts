@@ -14,6 +14,7 @@ import {
 } from "@dockhand/core";
 import { type Browser, type BrowserContext, chromium, type LaunchOptions, type Page } from "playwright";
 import { DH_SCRIPT } from "./dom/script.ts";
+import { attachHud, HUD_SCRIPT, type HudOptions, hudOptionsFromEnv } from "./hud/hud.ts";
 import { renderHtmlWith } from "./render.ts";
 
 // Playwright adds these only in headless mode; headed runs need them for the same layout (no 15 px scrollbar,
@@ -41,6 +42,11 @@ export interface BrowserPoolConfig {
   clock?: Clock;
   /** Extra launch options (tests: executablePath, slowMo). */
   launch?: LaunchOptions;
+  /**
+   * Demo overlay on every leased page (null: off). Default: from DEMO_MODE / DEMO_PACING_MS, and only for a
+   * headed browser, so headless tests and evals never get it.
+   */
+  hud?: HudOptions | null;
 }
 
 export interface DockhandBrowserPool extends BrowserPool {
@@ -72,6 +78,7 @@ interface Waiter {
 export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
   if (cfg.maxContexts < 1) throw new RangeError("maxContexts must be at least 1");
   const clock = cfg.clock ?? systemClock;
+  const hud = cfg.hud !== undefined ? cfg.hud : cfg.headless ? null : hudOptionsFromEnv();
   let browserPromise: Promise<Browser> | null = null;
   let open = 0;
   const waiters: Waiter[] = [];
@@ -120,6 +127,7 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
       ...(existsSync(state) ? { storageState: state } : {}),
     });
     await context.addInitScript({ content: DH_SCRIPT });
+    if (hud) await context.addInitScript({ content: HUD_SCRIPT });
     return context;
   }
 
@@ -136,6 +144,7 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
       context = await newContext(o.portalId);
       if (o.cookies?.length) await context.addCookies(o.cookies);
       page = await context.newPage();
+      if (hud) attachHud(page, hud);
     } catch (e) {
       releaseSlot();
       throw e;

@@ -24,6 +24,17 @@ export {
   similarity,
 } from "./helpers/similarity.ts";
 export { installWriteGuard, type WriteGuard } from "./helpers/writeGuard.ts";
+export {
+  attachHud,
+  HUD_HIDE_CSS,
+  HUD_SCRIPT,
+  HUD_TAG,
+  Hud,
+  type HudOptions,
+  hudOf,
+  hudOptionsFromEnv,
+  modelLabel,
+} from "./hud/index.ts";
 export { pngSize } from "./png.ts";
 export {
   type BrowserPoolConfig,
