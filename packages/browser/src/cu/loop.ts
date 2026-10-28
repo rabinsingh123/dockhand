@@ -439,6 +439,7 @@ class ComputerUseRun {
       outcome: this.outcome,
       ...(this.message !== undefined ? { message: this.message } : {}),
       ...(this.proposed ? { proposed: this.proposed } : {}),
+      humanMs: this.humanMs,
     };
   }
 

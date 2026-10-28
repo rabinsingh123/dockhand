@@ -142,6 +142,8 @@ export interface CuRunResult {
   outcome: Trace["outcome"];
   message?: string;
   proposed?: Target; // propose_only mode: the element the model chose
+  /** Time spent waiting for a person (approvals, safety checks). Machine time = wall time minus this. */
+  humanMs?: number;
 }
 
 /** Runs the loop. Implemented in packages/browser. */

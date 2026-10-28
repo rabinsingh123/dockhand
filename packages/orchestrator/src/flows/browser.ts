@@ -221,7 +221,7 @@ export async function runFirstRun(
   } finally {
     await lease.release();
   }
-  const seconds = (performance.now() - t0) / 1000;
+  const seconds = (performance.now() - t0 - (res.humanMs ?? 0)) / 1000; // machine time: the rep's waits are left out
   const traceRef = await env.artifacts.put(
     new TextEncoder().encode(JSON.stringify(res.trace)),
     "application/json",

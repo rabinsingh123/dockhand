@@ -308,6 +308,8 @@ export class Hud {
   private lastCuModel = "Muse computer use";
   private readonly fixes = new Map<string, { label: string; sub?: string; rung?: HealRung }>();
   private lastStep = -1;
+  private clockHolds = 0;
+  private clockHoldStart = 0;
   private typed = 0;
 
   constructor(
@@ -336,16 +338,32 @@ export class Hud {
   private async hold(ms: number, work?: Promise<unknown>): Promise<void> {
     if (ms <= 0 && !work) return;
     const start = performance.now();
-    const wall = Date.now();
-    if (this.clock) this.clock = { ...this.clock, pausedAt: wall };
-    this.push();
+    this.pauseClock();
     try {
       await Promise.all([work?.catch(() => {}), ms > 0 ? sleep(ms) : undefined]);
     } finally {
       this.pauses.push({ start, end: performance.now() });
-      if (this.clock) {
-        this.clock = { ...this.clock, pausedMs: this.clock.pausedMs + (Date.now() - wall), pausedAt: null };
-      }
+      this.resumeClock();
+    }
+  }
+
+  /** The on-screen clock stands still (pacing holds, the rep deciding); nested pauses share one start. */
+  private pauseClock(): void {
+    if (this.clockHolds++ === 0 && this.clock) {
+      this.clockHoldStart = Date.now();
+      this.clock = { ...this.clock, pausedAt: this.clockHoldStart };
+      this.push();
+    }
+  }
+
+  private resumeClock(): void {
+    if (this.clockHolds === 0) return;
+    if (--this.clockHolds === 0 && this.clock) {
+      this.clock = {
+        ...this.clock,
+        pausedMs: this.clock.pausedMs + (Date.now() - this.clockHoldStart),
+        pausedAt: null,
+      };
       this.push();
     }
   }
@@ -487,6 +505,7 @@ export class Hud {
 
   private startClock(): void {
     this.clock = { startedAt: Date.now(), pausedMs: 0, pausedAt: null };
+    this.clockHolds = 0;
   }
 
   private freezeClock(): void {
@@ -787,9 +806,11 @@ export class Hud {
           ticker: clip(r.checks.map((c) => c.message).join(" · "), 110),
         };
         this.push();
+        this.pauseClock();
         try {
           return await hooks.approveSafety(r);
         } finally {
+          this.resumeClock();
           this.waiting = null;
           this.push();
         }
@@ -827,10 +848,12 @@ export class Hud {
                 pulse: true,
               });
               let answer: string | null = null;
+              this.pauseClock();
               try {
                 answer = await ask(q);
                 return answer;
               } finally {
+                this.resumeClock();
                 this.waiting = null;
                 this.push();
                 void this.onElement(field, "boxOn", "ask", {
@@ -863,7 +886,13 @@ export class Hud {
     this.waiting = {
       title: "Waiting for approval on WhatsApp",
       ticker: clip(
-        [r.summary, v ? `${v.matched}/${v.checked} fields verified` : ""].filter(Boolean).join(" · "),
+        [
+          v ? `${v.matched}/${v.checked} fields verified` : "",
+          r.summary,
+          "clock paused while the rep decides",
+        ]
+          .filter(Boolean)
+          .join(" · "),
         110,
       ),
     };
@@ -878,10 +907,12 @@ export class Hud {
     }
     this.push();
     let d: Decision = "rejected";
+    this.pauseClock();
     try {
       d = await ask(r);
       return d;
     } finally {
+      this.resumeClock();
       this.waiting = null;
       this.push();
       if (box) {

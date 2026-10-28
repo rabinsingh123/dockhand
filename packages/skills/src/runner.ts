@@ -189,6 +189,8 @@ class SkillRun {
   /** Demo overlay (DEMO_MODE only): draws the run for the camera; undefined otherwise. */
   private readonly hud: Hud | undefined;
   private readonly hooks: RunHooks;
+  /** Time spent waiting for the rep (approvals, answers): not machine time, left out of every reported ms. */
+  private readonly waits: { start: number; end: number }[] = [];
 
   constructor(
     private readonly page: Page,
@@ -198,7 +200,8 @@ class SkillRun {
     private readonly opts: RunSkillOptions,
   ) {
     this.hud = hudOf(page);
-    this.hooks = this.hud?.wrapRunHooks(hooks) ?? hooks;
+    const timed = this.timed(hooks);
+    this.hooks = this.hud?.wrapRunHooks(timed) ?? timed;
     this.steps = [...skill.steps];
     this.params = skill.params.map((p) => ({ ...p }));
     this.values = { ...values };
@@ -241,9 +244,30 @@ class SkillRun {
     return this.result();
   }
 
-  /** Milliseconds since `t0`, without the time a demo HUD held the run for the camera (pacing). */
+  /** Machine milliseconds since `t0`: without waits for the rep and without demo HUD pacing. */
   private since(t0: number): number {
-    return performance.now() - t0 - (this.hud?.pausedSince(t0) ?? 0);
+    let waited = 0;
+    for (const w of this.waits) if (w.end > t0) waited += w.end - Math.max(w.start, t0);
+    return performance.now() - t0 - waited - (this.hud?.pausedSince(t0) ?? 0);
+  }
+
+  /** The hooks that wait for a person, timed into `waits` (repairers get them too, so nested waits count). */
+  private timed(h: RunHooks): RunHooks {
+    const wait = async <T>(ask: () => Promise<T>): Promise<T> => {
+      const start = performance.now();
+      try {
+        return await ask();
+      } finally {
+        this.waits.push({ start, end: performance.now() });
+      }
+    };
+    const askRep = h.askRep;
+    return {
+      ...h,
+      approveCommit: (r) => wait(() => h.approveCommit(r)),
+      approveSafety: (r) => wait(() => h.approveSafety(r)),
+      ...(askRep ? { askRep: (q: Parameters<typeof askRep>[0]) => wait(() => askRep(q)) } : {}),
+    };
   }
 
   // ---------- steps ----------
