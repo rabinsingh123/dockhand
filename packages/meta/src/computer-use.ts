@@ -154,7 +154,7 @@ function openSession(
       } else {
         const answered = { items: [...answeredItems(pending ?? [], reply), ...replyItems], images: shots };
         nextTurns = [...turns, answered];
-        if (nextTurns.length > CU_HISTORY_MAX_TURNS) nextTurns = nextTurns.slice(-CU_HISTORY_KEEP_TURNS);
+        if (nextTurns.length > CU_HISTORY_MAX_TURNS) nextTurns = trimHistory(nextTurns);
       }
       input = [...nextOpening, ...nextTurns.flatMap((t) => t.items)];
       requestImages = nextOpeningImages + nextTurns.reduce((n, t) => n + t.images, 0);
@@ -244,6 +244,21 @@ function openSession(
       }
     },
   };
+}
+
+/**
+ * Drops whole old turns down to about CU_HISTORY_KEEP_TURNS so that the kept history starts with a computer
+ * call. Live, a replay whose first turn after the opening message was a function call (attach_file) was
+ * refused with HTTP 400 "Invalid or missing computer safety acknowledgement"; trims that started on a
+ * computer call were accepted.
+ */
+function trimHistory(turns: Turn[]): Turn[] {
+  const opensWithComputerCall = (t: Turn | undefined) =>
+    t?.items.find((i) => i.type === "computer_call" || i.type === "function_call")?.type === "computer_call";
+  const keepFrom = turns.length - CU_HISTORY_KEEP_TURNS;
+  for (let i = keepFrom; i < turns.length; i++) if (opensWithComputerCall(turns[i])) return turns.slice(i);
+  for (let i = keepFrom - 1; i > 0; i--) if (opensWithComputerCall(turns[i])) return turns.slice(i);
+  return turns;
 }
 
 /**

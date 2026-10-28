@@ -832,3 +832,35 @@ describe("computer use: a turn that hangs twice", () => {
     expect(world.ledger.rows[0]).toMatchObject({ status: "timeout", errorCode: "MODEL_TIMEOUT" });
   });
 });
+
+describe("computer use: the stateless window", () => {
+  it("never starts the kept history on a function-call turn", async () => {
+    world = await makeWorld();
+    // 13 answered turns; the one the window would start at (index 7) answers a function call.
+    const replies = Array.from({ length: 14 }, (_, i) => ({
+      json: responseBody(
+        [
+          i === 7
+            ? functionCall(`call_${i}`, "attach_file", '{"slot":"w9"}')
+            : computerCall(`call_${i}`, { actions: [{ type: "wait" }] }),
+        ],
+        { id: `resp_${i}` },
+      ),
+    }));
+    world.server.on("/v1/responses", ...replies);
+    const session = open();
+    await session.send({ kind: "start", task: "t", screenshot: pngBytes() }, ctx("cu_first_run"));
+    for (let i = 0; i < 13; i++) {
+      await session.send(
+        i === 7
+          ? { kind: "function_output", callId: `call_${i}`, output: "attached", screenshot: pngBytes() }
+          : { kind: "computer_output", callId: `call_${i}`, screenshot: pngBytes(), acknowledged: [] },
+        ctx("cu_first_run"),
+      );
+    }
+    const input = bodies()[13]?.input as Record<string, unknown>[];
+    expect(input[0]).toMatchObject({ role: "user" });
+    expect(input[1]).toMatchObject({ type: "computer_call", call_id: "call_8" });
+    expect(input.filter((i) => i.type === "function_call")).toEqual([]);
+  });
+});
