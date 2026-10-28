@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { syntheticParamSets } from "./params.ts";
 import { type BuildPlanContext, buildPlan, WHAT_I_DO } from "./plan.ts";
 import { CARAVELA, PORTAL_DEFAULTS, SUPPLIER } from "./portals.ts";
-import { blankUnderstanding } from "./understand.ts";
+import { blankUnderstanding, normalizeUnderstanding } from "./understand.ts";
 
 const root = workspaceRoot();
 const fixture = (p: string) => JSON.parse(readFileSync(join(root, "fixtures", p), "utf8"));
@@ -243,6 +243,32 @@ describe("buildPlan: register_deal", () => {
 });
 
 describe("buildPlan: supplier_onboarding", () => {
+  it("names the buyer company, not the contact, from the recorded live understanding of the Acme PDF", () => {
+    const tape = JSON.parse(
+      readFileSync(
+        join(root, "fixtures", "cassettes", "understand", "understand-abe7197a70878dda.json"),
+        "utf8",
+      ),
+    );
+    const find = (o: unknown): string | undefined => {
+      if (typeof o === "string") return o.includes('"buyerName"') ? o : undefined;
+      if (o && typeof o === "object")
+        for (const v of Object.values(o)) {
+          const hit = find(v);
+          if (hit) return hit;
+        }
+      return undefined;
+    };
+    const recorded = JSON.parse(find(tape) ?? "{}") as Understanding;
+    expect(recorded).toMatchObject({ buyerName: "Laura Bennett", contactName: "Laura Bennett" });
+    const u = normalizeUnderstanding(recorded);
+    expect(u.buyerName).toBe("Acme Group");
+    const out = buildPlan(u, ctx(store()));
+    if (out.type !== "plan") throw new Error(out.type);
+    expect(out.plan.approvalText).toContain("supplier for Acme Group (invite ACME-7731)");
+    expect(out.plan.approvalText).not.toContain("Laura Bennett");
+  });
+
   it("plans a zero-shot run from the profile, the invite and both files", () => {
     const out = buildPlan(acme, ctx(store()));
     if (out.type !== "plan") throw new Error(out.type);

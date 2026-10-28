@@ -10,7 +10,7 @@ import {
   Understanding,
 } from "@dockhand/core";
 import { z } from "zod";
-import { canonicalCountry } from "./params.ts";
+import { canonicalCountry, fold } from "./params.ts";
 import { isIsoDate, todayIso, weekdayShort } from "./time.ts";
 
 export const UNDERSTAND_MODEL = "muse-spark-1.3";
@@ -78,7 +78,7 @@ const INTENTS = `Intents:
 - unknown: anything else, including small talk and requests outside these tasks.`;
 
 const FIELDS = `Fields (null when not stated; never invent a value):
-- company: the customer company the request is about; for supplier_onboarding, the buyer.
+- company: the customer company the request is about; for supplier_onboarding, the buying company (an organization, e.g. "Acme Group").
 - city, country: the customer's city and country. country is the English name ("Brasil" -> "Brazil"); infer it from a well-known city when it is not stated.
 - seats: number of users or seats.
 - startDate: when the subscription starts. closeDate: the expected close date of the deal.
@@ -87,7 +87,8 @@ const FIELDS = `Fields (null when not stated; never invent a value):
 - estValue: the estimated deal value as a plain number in the currency written.
 - website: the customer's website. referralPartner: the partner or agent who referred the deal.
 - notes: other facts worth keeping, short.
-- portalUrl, tenant, inviteCode, buyerName: from a supplier invitation (tenant is the short buyer id in the invite link, e.g. "acme").`;
+- portalUrl, tenant, inviteCode, buyerName: from a supplier invitation (tenant is the short buyer id in the invite link, e.g. "acme").
+- buyerName is the buying organization's name, never a person. The person who wrote or signed the invitation goes in contactName (and contactEmail).`;
 
 function rules(today: string, weekday: string, tz: string): string {
   return `Rules:
@@ -177,6 +178,10 @@ export function normalizeUnderstanding(u: Understanding): Understanding {
   if (out.country) out.country = canonicalCountry(out.country);
   if (out.contactEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(out.contactEmail)) out.contactEmail = null;
   if (out.inviteCode) out.inviteCode = out.inviteCode.toUpperCase();
+  // The buyer is a company: a buyerName that repeats the contact person is the model filing the person twice.
+  if (out.buyerName && out.contactName && fold(out.buyerName) === fold(out.contactName)) {
+    out.buyerName = out.company && fold(out.company) !== fold(out.contactName) ? out.company : null;
+  }
   if (out.tenant) out.tenant = out.tenant.toLowerCase();
   out.missing = out.missing.map((m) => m.trim()).filter((m) => m !== "");
   return out;
