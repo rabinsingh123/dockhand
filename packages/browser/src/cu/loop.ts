@@ -920,9 +920,18 @@ class ComputerUseRun {
         `not_ready: ${list} ${missing.length === 1 ? "is" : "are"} empty. Fill ${missing.length === 1 ? "it" : "them"}, then call request_commit again.`,
       );
     }
+    const button = await this.commitButton();
+    if (!button && !Object.values(step.formSnapshotBefore).some((v) => v.trim() !== "" && v !== "false")) {
+      // Nothing on the page submits and nothing is filled in (a "Start registration" entry page): asking the rep
+      // here would show an empty form, and the approval's token would outlive the page it was given for.
+      this.steps.push(step);
+      return this.output(
+        call,
+        "not_needed: nothing on this page submits and nothing is filled in, so no approval is needed here. Continue, and call request_commit right before the final submit.",
+      );
+    }
     const shot = await this.capture();
     step.screenshot = shot.ref;
-    const button = await this.commitButton();
     const readback = Object.entries(step.formSnapshotBefore).map(([label, value]) => ({ label, value }));
     const decision = await this.human(() =>
       this.hooks.approveCommit({

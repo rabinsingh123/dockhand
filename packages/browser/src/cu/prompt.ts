@@ -99,7 +99,7 @@ export function computerUseFunctions(
     tools.push({
       name: "request_commit",
       description:
-        'Ask the human owner to approve submitting. Call it right before any action that submits, registers, sends, confirms or saves, after every field is filled. Returns "approved: ...", "not_ready: ..." or "rejected".',
+        'Ask the human owner to approve submitting. Call it right before any action that submits, registers, sends, confirms or saves, after every field is filled. Returns "approved: ...", "not_ready: ...", "not_needed: ..." (nothing here submits; continue) or "rejected".',
       parameters: {
         type: "object",
         properties: {
