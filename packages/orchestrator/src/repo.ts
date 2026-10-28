@@ -402,6 +402,45 @@ function jobsRepo(db: Db, clock: Clock) {
       ).map(toJob);
     },
 
+    /** The rep's latest jobs that were tasks (not replies), newest first, with their latest top-level run. */
+    recentForRep(
+      rep: string,
+      limit: number,
+    ): (JobRow & {
+      run: {
+        mode: string;
+        outcome: string | null;
+        ms: number | null;
+        extracted: Record<string, string>;
+      } | null;
+    })[] {
+      const rows = db.raw
+        .prepare(
+          `SELECT * FROM jobs WHERE rep = ? AND intent IN ('quote', 'register_deal', 'supplier_onboarding', 'teach')
+           ORDER BY created_at DESC, rowid DESC LIMIT ?`,
+        )
+        .all(rep, limit) as Row[];
+      const runOf = db.raw.prepare(
+        `SELECT mode, outcome, ms, extracted_json FROM runs WHERE job_id = ? AND id NOT LIKE '%-%'
+         ORDER BY started_at DESC, rowid DESC LIMIT 1`,
+      );
+      return rows.map((r) => {
+        const job = toJob(r);
+        const run = runOf.get(job.id) as Row | undefined;
+        return {
+          ...job,
+          run: run
+            ? {
+                mode: String(run.mode),
+                outcome: str(run.outcome),
+                ms: num(run.ms),
+                extracted: json<Record<string, string>>(run.extracted_json) ?? {},
+              }
+            : null,
+        };
+      });
+    },
+
     recentCompanies(limit: number): string[] {
       const rows = db.raw
         .prepare(

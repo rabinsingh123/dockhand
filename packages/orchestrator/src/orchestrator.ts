@@ -260,7 +260,14 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         return;
       }
       case "command": {
-        const body = runCommand(msg.text ?? "", { skills: deps.skills, repos, ledger });
+        const rep = repProfile(repos, msg.from);
+        const body = runCommand(msg.text ?? "", {
+          skills: deps.skills,
+          repos,
+          ledger,
+          rep: { phone: rep.phone, tz: rep.tz },
+          portalNames: Object.fromEntries(Object.values(deps.portals).map((p) => [p.id, p.name])),
+        });
         const waId = await wa.sendText(msg.from, body);
         repos.messages.insertOutbound({ waId, to: msg.from, jobId: null, kind: "text", text: body });
         return;

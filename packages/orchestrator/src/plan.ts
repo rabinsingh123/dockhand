@@ -52,12 +52,12 @@ export const SUPPLIER_SKILL = "supplier_onboarding";
 export const FIRST_RUN_LIMITS = { [CARAVELA]: 60, [SUPPLIER]: 160 } as const;
 
 export const WHAT_I_DO = [
-  "I'm Dockhand. From WhatsApp I can:",
-  "• Quote: forward a pricing request (voice note or text). I create the HubSpot company and deal, the quote PDF, and a reply for you to send.",
-  "• Register a partner deal: send a photo of the signed referral form and I register it on Caravela Partner Hub.",
-  "• Supplier onboarding: forward the buyer's invitation (PDF) and I fill their supplier portal, stopping before the final submit.",
-  "• Teach me a portal task: send a screen recording (mp4) of you doing it once.",
-  "Commands: /skills, /skills <name>, /rollback <skill> <version>, /stats",
+  "I'm Dockhand. Forward me the work and I do it in your sales tools:",
+  "• *Quote*: a pricing request (voice note or text). I create the HubSpot company and deal, the quote PDF and a reply for you to send.",
+  "• *Partner deal*: a photo of the signed referral form. I register it on Caravela Partner Hub.",
+  "• *Supplier onboarding*: the buyer's invitation PDF. I fill their supplier portal and stop before the final submit.",
+  "• *Teach me*: a screen recording (mp4) of you doing a portal task once.",
+  "Commands: /skills, /history, /stats, /rollback <skill> <version>",
 ].join("\n");
 
 export function buildPlan(u: Understanding, ctx: BuildPlanContext): PlanOutcome {

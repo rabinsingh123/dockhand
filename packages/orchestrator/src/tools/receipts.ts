@@ -22,9 +22,20 @@ export function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+/** "$0.00", "$0.004", "$0.12"; anything under a tenth of a cent is "<$0.001". */
 export function usd(n: number): string {
-  if (n === 0) return "$0.00";
-  return n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
+  if (!Number.isFinite(n) || n <= 0) return "$0.00";
+  if (n >= 0.01) return `$${n.toFixed(2)}`;
+  if (n >= 0.001) return `$${n.toFixed(3)}`;
+  return "<$0.001";
+}
+
+/** "3.1 s" under a minute, "2 min 5 s" above. */
+export function seconds(s: number): string {
+  if (!Number.isFinite(s) || s < 0) return "0.0 s";
+  if (s < 59.95) return `${s.toFixed(1)} s`;
+  const whole = Math.round(s);
+  return `${Math.floor(whole / 60)} min ${whole % 60} s`;
 }
 
 const CSS = `
@@ -82,7 +93,7 @@ export interface ReceiptView {
 
 export function receiptHtml(r: ReceiptView): string {
   const stats = [
-    [`${r.seconds.toFixed(1)} s`, "wall time"],
+    [seconds(r.seconds), "wall time"],
     [usd(r.execCostUsd), "execution cost"],
     [usd(r.intakeCostUsd), "intake cost"],
     ...(r.verified ? [[`${r.verified.matched}/${r.verified.checked}`, "fields verified before submit"]] : []),
@@ -209,15 +220,22 @@ export function createCardRenderer(deps: {
   };
 }
 
-/** The caption under a receipt image: the same facts in one line of text. */
+/** A record ID ("NW-REG-48213", "Q-2026-0001"): shown in monospace, nothing else is. */
+export const looksLikeRecordId = (s: string): boolean => /^[A-Z0-9][A-Z0-9-]{4,}$/.test(s) && /\d/.test(s);
+
+/** The caption under a receipt image: the same facts as short lines, WhatsApp formatting. */
 export function receiptCaption(r: Receipt, usedOpenWeights = false): string {
-  const parts = [
-    r.title,
-    ...(r.lines[0] ? [r.lines[0]] : []),
-    `${TIER_LABEL[r.tier]} · ${r.seconds.toFixed(1)} s`,
-    `execution ${usd(r.execCostUsd)} + intake ${usd(r.intakeCostUsd)}`,
+  const first = r.lines[0];
+  const facts = [
     ...(r.verified ? [`${r.verified.matched}/${r.verified.checked} fields verified`] : []),
     ...(r.skill ? [`${r.skill.name} v${r.skill.version}`] : []),
+  ];
+  const parts = [
+    `*${r.title}*`,
+    ...(first ? [looksLikeRecordId(first) ? `\`${first}\`` : first] : []),
+    `${TIER_LABEL[r.tier]} · ${seconds(r.seconds)}`,
+    ...(facts.length > 0 ? [facts.join(" · ")] : []),
+    `Cost: execution ${usd(r.execCostUsd)} + intake ${usd(r.intakeCostUsd)}`,
     ...(usedOpenWeights ? [OPEN_WEIGHTS_CREDIT] : []),
   ];
   return parts.join("\n");

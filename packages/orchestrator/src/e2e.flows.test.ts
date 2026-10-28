@@ -154,6 +154,6 @@ describe("commands", () => {
 
   it("gives question and unknown intents the fixed reply, never a chat answer", async () => {
     await send({ text: "what's the weather like?" });
-    expect(outbox().at(-1)?.body).toContain("I'm Dockhand. From WhatsApp I can:");
+    expect(outbox().at(-1)?.body).toContain("I'm Dockhand. Forward me the work");
   });
 });

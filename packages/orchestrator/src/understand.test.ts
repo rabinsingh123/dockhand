@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { receiptCaption, receiptHtml } from "./tools/receipts.ts";
+import { receiptCaption, receiptHtml, seconds, usd } from "./tools/receipts.ts";
 import { blankUnderstanding, normalizeUnderstanding, understandingRequest } from "./understand.ts";
 
 describe("understanding request", () => {
@@ -72,7 +72,7 @@ describe("receipts", () => {
   it("shows execution and intake cost separately, escapes text, credits Spark Open only when used", () => {
     const html = receiptHtml(view);
     expect(html).toContain("$0.00");
-    expect(html).toContain("$0.0041");
+    expect(html).toContain("$0.004");
     expect(html).toContain("12/12");
     expect(html).toContain("Submitted &#60;after&#62; approval");
     expect(html).not.toContain("Built with Muse Spark Open");
@@ -90,13 +90,23 @@ describe("receipts", () => {
       true,
     );
     expect(caption.split("\n")).toEqual([
-      "Register a partner deal",
-      "NW-REG-48219",
+      "*Register a partner deal*",
+      "`NW-REG-48219`",
       "Replay · compiled skill · 6.4 s",
-      "execution $0.00 + intake $0.0041",
-      "12/12 fields verified",
-      "register_partner_deal v2",
+      "12/12 fields verified · register_partner_deal v2",
+      "Cost: execution $0.00 + intake $0.004",
       "Built with Muse Spark Open",
     ]);
+  });
+
+  it("formats money and time the same way everywhere", () => {
+    expect([0, 0.00004, 0.0041, 0.0149, 1.5].map(usd)).toEqual([
+      "$0.00",
+      "<$0.001",
+      "$0.004",
+      "$0.01",
+      "$1.50",
+    ]);
+    expect([0.04, 3.12, 59.96, 125].map(seconds)).toEqual(["0.0 s", "3.1 s", "1 min 0 s", "2 min 5 s"]);
   });
 });
