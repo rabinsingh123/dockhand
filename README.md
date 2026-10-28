@@ -57,6 +57,8 @@ Live, real Meta API calls at Standard list prices, on the mock partner portal (O
 | What | Model | Runs | Result |
 |---|---|---|---|
 | First run with computer use, deal registration | muse-spark-1.3, low effort | 3 | 3/3 correct, 13/13 fields each; 29–31 actions; 74–116 s; $0.11–$0.20 per run |
+| First run with computer use, supplier onboarding from a procurement PDF (multi-step, about 40 fields, 2 uploads), zero-shot | muse-spark-1.3, low effort | 3 | 3/3 correct, 40/40 fields each; 85–98 actions; 249–310 s; $0.32–$0.49 per run |
+| The compiled supplier skill replayed for a second buyer | none | 1 | 40/40 fields, 0 model calls, 4.8 s |
 | Heal rung 2 on a renamed submit button | Muse Spark Open (Baseten) | 4 | 4/4 healed, about 3 s and $0.002 each |
 | Heal rungs 2–3 on six seeded UI changes | Muse Spark Open, then muse-spark-1.3 | 6 | 4/6 healed; the 2 widget-type changes stopped before writing; 0 wrong submissions |
 
