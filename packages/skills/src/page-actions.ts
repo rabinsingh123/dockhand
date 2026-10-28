@@ -132,6 +132,56 @@ export async function issueCount(page: Page): Promise<number> {
   return page.evaluate(countIssuesInPage).catch(() => 0);
 }
 
+/** In-page: true when a required control is still empty (radio groups by group, file inputs never). */
+function isEmptyRequiredInPage(el: Element): boolean {
+  const input = el as HTMLInputElement;
+  const type = (el.getAttribute("type") ?? "").toLowerCase();
+  if (el.tagName === "INPUT" && type === "file") return false;
+  if (el.tagName === "INPUT" && type === "radio") {
+    // A radio inside a required radiogroup is judged by the group.
+    if (el.closest('[role="radiogroup"][aria-required="true"], fieldset[aria-required="true"]')) return false;
+    const scope = input.form ?? document;
+    return !scope.querySelector(`input[type="radio"][name="${CSS.escape(input.name)}"]:checked`);
+  }
+  if (el.getAttribute("role") === "radiogroup" || el.tagName === "FIELDSET")
+    return !el.querySelector('input:checked, [aria-checked="true"]');
+  if (el.tagName === "INPUT" && type === "checkbox") return !input.checked;
+  if (el.getAttribute("role") === "checkbox" || el.getAttribute("role") === "switch")
+    return el.getAttribute("aria-checked") !== "true";
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)
+    return el.value.trim() === "";
+  return (el.textContent ?? "").trim() === "";
+}
+
+/**
+ * Visible required fields that are still empty, as locators (one per radio group; file inputs are left to
+ * the portal's own validation, since nobody can type a file into WhatsApp).
+ */
+export async function emptyRequiredFields(page: Page): Promise<Locator[]> {
+  const all = page.locator('[required], [aria-required="true"]');
+  const n = await all.count().catch(() => 0);
+  const out: Locator[] = [];
+  const radioNames = new Set<string>();
+  for (let i = 0; i < n; i++) {
+    const el = all.nth(i);
+    if (!(await el.isVisible().catch(() => false))) continue;
+    if (!(await el.evaluate(isEmptyRequiredInPage).catch(() => false))) continue;
+    const radioName = await el
+      .evaluate((node) =>
+        node.tagName === "INPUT" && node.getAttribute("type") === "radio"
+          ? (node as HTMLInputElement).name
+          : "",
+      )
+      .catch(() => "");
+    if (radioName) {
+      if (radioNames.has(radioName)) continue;
+      radioNames.add(radioName);
+    }
+    out.push(el);
+  }
+  return out;
+}
+
 /** Visible fields marked aria-invalid, as locators. */
 export async function invalidFields(page: Page): Promise<Locator[]> {
   const all = page.locator('[aria-invalid="true"]');

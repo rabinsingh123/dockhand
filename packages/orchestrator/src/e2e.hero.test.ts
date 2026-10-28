@@ -213,7 +213,7 @@ describe("hero loop through WhatsApp", () => {
     sys.portals.partner.setMutation({ seed: 1, operators: ["insert_required_field"] });
     await send({ file: { path: inbound("referral-vila-nova.jpg"), mime: "image/jpeg" } });
     await tap(lastCard(), "a"); // plan
-    await tap(lastCard(), "a"); // first commit attempt: the portal refuses (Partner tier is required)
+    // The empty required field is caught before the submit card: one question, then one approval.
     const question = lastCard();
     expect(question.body).toContain('"Partner tier"');
     expect(question.buttons?.map((b) => b.title)).toEqual(["Gold", "Silver", "Bronze"]);

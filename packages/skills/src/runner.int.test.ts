@@ -408,7 +408,8 @@ describe("runSkill on the partner portal", () => {
       expect(steps.at(-2)).toMatchObject({ op: "select", option: "{{partner_tier}}" });
       expect(steps.at(-1)).toMatchObject({ id: "s17", commit: true });
       expect(r.patched?.changelog).toContain("new param partner_tier (asked the rep)");
-      expect(approvals).toHaveLength(2);
+      // Asked before the approval card: one approval for one complete form, no refused submit first.
+      expect(approvals).toHaveLength(1);
       expect(portal.submissions({ runId: id })[0]?.fields).toEqual({
         ...expectedFields(params),
         partnerTier: "Gold",
@@ -611,7 +612,10 @@ describe("uploads and extraction on a fixture page", () => {
     const page = await context.newPage();
     try {
       const bytes = new TextEncoder().encode("%PDF-1.4 fake w9");
-      const ref = await artifacts.put(bytes, "application/pdf", { kind: "upload_fixture", filename: "w9.pdf" });
+      const ref = await artifacts.put(bytes, "application/pdf", {
+        kind: "upload_fixture",
+        filename: "w9.pdf",
+      });
       const skill: Skill = {
         name: "upload_w9",
         version: 1,
@@ -631,7 +635,13 @@ describe("uploads and extraction on a fixture page", () => {
                 { by: "label", value: "W-9 form", exact: true },
                 { by: "css", value: "#w9" },
               ],
-              fingerprint: { tag: "input", inputType: "file", label: "W-9 form", domId: "w9", bbox: { x: 0, y: 0, w: 0, h: 0 } },
+              fingerprint: {
+                tag: "input",
+                inputType: "file",
+                label: "W-9 form",
+                domId: "w9",
+                bbox: { x: 0, y: 0, w: 0, h: 0 },
+              },
             },
           },
           { id: "s3", op: "extract", intent: "Read the reference", name: "reference", regex: "REF-\\d{5}" },
@@ -640,7 +650,13 @@ describe("uploads and extraction on a fixture page", () => {
         createdFrom: { kind: "goal", traceRunId: "x" },
         changelog: "",
       };
-      const r = await runSkill(page, skill, { w9_form: { file: ref, filename: "w9.pdf" } }, recordingHooks().hooks, options("upload"));
+      const r = await runSkill(
+        page,
+        skill,
+        { w9_form: { file: ref, filename: "w9.pdf" } },
+        recordingHooks().hooks,
+        options("upload"),
+      );
       expect(r.error).toBeUndefined();
       expect(r.outcome).toBe("success");
       expect(r.extracted).toEqual({ reference: "REF-40213" });

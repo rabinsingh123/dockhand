@@ -40,6 +40,7 @@ import {
   alertTexts,
   bodyText,
   claimElement,
+  emptyRequiredFields,
   harvestOptions,
   invalidFields,
   issueCount,
@@ -548,6 +549,14 @@ class SkillRun {
   }
 
   private async runCommit(idx: number, step: CommitStep, started: number): Promise<Flow> {
+    // A required field nothing in the skill fills (the portal added one): ask the rep before the approval card,
+    // so the rep approves one complete form instead of a submit the portal would refuse.
+    if (!this.retried.has(step.id)) {
+      const empty = await this.notOurs(await emptyRequiredFields(this.page));
+      if (empty.length > 0) {
+        return this.askFor(empty, idx, step, started, "a required field is empty", "NEEDS_INPUT");
+      }
+    }
     const v = await this.readBack();
     this.verification = v;
     if (v.mismatches.length > 0) {
@@ -692,30 +701,40 @@ class SkillRun {
     return false;
   }
 
+  private async notOurs(fields: Locator[]): Promise<Locator[]> {
+    const out: Locator[] = [];
+    for (const f of fields) if (!(await this.isOurs(f))) out.push(f);
+    return out;
+  }
+
   /** The page refused the step that was just performed (`step` at `idx`). */
   private async onValidation(idx: number, step: Step, started: number): Promise<Flow> {
     const fields = await invalidFields(this.page);
     const alerts = await alertTexts(this.page);
     const message = alerts.join(" | ") || "the page reported a validation error";
-    const unknown: Locator[] = [];
-    let ours = 0;
-    for (const f of fields) {
-      if (await this.isOurs(f)) ours++;
-      else unknown.push(f);
-    }
+    const unknown = await this.notOurs(fields);
+    const ours = fields.length - unknown.length;
     // Bad data is never repaired: a field we filled is invalid, or the error names no field.
     if (ours > 0 || unknown.length === 0) {
       return this.stop(idx, step, started, "failed", "PORTAL_VALIDATION", message);
     }
+    return this.askFor(unknown, idx, step, started, message, "PORTAL_VALIDATION");
+  }
+
+  /**
+   * Fields the skill has no value for: ask the rep once per field, add a param for each answer, insert the
+   * steps before `step` and run from there. Never guesses: no answer stops the run safely.
+   */
+  private async askFor(
+    unknown: Locator[],
+    idx: number,
+    step: Step,
+    started: number,
+    message: string,
+    code: ErrorCode,
+  ): Promise<Flow> {
     if (this.retried.has(step.id) || this.asks + unknown.length > MAX_ASKS) {
-      return this.stop(
-        idx,
-        step,
-        started,
-        "failed",
-        "PORTAL_VALIDATION",
-        `still refused after asking the rep: ${message}`,
-      );
+      return this.stop(idx, step, started, "failed", code, `still refused after asking the rep: ${message}`);
     }
     const inserted: Step[] = [];
     for (const field of unknown) {
