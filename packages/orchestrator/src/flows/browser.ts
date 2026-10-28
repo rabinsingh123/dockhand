@@ -616,9 +616,13 @@ async function promotePatch(
       title: saved.title,
       from: parent.version,
       to: saved.version,
+      // The grouped summary first, then only the changes a person would want to read (not every free heal).
       lines: capLines(
-        saved.changelog.split("\n").filter((l) => l.trim() !== ""),
-        6,
+        [
+          ...(o.summary ? [o.summary] : []),
+          ...saved.changelog.split("\n").filter((l) => l.trim() !== "" && !/fallback selector/.test(l)),
+        ],
+        5,
       ),
       rungs: o.rungs.map((r) => RUNG_WORDS[r]),
       canary: { passed: canary.passed, total: canary.total },
