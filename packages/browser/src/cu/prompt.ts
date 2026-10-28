@@ -55,7 +55,7 @@ export function computerUseInstructions(
   const commitRule =
     input.commitPolicy === "propose_only"
       ? "Do not click the control that submits, registers, sends, confirms or saves. If it is not visible in the screenshot, scroll until it is. Then call propose_target with the x and y of its centre in the current screenshot and a short reason. That ends your task."
-      : "Before any action that submits, registers, sends, confirms or saves, call request_commit with a short summary of the values you entered. Click the submit control only after the result says approved. If it says not_ready, fix what it lists first. If you try to submit without approval, the click is blocked.";
+      : 'Before any action that submits, registers, sends, confirms or saves, call request_commit with a short summary of the values you entered. Do not click the submit control yourself: when the owner approves, Dockhand clicks it for you and the result says "approved and submitted". If it says not_ready, fix what it lists first. If you try to submit without approval, the click is blocked.';
   lines.push(
     "How to work:",
     "1. Batch actions only when none of them needs a fresh look at the screen. Clicking a field and typing its value is one batch. After opening a dropdown, scrolling, submitting, or moving to another page, stop and look at the next screenshot.",
@@ -99,7 +99,7 @@ export function computerUseFunctions(
     tools.push({
       name: "request_commit",
       description:
-        'Ask the human owner to approve submitting. Call it right before any action that submits, registers, sends, confirms or saves, after every field is filled. Returns "approved: ...", "not_ready: ...", "not_needed: ..." (nothing here submits; continue) or "rejected".',
+        'Ask the human owner to approve submitting. Call it right before any action that submits, registers, sends, confirms or saves, after every field is filled. When approved, Dockhand clicks the submit control itself and returns "approved and submitted: ..."; otherwise "not_ready: ...", "not_needed: ..." (nothing here submits; continue), "not submitted: ..." (ask again) or "rejected".',
       parameters: {
         type: "object",
         properties: {

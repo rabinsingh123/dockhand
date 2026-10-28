@@ -85,14 +85,13 @@ describe("runComputerUse: commit guard", () => {
     expect(posts()).toHaveLength(0);
   });
 
-  it("blocks an unapproved submit click, then lets one approved click through", async () => {
+  it("blocks an unapproved submit click; after approval the harness clicks the approved button", async () => {
     await page.goto(`${FIXTURE_ORIGIN}/form`);
     const model = createScriptedModel(
       [
         { do: "fill", target: { label: "Company name" }, text: "Sabiá Foods Ltda" },
         { do: "click", target: { role: "button", name: "Submit registration" } },
         { do: "call", name: "request_commit", args: { summary: "Register Sabiá Foods Ltda" } },
-        { do: "click", target: { role: "button", name: "Submit registration" } },
         { do: "done", text: "Submitted." },
       ],
       page,
@@ -105,7 +104,7 @@ describe("runComputerUse: commit guard", () => {
     );
     expect(clicks.map((s) => s.tags)).toEqual([["blocked"], expect.arrayContaining(["commit"])]);
     expect(posts()).toHaveLength(1);
-    expect(notes(model.replies).some((n) => /request_commit first/.test(n))).toBe(true);
+    expect(notes(model.replies).some((n) => /Call request_commit/.test(n))).toBe(true);
     // The approval card carries a screenshot, the read-back and the highlighted submit button.
     expect(hooks.commits).toHaveLength(1);
     expect(hooks.commits[0]?.readback).toContainEqual({ label: "Company name", value: "Sabiá Foods Ltda" });
@@ -643,5 +642,91 @@ describe("runComputerUse: a turn the API never answers", () => {
     expect(r.outcome).toBe("done");
     expect(canned.replies.map((x) => x.kind)).toEqual(["start", "rollover"]);
     expect(hooks.progressed.map((p) => p.note)).toContain("the model did not answer; starting a fresh turn");
+  });
+});
+
+describe("runComputerUse: the approved click", () => {
+  it("is made by the harness at the approved button's centre, so a model click 4 px off cannot miss it", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/form`);
+    const box = await page.getByRole("button", { name: "Submit registration" }).boundingBox();
+    if (!box) throw new Error("no submit button");
+    const off = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height + 4) };
+    const company = await centreOf(page, "[data-testid=company]");
+    const model = cannedModel([
+      [
+        {
+          kind: "computer_call",
+          callId: "c1",
+          safetyChecks: [],
+          actions: [
+            { type: "click", x: company.x, y: company.y },
+            { type: "type", text: "Sabiá Foods Ltda" },
+          ],
+        },
+      ],
+      [
+        {
+          kind: "function_call",
+          callId: "f1",
+          name: "request_commit",
+          argsJson: '{"summary":"Register Sabiá Foods Ltda"}',
+        },
+      ],
+      // What Spark did live after approval: click 4 px below the button.
+      [
+        {
+          kind: "computer_call",
+          callId: "c2",
+          safetyChecks: [],
+          actions: [{ type: "click", x: off.x, y: off.y }],
+        },
+      ],
+      [{ kind: "final", text: "Submitted." }],
+    ]);
+    const hooks = recordingHooks("approved");
+    const r = await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(hooks.commits).toHaveLength(1);
+    expect(posts()).toHaveLength(1);
+    const commit = r.trace.steps.find((s) => s.tags.includes("commit"));
+    expect(commit?.target?.fingerprint.name).toBe("Submit registration");
+    expect(commit?.action).toMatchObject({
+      type: "click",
+      x: Math.round(box.x + box.width / 2),
+      y: Math.round(box.y + box.height / 2),
+    });
+    const out = model.replies.find((x) => x.kind === "function_output");
+    expect(out?.kind === "function_output" && out.output).toMatch(
+      /^approved and submitted: Dockhand clicked "Submit registration"/,
+    );
+  });
+
+  it("voids the approval when the approved button is gone by the time the rep approves", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/form`);
+    const company = await centreOf(page, "[data-testid=company]");
+    const model = cannedModel([
+      [
+        {
+          kind: "computer_call",
+          callId: "c1",
+          safetyChecks: [],
+          actions: [
+            { type: "click", x: company.x, y: company.y },
+            { type: "type", text: "Sabiá Foods Ltda" },
+          ],
+        },
+      ],
+      [{ kind: "function_call", callId: "f1", name: "request_commit", argsJson: '{"summary":"Register"}' }],
+      [{ kind: "final", text: "Stopped." }],
+    ]);
+    const hooks = recordingHooks("approved");
+    const approve = hooks.approveCommit;
+    hooks.approveCommit = async (r) => {
+      await page.evaluate(() => document.querySelector("button[data-testid=submit-reg]")?.remove());
+      return approve(r);
+    };
+    await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(posts()).toHaveLength(0);
+    const out = model.replies.find((x) => x.kind === "function_output");
+    expect(out?.kind === "function_output" && out.output).toMatch(/^not submitted: .*no longer on the page/);
   });
 });

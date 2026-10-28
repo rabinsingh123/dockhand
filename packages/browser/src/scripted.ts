@@ -113,6 +113,12 @@ export function createScriptedModel(
       if (!step) return [{ kind: "final", text: "Done." }];
       switch (step.do) {
         case "click": {
+          if (harnessSubmitted) {
+            // The harness already clicked the approved submit control: a model would not click it again.
+            harnessSubmitted = false;
+            advance();
+            continue;
+          }
           const plan = await aim(page, step.target, timeoutMs);
           if (plan.kind === "scroll") return computer([plan.action]);
           advance();
@@ -208,6 +214,9 @@ export function createScriptedModel(
     }
   }
 
+  /** Set when request_commit came back "approved and submitted": the script's next click is the submit. */
+  let harnessSubmitted = false;
+
   async function callArgs(name: FnName, args: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (name !== "propose_target" || !args.target) return args;
     const plan = await aim(page, args.target as SemanticTarget, timeoutMs);
@@ -233,6 +242,8 @@ export function createScriptedModel(
           else if (reply.kind === "computer_output" || (reply.kind === "function_output" && reply.screenshot))
             images++;
           let turns: CuTurn[];
+          if (reply.kind === "function_output" && /^approved and submitted/.test(reply.output))
+            harnessSubmitted = true;
           if (reply.kind === "function_output" && /^rejected/.test(reply.output)) {
             turns = [{ kind: "final", text: "Stopped: the submission was rejected." }];
           } else {

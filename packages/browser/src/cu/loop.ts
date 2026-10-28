@@ -24,7 +24,7 @@ import {
   type TraceStep,
   VIEWPORT,
 } from "@dockhand/core";
-import type { Dialog, FileChooser, Frame, Page, Request } from "playwright";
+import type { Dialog, ElementHandle, FileChooser, Frame, Page, Request } from "playwright";
 import {
   type ActiveCommit,
   type CommitInfo,
@@ -40,6 +40,7 @@ import {
   describeHandle,
 } from "../helpers/describe.ts";
 import { formSnapshot } from "../helpers/forms.ts";
+import { bareName } from "../helpers/locators.ts";
 import { installWriteGuard, type WriteGuard } from "../helpers/writeGuard.ts";
 import { type Hud, hudOf } from "../hud/hud.ts";
 import { pngSize } from "../png.ts";
@@ -726,7 +727,7 @@ class ComputerUseRun {
       this.note(
         this.input.commitPolicy === "propose_only"
           ? `Blocked: "${commit.name}" submits. Do not click it in this run; call propose_target with its coordinates.`
-          : `Blocked: "${commit.name}" submits the form. Call request_commit first, then click it once the result says approved.`,
+          : `Blocked: "${commit.name}" submits the form. Call request_commit; once it is approved, Dockhand clicks it for you.`,
       );
       return { stop: true };
     }
@@ -1016,6 +1017,8 @@ class ComputerUseRun {
     }
     const shot = await this.capture();
     step.screenshot = shot.ref;
+    // The element the card shows is the one the approval is for: bound now, clicked by the harness later.
+    const bound = button ? await this.bindCommit(button) : null;
     const readback = Object.entries(step.formSnapshotBefore).map(([label, value]) => ({ label, value }));
     const decision = await this.human(() =>
       this.hooks.approveCommit({
@@ -1031,12 +1034,88 @@ class ComputerUseRun {
     if (decision === "approved") {
       this.commitTokens++;
       this.guard?.grant(1);
-      return this.output(call, `approved: click "${button?.name ?? "the submit control"}" now.`);
+      if (!bound) return this.output(call, `approved: click "${button?.name ?? "the submit control"}" now.`);
+      return this.clickApproved(call, bound);
     }
+    await bound?.handle.dispose().catch(() => {});
     if (decision === "expired") throw new StopRun("expired", "the commit approval expired");
     throw new StopRun(
       "rejected",
       decision === "edit" ? "the rep asked for changes before submitting" : "the rep rejected the submission",
+    );
+  }
+
+  /** The element at the commit control's centre, kept so the click after approval hits exactly it. */
+  private async bindCommit(button: CommitInfo): Promise<{ handle: ElementHandle; name: string } | null> {
+    const cx = Math.round(button.box.x + button.box.w / 2);
+    const cy = Math.round(button.box.y + button.box.h / 2);
+    if (offScreen(cx, cy)) {
+      // Below the fold: the one control with that role and name, if it is unique.
+      const loc = this.page.getByRole(button.link ? "link" : "button", { name: button.name, exact: true });
+      if ((await loc.count().catch(() => 0)) !== 1) return null;
+      const handle = await loc.elementHandle({ timeout: 2_000 }).catch(() => null);
+      return handle ? { handle, name: button.name } : null;
+    }
+    const described = await describeAtWithHandle(this.page, clampPoint(cx, cy).x, clampPoint(cx, cy).y).catch(
+      () => null,
+    );
+    return described ? { handle: described.handle, name: button.name } : null;
+  }
+
+  /**
+   * After approval the harness clicks the approved element itself, at the centre of the element it resolves
+   * to now. Live, Spark clicked 4 px below an approved "Submit for approval" button, missed, and asked for a
+   * second approval. If the element is gone or is no longer the commit control the rep saw, the token is
+   * voided and the model is told to ask again.
+   */
+  private async clickApproved(
+    call: FunctionCall,
+    bound: { handle: ElementHandle; name: string },
+  ): Promise<CuReply> {
+    const { handle, name } = bound;
+    const voidApproval = async (why: string) => {
+      this.commitTokens = 0;
+      this.guard?.revoke();
+      await handle.dispose().catch(() => {});
+      return this.output(
+        call,
+        `not submitted: ${why}. The approval is void; check the page, then call request_commit again.`,
+      );
+    };
+    const connected = await handle.evaluate((el) => el.isConnected).catch(() => false);
+    if (!connected) return voidApproval(`"${name}" is no longer on the page`);
+    await handle.scrollIntoViewIfNeeded({ timeout: 3_000 }).catch(() => {});
+    await this.scrollIdle();
+    const box = await handle.boundingBox().catch(() => null);
+    if (!box) return voidApproval(`"${name}" is not visible any more`);
+    const x = Math.round(box.x + box.width / 2);
+    const y = Math.round(box.y + box.height / 2);
+    const same = await this.page
+      .evaluate(
+        ([el, px, py]) => {
+          const dh = window.__dh;
+          if (!dh) return { ok: false, name: "" };
+          const hit = dh.hitUid(px, py);
+          const r = dh.commitAt(px, py);
+          return { ok: hit.uid !== null && hit.uid === dh.uidOf(el as Element), name: r.info?.name ?? "" };
+        },
+        [handle, x, y] as const,
+      )
+      .catch(() => ({ ok: false, name: "" }));
+    if (!same.ok || bareName(same.name).toLowerCase() !== bareName(name).toLowerCase()) {
+      return voidApproval(`the control at "${name}" changed after approval`);
+    }
+    await this.capture(); // fresh element map, so the stale-coordinate check compares against this page
+    const before = this.steps.length;
+    await this.runAction({ type: "click", button: "left", x, y });
+    await handle.dispose().catch(() => {});
+    const clicked = this.steps.slice(before).some((st) => st.tags.includes("commit"));
+    if (!clicked) return voidApproval(`the click on "${name}" did not go through`);
+    const shot = await this.capture();
+    return this.output(
+      call,
+      `approved and submitted: Dockhand clicked "${name}" itself. Do not click it again; check the result on screen.`,
+      shot.bytes,
     );
   }
 
