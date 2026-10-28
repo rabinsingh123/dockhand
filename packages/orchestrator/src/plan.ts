@@ -183,7 +183,7 @@ function planRegisterDeal(u: Understanding, ctx: BuildPlanContext): PlanOutcome 
   const found = ctx.skills.draftForPortal(CARAVELA);
   if (found) {
     const draft = found.draft;
-    const m = paramsFromUnderstanding(draft.params, u);
+    const m = paramsFromUnderstanding(draft.params, u, { fromDraft: true });
     if (m.missing.length > 0 || m.rejected.length > 0) {
       return ask(
         [...m.missing, ...m.rejected.map((r) => r.spec)],

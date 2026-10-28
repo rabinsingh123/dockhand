@@ -5,7 +5,7 @@ import {
   createFixedClock,
   type ParamSpec,
   type Skill,
-  type SkillDraft,
+  SkillDraft,
   type SkillStore,
   type Understanding,
   workspaceRoot,
@@ -131,6 +131,45 @@ const caravelaV1: Skill = {
   createdFrom: { kind: "video", traceRunId: "R1" },
   changelog: "",
 };
+
+/** The draft Muse Wonder returned for the teach video, as recorded live (fixtures/cassettes/teach). */
+function recordedTeachDraft(): SkillDraft {
+  const tape = JSON.parse(
+    readFileSync(join(root, "fixtures", "cassettes", "teach", "teach-934b313cee29b7eb.json"), "utf8"),
+  );
+  const find = (o: unknown): string | undefined => {
+    if (typeof o === "string") return o.includes('"commitStep"') ? o : undefined;
+    if (o && typeof o === "object")
+      for (const v of Object.values(o)) {
+        const hit = find(v);
+        if (hit) return hit;
+      }
+    return undefined;
+  };
+  const raw = JSON.parse(find(tape) ?? "{}") as SkillDraft & { params: Record<string, unknown>[] };
+  // The wire format sends absent optionals as null (the gateway drops them the same way).
+  return SkillDraft.parse({
+    ...raw,
+    params: raw.params.map((p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v !== null))),
+  });
+}
+
+describe("buildPlan: register_deal from the recorded live teach draft", () => {
+  it("treats the video's enum values as examples and the consent box as a constant tick", () => {
+    const recorded = recordedTeachDraft();
+    expect(recorded.params.find((p) => p.name === "country")?.enumValues).not.toContain("United States");
+    expect(recorded.params.find((p) => p.type === "boolean")).toMatchObject({ required: true });
+    const out = buildPlan({ ...cafe, country: "United States" }, ctx(store({ draft: recorded })));
+    expect(out.type, JSON.stringify(out)).toBe("plan");
+    const action = out.type === "plan" ? out.plan.actions[0] : undefined;
+    expect(action?.kind).toBe("computer_use");
+    expect(action?.kind === "computer_use" ? action.params : {}).toMatchObject({
+      end_customer_company: "Café Aurora Ltda.",
+      country: "United States",
+      end_customer_agreed_to_be_contacted: true,
+    });
+  });
+});
 
 describe("buildPlan: register_deal", () => {
   it("replays the active Caravela skill with params from the Understanding, never est_value", () => {

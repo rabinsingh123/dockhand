@@ -334,7 +334,9 @@ async function compileRun(
 ): Promise<Compiled> {
   const { runId, trace, action, draft, portal } = o;
   try {
-    const specs = mergeSpecs(draft?.params ?? [], inferSpecs(action.params));
+    // Enum values in a draft are what the video showed: examples, never the list a skill accepts.
+    const draftSpecs = (draft?.params ?? []).map(({ enumValues: _shown, ...p }) => p);
+    const specs = mergeSpecs(draftSpecs, inferSpecs(action.params));
     const { skill: body0, warnings } = compile(trace, {
       name: action.compileAs,
       title: draft?.title ?? `${portal.name} task`,

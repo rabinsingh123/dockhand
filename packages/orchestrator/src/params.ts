@@ -132,7 +132,16 @@ function coerce(spec: ParamSpec, raw: unknown): ParamValue | null {
   }
 }
 
-function finish(specs: ParamSpec[], found: Map<string, unknown>): Mapped {
+export interface MapOptions {
+  /**
+   * The specs come from a teach draft: its enum values are what the video happened to show (examples, not the
+   * allowed set; the portal decides), and a required checkbox no request field maps to is a constant tick
+   * (the compiled program checks it), never a question for the rep.
+   */
+  fromDraft?: boolean;
+}
+
+function finish(specs: ParamSpec[], found: Map<string, unknown>, o: MapOptions = {}): Mapped {
   const params: Record<string, ParamValue> = {};
   const missing: ParamSpec[] = [];
   const rejected: Mapped["rejected"] = [];
@@ -141,13 +150,17 @@ function finish(specs: ParamSpec[], found: Map<string, unknown>): Mapped {
     let value = coerce(spec, raw);
     if (value !== null && spec.type === "enum" && typeof value === "string") {
       const option = matchEnum(value, spec.enumValues);
-      if (option === null) {
+      if (option !== null) value = option;
+      else if (!o.fromDraft) {
         rejected.push({ spec, value });
         continue;
       }
-      value = option;
     }
     if (value === null) {
+      if (o.fromDraft && spec.type === "boolean" && spec.required) {
+        params[spec.name] = true;
+        continue;
+      }
       if (spec.required) missing.push(spec);
       continue;
     }
@@ -157,7 +170,7 @@ function finish(specs: ParamSpec[], found: Map<string, unknown>): Mapped {
 }
 
 /** Skill or draft params filled from what the rep sent. */
-export function paramsFromUnderstanding(specs: ParamSpec[], u: Understanding): Mapped {
+export function paramsFromUnderstanding(specs: ParamSpec[], u: Understanding, o: MapOptions = {}): Mapped {
   const found = new Map<string, unknown>();
   for (const spec of specs) {
     for (const [field, aliases] of Object.entries(UNDERSTANDING_ALIASES)) {
@@ -168,7 +181,7 @@ export function paramsFromUnderstanding(specs: ParamSpec[], u: Understanding): M
       break;
     }
   }
-  return finish(specs, found);
+  return finish(specs, found, o);
 }
 
 /** The company profile as run params: camelCase keys become snake_case; "true"/"false" become booleans. */
