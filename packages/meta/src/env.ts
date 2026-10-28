@@ -22,4 +22,6 @@ export interface GatewayEnv extends RecorderDeps {
   disableParallelToolCalls: boolean;
   /** How computer-use sessions keep their conversation unless a session asks otherwise. */
   computerUseState: CuState;
+  /** A computer-use turn slower than this is sent once more (0: never). */
+  computerUseSlowMs: number;
 }

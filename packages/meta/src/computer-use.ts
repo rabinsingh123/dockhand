@@ -290,7 +290,7 @@ function replyInput(reply: CuReply, imageUrl: string | undefined): Item[] {
 
 async function post(env: GatewayEnv, body: Item, chained: boolean, scope: RequestScope) {
   try {
-    return await env.meta.postJson("/responses", body, scope);
+    return await withSlowRetry(env, scope, (s) => env.meta.postJson("/responses", body, s));
   } catch (err) {
     const d = providerErrorDetail(err);
     const chainLag =
@@ -301,6 +301,29 @@ async function post(env: GatewayEnv, body: Item, chained: boolean, scope: Reques
     env.log.warn("previous response not found yet; retrying once", { retryInMs: CHAIN_LAG_RETRY_MS });
     await env.sleep(CHAIN_LAG_RETRY_MS, scope.signal);
     return env.meta.postJson("/responses", body, scope);
+  }
+}
+
+/**
+ * Live, one computer-use turn in ~190 took 108 s (the p99 was ~21 s), which alone spends a whole first-run
+ * or repair budget. A turn request is idempotent (stateless replay, or a new response off the same
+ * previous_response_id), so one that outlives env.computerUseSlowMs is abandoned and sent once more, when the
+ * call's own deadline leaves room for it.
+ */
+async function withSlowRetry<T>(
+  env: GatewayEnv,
+  scope: RequestScope,
+  send: (s: RequestScope) => Promise<T>,
+): Promise<T> {
+  const slowMs = env.computerUseSlowMs;
+  if (!(slowMs > 0) || scope.deadlineAt - Date.now() < slowMs * 2) return send(scope);
+  const slow = AbortSignal.timeout(slowMs);
+  try {
+    return await send({ signal: AbortSignal.any([scope.signal, slow]), deadlineAt: Date.now() + slowMs });
+  } catch (err) {
+    if (!slow.aborted || scope.signal.aborted) throw err;
+    env.log.warn("computer-use turn is slow; sending it once more", { afterMs: slowMs });
+    return send(scope);
   }
 }
 

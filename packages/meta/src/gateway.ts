@@ -37,6 +37,8 @@ export interface ModelGatewayDeps {
    * previous_response_id. Live, chained turns took 9-11 s against 2.4-3.2 s stateless (meta-api-notes.md).
    */
   computerUseState?: CuState;
+  /** A computer-use turn slower than this is abandoned and sent once more. Default 40 s; 0 turns it off. */
+  computerUseSlowMs?: number;
   /** Transport retry tuning (tests pass a no-op sleep). */
   retry?: Partial<RetryPolicy>;
 }
@@ -97,6 +99,7 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
     sleep: retry.sleep ?? DEFAULT_RETRY_POLICY.sleep,
     disableParallelToolCalls: deps.disableParallelToolCalls ?? false,
     computerUseState: deps.computerUseState ?? "stateless",
+    computerUseSlowMs: deps.computerUseSlowMs ?? 40_000,
   };
 
   if (config.openWeights.apiKey && !openWeightsPrices(config.openWeights)) {

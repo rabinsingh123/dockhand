@@ -53,6 +53,7 @@ export interface WorldOptions {
   cassetteDir?: string;
   disableParallelToolCalls?: boolean;
   computerUseState?: CuState;
+  computerUseSlowMs?: number;
   openWeights?: Partial<MetaConfig["openWeights"]>;
   metaApiKey?: string;
   /** Replaces fetch (cassette tests pass one that fails on any network use). */
@@ -99,6 +100,7 @@ export async function makeWorld(opts: WorldOptions = {}): Promise<World> {
     ...(opts.cassetteDir ? { cassetteDir: opts.cassetteDir } : {}),
     ...(opts.disableParallelToolCalls ? { disableParallelToolCalls: true } : {}),
     ...(opts.computerUseState ? { computerUseState: opts.computerUseState } : {}),
+    ...(opts.computerUseSlowMs !== undefined ? { computerUseSlowMs: opts.computerUseSlowMs } : {}),
     retry: {
       sleep: async (ms) => {
         sleeps.push(ms);

@@ -799,3 +799,21 @@ describe("computer use: a model the API refuses the computer tool for", () => {
     expect(world.ledger.rows[0]?.costUsd).toBe(0);
   });
 });
+
+describe("computer use: a turn that hangs", () => {
+  it("is abandoned after computerUseSlowMs and sent once more", async () => {
+    world = await makeWorld({ computerUseSlowMs: 150 });
+    world.server.on(
+      "/v1/responses",
+      { delayMs: 2_000, json: responseBody([messageItem("late")], { id: "resp_slow" }) },
+      { json: responseBody([messageItem("done")], { id: "resp_2" }) },
+    );
+    const turns = await open().send(
+      { kind: "start", task: "t", screenshot: pngBytes() },
+      ctx("cu_first_run"),
+    );
+    expect(turns).toEqual([{ kind: "final", text: "done" }]);
+    expect(world.server.requestsTo("/v1/responses")).toHaveLength(2);
+    expect(world.ledger.rows).toHaveLength(1);
+  });
+});
