@@ -1,0 +1,103 @@
+{
+ "draft": {
+  "name": "create_lead",
+  "title": "Create Lead",
+  "portalId": "espocrm",
+  "startUrl": "http://127.0.0.1:8090/Leads",
+  "goal": "Create a new lead record with contact, account, location, and opportunity details.",
+  "steps": [
+   "On the Leads list page, click '+ Create Lead' in the top-right corner.",
+   "On the Leads > create form, enter {{first_name}} in the First Name field under Name.",
+   "Enter {{last_name}} in the Last Name field under Name.",
+   "Enter {{account_name}} in the Account Name field.",
+   "Enter {{email}} in the Email field.",
+   "Enter {{title}} in the Title field.",
+   "Enter {{website}} in the Website field.",
+   "Under Address, enter {{city}} in the City field.",
+   "Enter {{country}} in the Country field.",
+   "Scroll down to Details and enter {{opportunity_amount}} in the Opportunity Amount field.",
+   "Click Save."
+  ],
+  "params": [
+   {
+    "name": "first_name",
+    "type": "string",
+    "required": true,
+    "description": "Lead's first name"
+   },
+   {
+    "name": "last_name",
+    "type": "string",
+    "required": true,
+    "description": "Lead's last name"
+   },
+   {
+    "name": "account_name",
+    "type": "string",
+    "required": false,
+    "description": "Account / company name for the lead"
+   },
+   {
+    "name": "email",
+    "type": "email",
+    "required": false,
+    "description": "Lead's email address"
+   },
+   {
+    "name": "title",
+    "type": "string",
+    "required": false,
+    "description": "Lead's job title"
+   },
+   {
+    "name": "website",
+    "type": "string",
+    "required": false,
+    "description": "Account website"
+   },
+   {
+    "name": "city",
+    "type": "string",
+    "required": false,
+    "description": "City in the lead's address"
+   },
+   {
+    "name": "country",
+    "type": "string",
+    "required": false,
+    "description": "Country in the lead's address"
+   },
+   {
+    "name": "opportunity_amount",
+    "type": "number",
+    "required": false,
+    "description": "Opportunity amount in USD"
+   }
+  ],
+  "commitStep": "Save",
+  "success": "The lead detail page opens (Leads > lead's full name) showing the created lead in Overview and Details, including its name, account name, email, title, website, address, and opportunity amount, with Status displayed and a Created timestamp.",
+  "observedValues": {
+   "account_name": "Cerrado Café",
+   "city": "Goiânia",
+   "country": "Brazil",
+   "email": "helena.prado@cerradocafe.example",
+   "first_name": "Helena",
+   "last_name": "Prado",
+   "opportunity_amount": "36,000.00",
+   "title": "Purchasing Lead",
+   "website": "cerradocafe.example"
+  }
+ },
+ "map": {
+  "account_name": "account_name",
+  "city": "city",
+  "country": "country",
+  "email": "email",
+  "first_name": "first_name",
+  "last_name": "last_name",
+  "title": "title",
+  "website": "website",
+  "opportunity_amount": "opportunity_amount"
+ },
+ "unmapped": []
+}

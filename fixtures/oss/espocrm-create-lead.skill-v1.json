@@ -1,0 +1,421 @@
+{
+ "note": "Compiled from a live first run on EspoCRM 10.0.11 guided by the Muse Wonder draft of a 31 s teach recording (scripts/oss/espocrm-teach.ts). Replay: scripts/live/espocrm-run.ts --replay <this file>.",
+ "skill": {
+  "name": "espocrm_create_lead",
+  "title": "Create a Lead in EspoCRM",
+  "portalId": "espocrm",
+  "params": [
+   {
+    "name": "first_name",
+    "type": "string",
+    "required": true,
+    "description": "Lead's first name",
+    "example": "Amara"
+   },
+   {
+    "name": "last_name",
+    "type": "string",
+    "required": true,
+    "description": "Lead's last name",
+    "example": "Duarte-0730"
+   },
+   {
+    "name": "account_name",
+    "type": "string",
+    "required": true,
+    "description": "Lead's company name",
+    "example": "Altiplano Energia"
+   },
+   {
+    "name": "email",
+    "type": "email",
+    "required": true,
+    "description": "Lead's email address",
+    "example": "amara.duarte-0730@altiplano-energia.example"
+   },
+   {
+    "name": "title",
+    "type": "string",
+    "required": true,
+    "description": "Lead's job title",
+    "example": "IT Director"
+   },
+   {
+    "name": "website",
+    "type": "string",
+    "required": true,
+    "description": "Company website",
+    "example": "altiplano-energia.example"
+   },
+   {
+    "name": "city",
+    "type": "string",
+    "required": true,
+    "description": "Lead's city",
+    "example": "Medellín"
+   },
+   {
+    "name": "country",
+    "type": "string",
+    "required": true,
+    "description": "Lead's country",
+    "example": "Colombia"
+   },
+   {
+    "name": "opportunity_amount",
+    "type": "number",
+    "required": true,
+    "description": "Opportunity amount in USD",
+    "example": "31500"
+   }
+  ],
+  "steps": [
+   {
+    "op": "goto",
+    "intent": "Open the Create Lead page",
+    "url": "http://127.0.0.1:8090/#Lead/create",
+    "id": "s1"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the lead's first name in the First Name field",
+    "target": {
+     "candidates": [
+      {
+       "by": "role",
+       "role": "textbox",
+       "name": "First Name",
+       "exact": true
+      },
+      {
+       "by": "placeholder",
+       "value": "First Name"
+      },
+      {
+       "by": "css",
+       "value": "div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div > div > div:nth-of-type(2) > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 173,
+       "y": 220,
+       "w": 118,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "name": "First Name",
+      "placeholder": "First Name",
+      "value": "Amara",
+      "section": "Overview"
+     }
+    },
+    "value": "{{first_name}}",
+    "id": "s2"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the lead's last name in the Last Name field",
+    "target": {
+     "candidates": [
+      {
+       "by": "role",
+       "role": "textbox",
+       "name": "Last Name",
+       "exact": true
+      },
+      {
+       "by": "placeholder",
+       "value": "Last Name"
+      },
+      {
+       "by": "css",
+       "value": "div:nth-of-type(1) > div:nth-of-type(1) > div > div > div:nth-of-type(3) > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 297,
+       "y": 220,
+       "w": 149,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "name": "Last Name",
+      "placeholder": "Last Name",
+      "value": "Duarte-0730",
+      "section": "Overview"
+     }
+    },
+    "value": "{{last_name}}",
+    "id": "s3"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the company name in the Account Name field",
+    "target": {
+     "candidates": [
+      {
+       "by": "css",
+       "value": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 461,
+       "y": 220,
+       "w": 365,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "label": "Account Name",
+      "value": "Altiplano Energia",
+      "section": "Overview"
+     }
+    },
+    "value": "{{account_name}}",
+    "id": "s4"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the email address in the Email field",
+    "target": {
+     "candidates": [
+      {
+       "by": "css",
+       "value": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div > div > div > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 80,
+       "y": 295,
+       "w": 295,
+       "h": 36
+      },
+      "inputType": "email",
+      "role": "textbox",
+      "label": "Email",
+      "value": "amara.duarte-0730@altiplano-energia.example",
+      "section": "Overview"
+     }
+    },
+    "value": "{{email}}",
+    "id": "s5"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the job title in the Title field",
+    "target": {
+     "candidates": [
+      {
+       "by": "css",
+       "value": "div:nth-of-type(2) > div:nth-of-type(3) > div:nth-of-type(1) > div > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 80,
+       "y": 409,
+       "w": 365,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "label": "Title",
+      "value": "IT Director",
+      "section": "Overview"
+     }
+    },
+    "value": "{{title}}",
+    "id": "s6"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the company website in the Website field",
+    "target": {
+     "candidates": [
+      {
+       "by": "css",
+       "value": "div:nth-of-type(3) > div:nth-of-type(2) > div > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 461,
+       "y": 409,
+       "w": 365,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "label": "Website",
+      "value": "altiplano-energia.example",
+      "section": "Overview"
+     }
+    },
+    "value": "{{website}}",
+    "id": "s7"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the city in the City field",
+    "target": {
+     "candidates": [
+      {
+       "by": "role",
+       "role": "textbox",
+       "name": "City",
+       "exact": true
+      },
+      {
+       "by": "placeholder",
+       "value": "City"
+      },
+      {
+       "by": "css",
+       "value": "div:nth-of-type(4) > div:nth-of-type(1) > div > div > div:nth-of-type(1) > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 80,
+       "y": 523,
+       "w": 118,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "name": "City",
+      "placeholder": "City",
+      "value": "Medellín",
+      "section": "Overview"
+     }
+    },
+    "value": "{{city}}",
+    "id": "s8"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the country in the Country field",
+    "target": {
+     "candidates": [
+      {
+       "by": "role",
+       "role": "textbox",
+       "name": "Country",
+       "exact": true
+      },
+      {
+       "by": "placeholder",
+       "value": "Country"
+      },
+      {
+       "by": "css",
+       "value": "div:nth-of-type(4) > div:nth-of-type(1) > div > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 80,
+       "y": 562,
+       "w": 365,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "name": "Country",
+      "placeholder": "Country",
+      "value": "Colombia",
+      "section": "Overview"
+     }
+    },
+    "value": "{{country}}",
+    "id": "s9"
+   },
+   {
+    "op": "fill",
+    "intent": "Enter the opportunity amount in the Opportunity Amount field",
+    "target": {
+     "candidates": [
+      {
+       "by": "css",
+       "value": "span:nth-of-type(1) > input"
+      }
+     ],
+     "fingerprint": {
+      "tag": "input",
+      "bbox": {
+       "x": 80,
+       "y": 760,
+       "w": 315,
+       "h": 36
+      },
+      "inputType": "text",
+      "role": "textbox",
+      "label": "Opportunity Amount",
+      "value": "31,500",
+      "section": "Details"
+     }
+    },
+    "value": "{{opportunity_amount|number:en-US}}",
+    "id": "s10"
+   },
+   {
+    "op": "click",
+    "intent": "Click the Save button to create the lead",
+    "target": {
+     "candidates": [
+      {
+       "by": "role",
+       "role": "button",
+       "name": "Save",
+       "exact": true
+      },
+      {
+       "by": "css",
+       "value": "div > div:nth-of-type(1) > div > div:nth-of-type(1) > button:nth-of-type(1)"
+      }
+     ],
+     "fingerprint": {
+      "tag": "button",
+      "bbox": {
+       "x": 65,
+       "y": 98,
+       "w": 65,
+       "h": 36
+      },
+      "role": "button",
+      "name": "Save",
+      "text": "Save",
+      "section": "Leadscreate"
+     }
+    },
+    "commit": true,
+    "id": "s11"
+   }
+  ],
+  "success": {
+   "extract": [],
+   "textPattern": "created this lead"
+  },
+  "createdFrom": {
+   "kind": "video",
+   "traceRunId": "live-espo-01M61PHKAXJXBVD2R0Z2F90730"
+  },
+  "changelog": "",
+  "version": 1,
+  "parentVersion": null
+ }
+}
