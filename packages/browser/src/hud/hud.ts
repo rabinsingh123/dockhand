@@ -648,7 +648,7 @@ export class Hud {
       detail: id ?? (r.errorCode ? r.errorCode.toLowerCase().replace(/_/g, " ") : verified),
       ticker:
         r.outcome === "success" || r.outcome === "dry_run_ok"
-          ? [verified, `${this.calls} model call${this.calls === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
+          ? verified || "Every step matched"
           : clip(r.error ?? "", 110),
     };
     this.heal = null;

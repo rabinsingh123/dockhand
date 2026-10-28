@@ -127,10 +127,15 @@
 
   // ---------- frame loop ----------
   let lastClockText = '';
+  let lastHref = location.href;
   function tick() {
     running = false;
     if (!host) return;
     if (!host.isConnected) mount();
+    if (location.href !== lastHref) {
+      lastHref = location.href;
+      for (const [k, it] of items) if (it.target && !(it.target instanceof Element)) { it.remove(); items.delete(k); }
+    }
     const t = now();
     let busy = false;
     if (cur.tween) {
