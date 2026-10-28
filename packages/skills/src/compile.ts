@@ -616,9 +616,32 @@ export function compile(trace: Trace, meta: CompileMeta): CompileResult {
   };
 }
 
+/**
+ * generalizeId, plus: a letter run that equals one of the run's values (a tenant in "SG-ACME-482913") becomes
+ * a letter class, so the check holds for every tenant instead of the one the first run used.
+ */
+export function generalizeIdFor(token: string, params: Record<string, ParamValue>): string {
+  const values = new Set(
+    Object.values(params)
+      .filter((v): v is string => typeof v === "string" && /^[A-Za-z]{3,}$/.test(v))
+      .map((v) => v.toLowerCase()),
+  );
+  return token.replace(/\d+|\D+/g, (run) => {
+    if (/^\d/.test(run)) return `\\d{${run.length}}`;
+    return run.replace(/[A-Za-z]+/g, (letters) => {
+      if (!values.has(letters.toLowerCase())) return escapeRegex(letters);
+      return letters === letters.toUpperCase()
+        ? "[A-Z]+"
+        : letters === letters.toLowerCase()
+          ? "[a-z]+"
+          : "[A-Za-z]+";
+    });
+  });
+}
+
 function successCheck(trace: Trace, commit: TraceStep | undefined): Skill["success"] {
   const token = pickIdToken(trace);
-  const idRegex = token ? generalizeId(token) : undefined;
+  const idRegex = token ? generalizeIdFor(token, trace.params) : undefined;
   const finalPath = pathOf(trace.final.url);
   const beforePath = pathOf(commit?.urlBefore ?? trace.startUrl);
   let urlIncludes: string | undefined;
@@ -626,8 +649,12 @@ function successCheck(trace: Trace, commit: TraceStep | undefined): Skill["succe
     const decoded = decodeURIComponent(finalPath);
     const at = token ? decoded.indexOf(token) : -1;
     if (token && at >= 0) {
+      // The path up to the ID, with run values templated ("/t/{{tenant}}/register/complete/"); the ID's own
+      // letters only when no run value hides in them.
+      const prefix = templateUrl(decoded.slice(0, at), trace.params).template;
       const literal = /^\D*/.exec(token)?.[0] ?? "";
-      urlIncludes = decoded.slice(0, at) + literal;
+      const literalIsFixed = generalizeIdFor(literal, trace.params) === escapeRegex(literal);
+      urlIncludes = prefix + (literalIsFixed ? literal : "");
     } else {
       urlIncludes = stablePath(templateUrl(finalPath, trace.params).template) || undefined;
     }

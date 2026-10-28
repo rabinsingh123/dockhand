@@ -1,7 +1,14 @@
 import { Skill, type Trace } from "@dockhand/core";
 import { describe, expect, it } from "vitest";
 import { PARTNER_PARAM_SPECS, PARTNER_PARAMS, partnerTrace, T } from "./__fixtures__/partner-trace.ts";
-import { compile, generalizeId, playwrightKey, rebaseSkill, slotParamName } from "./compile.ts";
+import {
+  compile,
+  generalizeId,
+  generalizeIdFor,
+  playwrightKey,
+  rebaseSkill,
+  slotParamName,
+} from "./compile.ts";
 import { renderTemplate } from "./template.ts";
 
 const meta = {
@@ -215,6 +222,13 @@ describe("compile helpers", () => {
   ])("generalizeId(%s)", (token, regex) => {
     expect(generalizeId(token)).toBe(regex);
     expect(new RegExp(regex).test(token)).toBe(true);
+  });
+
+  it("keeps run values out of the ID check, so it holds for every tenant", () => {
+    const regex = generalizeIdFor("SG-ACME-004211", { tenant: "acme", invite_code: "ACME-7731" });
+    expect(regex).toBe(String.raw`SG-[A-Z]+-\d{6}`);
+    expect(new RegExp(regex).test("SG-GLOBEX-120934")).toBe(true);
+    expect(generalizeIdFor("NW-REG-48213", { company: "Rega" })).toBe(String.raw`NW-REG-\d{5}`);
   });
 
   it.each([
