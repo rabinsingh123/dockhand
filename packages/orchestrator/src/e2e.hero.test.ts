@@ -205,7 +205,9 @@ describe("hero loop through WhatsApp", () => {
     const receipt = outbox()
       .filter((r) => r.type === "image")
       .at(-2);
-    expect(receipt?.caption).toContain("Built with Muse Spark Open");
+    expect(receipt?.caption).toContain("Replay · repaired");
+    // The heal here is a stand-in (provider "fake"), so no Muse Spark Open credit.
+    expect(receipt?.caption).not.toContain("Built with Muse Spark Open");
     expect(sys.portals.partner.submissions().at(-1)?.version).toBe("v2");
   }, 180_000);
 

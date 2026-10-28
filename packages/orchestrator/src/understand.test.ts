@@ -1,4 +1,6 @@
+import { createLedger, openDb } from "@dockhand/core";
 import { describe, expect, it } from "vitest";
+import { realOpenWeights } from "./flows/browser.ts";
 import { receiptCaption, receiptHtml, seconds, usd } from "./tools/receipts.ts";
 import { blankUnderstanding, normalizeUnderstanding, understandingRequest } from "./understand.ts";
 
@@ -108,5 +110,41 @@ describe("receipts", () => {
       "$1.50",
     ]);
     expect([0.04, 3.12, 59.96, 125].map(seconds)).toEqual(["0.0 s", "3.1 s", "1 min 0 s", "2 min 5 s"]);
+  });
+});
+
+describe("Muse Spark Open credit", () => {
+  it("is earned only by a real Baseten heal call, never by stand-ins, scripted or cassette rows", () => {
+    const db = openDb(":memory:");
+    try {
+      const ledger = createLedger(db);
+      const row = (provider: string, runId: string) =>
+        ledger.record({
+          purpose: "heal_match",
+          provider: provider as never,
+          model: "meta-models/muse-spark-open",
+          runId,
+          inputTokens: 1,
+          cachedInputTokens: 0,
+          outputTokens: 1,
+          images: 0,
+          latencyMs: 1,
+          costUsd: 0,
+          status: "ok",
+        });
+      row("fake", "R1");
+      row("cassette", "R2");
+      row("scripted", "R3");
+      row("baseten", "R4");
+      const env = { db };
+      expect(["R1", "R2", "R3", "R4"].map((r) => realOpenWeights(env, "J", r))).toEqual([
+        false,
+        false,
+        false,
+        true,
+      ]);
+    } finally {
+      db.close();
+    }
   });
 });

@@ -59,6 +59,20 @@ const RUNG_WORDS: Record<HealRung, string> = {
 
 export const OPEN_WEIGHTS_RUNG: HealRung = "open_weights";
 
+/**
+ * "Built with Muse Spark Open" only when Baseten really served a heal for this job: never for the fake
+ * stand-in, scripted models or cassette replays (those record provider fake, scripted or cassette).
+ */
+export function realOpenWeights(env: Pick<FlowEnv, "db">, jobId: string, runId: string): boolean {
+  return (
+    env.db.raw
+      .prepare(
+        "SELECT 1 FROM model_calls WHERE purpose = 'heal_match' AND provider = 'baseten' AND (job_id = ? OR run_id = ?) LIMIT 1",
+      )
+      .get(jobId, runId) !== undefined
+  );
+}
+
 function portalOf(env: FlowEnv, portalId: string): PortalTarget {
   const portal = env.portals[portalId];
   if (!portal) throw new DockhandError("TOOL_ERROR", `portal "${portalId}" is not configured`);
@@ -507,10 +521,10 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
         ...(result.verification
           ? { verified: { matched: result.verification.matched, checked: result.verification.checked } }
           : {}),
-        usedOpenWeights: rungs.includes(OPEN_WEIGHTS_RUNG),
+        usedOpenWeights: realOpenWeights(env, job.id, runId),
         screenshot: await screenshotBytes(env, result.finalScreenshot),
       });
-      await sendImage(env, job, receipt.image, receiptCaption(receipt, rungs.includes(OPEN_WEIGHTS_RUNG)));
+      await sendImage(env, job, receipt.image, receiptCaption(receipt, realOpenWeights(env, job.id, runId)));
       if (result.patched)
         await promotePatch(env, job, {
           stored,
@@ -604,7 +618,7 @@ async function promotePatch(
       lines: saved.changelog.split("\n").filter((l) => l.trim() !== ""),
       rungs: o.rungs.map((r) => RUNG_WORDS[r]),
       canary: { passed: canary.passed, total: canary.total },
-      usedOpenWeights: o.rungs.includes(OPEN_WEIGHTS_RUNG),
+      usedOpenWeights: realOpenWeights(env, job.id, o.runId),
     }),
   );
   await sendImage(
