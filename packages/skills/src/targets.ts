@@ -190,3 +190,28 @@ export function defaultIntent(step: StepDraft): string {
       return `Read ${step.name} from the page`;
   }
 }
+
+const TEMPLATE_PARAM = /\{\{\s*([a-z][a-z0-9_]*)/g;
+
+/** Param names a target templates in its candidates or fingerprint (a radio picked by value: "{{product}}"). */
+export function targetParams(t: Target | undefined): string[] {
+  if (!t) return [];
+  const text = JSON.stringify([t.candidates, t.fingerprint.name ?? "", t.fingerprint.label ?? ""]);
+  return [...new Set([...text.matchAll(TEMPLATE_PARAM)].map((m) => m[1] as string))];
+}
+
+/**
+ * The target of "check the option named {{param}}" in a radio group: the dropdown a select step used became
+ * radio buttons. Unlike a check on one fixed option, it picks whatever value the next run brings.
+ */
+export function optionPickTarget(fresh: Target, param: string, groupLabel: string | undefined): Target {
+  const name = `{{${param}}}`;
+  const { text: _text, value: _value, ...fp } = fresh.fingerprint;
+  return {
+    candidates: [
+      { by: "role", role: "radio", name, exact: true },
+      { by: "label", value: name, exact: true },
+    ],
+    fingerprint: { ...fp, role: "radio", name, ...(groupLabel ? { label: groupLabel } : {}) },
+  };
+}

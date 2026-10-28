@@ -29,10 +29,12 @@ import {
   interactionClass,
   isCommitStep,
   mergeCandidates,
+  optionPickTarget,
   stepTarget,
+  targetParams,
   withStepTarget,
 } from "./targets.ts";
-import { isFileValue, renderTemplate, templateParams } from "./template.ts";
+import { isFileValue, normalizeText, renderTemplate, templateParams } from "./template.ts";
 
 export const ElementPick = z.object({
   index: z.number().int().nullable(),
@@ -186,8 +188,35 @@ function boundParams(steps: Step[]): Set<string> {
     if (s.op === "fill") for (const n of templateParams(s.value)) out.add(n);
     if (s.op === "select") for (const n of templateParams(s.option)) out.add(n);
     if (s.op === "upload") out.add(s.fileParam);
+    if (s.op === "check") for (const n of targetParams(s.target)) out.add(n);
   }
   return out;
+}
+
+/**
+ * A repair that ticked the radio button named like the value a select or fill step writes (the dropdown became
+ * radio buttons): kept as "check the option named {{param}}", so it holds for any value. Null otherwise.
+ */
+function asOptionPick(original: Step, replacement: Step[], params: Record<string, unknown>): Step[] | null {
+  if (original.op !== "select" && original.op !== "fill") return null;
+  const template = original.op === "select" ? original.option : original.value;
+  const [param, ...more] = templateParams(template);
+  if (!param || more.length > 0 || template.trim() !== `{{${param}}}`) return null;
+  const value = stepValue(original, params);
+  const writes = replacement.filter(
+    (s) => s.op === "fill" || s.op === "select" || s.op === "check" || s.op === "click",
+  );
+  const pick = writes[0];
+  if (writes.length !== 1 || !pick || (pick.op !== "check" && pick.op !== "click")) return null;
+  const fp = pick.target.fingerprint;
+  if (
+    fp.role !== "radio" ||
+    value === null ||
+    normalizeText(fp.name ?? fp.label ?? "") !== normalizeText(value)
+  )
+    return null;
+  const target = optionPickTarget(pick.target, param, displayName(stepTarget(original)?.fingerprint));
+  return [{ id: original.id, intent: original.intent, op: "check", target, checked: true }];
 }
 
 /** Repairs may not change values: the replacement writes exactly the params the step wrote, and no literals. */
@@ -304,15 +333,16 @@ export function createCuRepairer(opts: CuRepairerOptions): Repairer {
     if (steps.length === 0) return { ok: false, rung, reason: "the repair did nothing replayable", costUsd };
     if (steps.some(isCommitStep))
       return { ok: false, rung, reason: "the repair submitted the form", costUsd };
-    const changed = keepsValues(step, steps);
+    const kept = asOptionPick(step, steps, req.params) ?? steps;
+    const changed = keepsValues(step, kept);
     if (changed) return { ok: false, rung, reason: changed, costUsd };
     return {
       ok: true,
       rung,
-      steps,
+      steps: kept,
       costUsd,
       trace: r.trace,
-      note: steps.map((s) => s.intent).join("; "),
+      note: kept.map((s) => s.intent).join("; "),
     };
   };
   return Object.assign(repair, { rung: "computer_use" as const }); // the rung, for the demo HUD

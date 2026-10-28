@@ -54,12 +54,15 @@ import {
   isCommitStep,
   mergeCandidates,
   nextStepId,
+  optionPickTarget,
   stepTarget,
+  targetParams,
   withStepTarget,
 } from "./targets.ts";
 import {
   hasTemplate,
   isFileValue,
+  normalizeText,
   renderRegexTemplate,
   renderTemplate,
   renderUrlTemplate,
@@ -105,6 +108,8 @@ interface Written {
   intended: string;
   /** Read right after writing; used when the field is no longer on the page at read-back. */
   observed: string | undefined;
+  /** What the read-back shows once verified (the option a radio pick chose, instead of "true"). */
+  display?: string;
 }
 
 function toBool(v: string | undefined): boolean | undefined {
@@ -136,6 +141,9 @@ function stepStrings(step: Step): string[] {
       return [`{{${step.fileParam}}}`];
     case "waitFor":
       return [step.urlIncludes ?? "", step.text ?? ""];
+    case "check":
+    case "click":
+      return targetParams(step.target).map((n) => `{{${n}}}`);
     default:
       return [];
   }
@@ -430,19 +438,32 @@ class SkillRun {
   private async remember(step: Step, locator: Locator, intended: string): Promise<void> {
     const target = stepTarget(step);
     const observed = await readFieldValue(locator).catch(() => undefined);
-    this.written.set(step.id, { locator, label: displayName(target?.fingerprint), intended, observed });
+    const picked =
+      step.op === "check" && targetParams(target).length > 0 ? target?.fingerprint.name : undefined;
+    this.written.set(step.id, {
+      locator,
+      label: displayName(target?.fingerprint),
+      intended,
+      observed,
+      ...(picked ? { display: renderTemplate(picked, this.values) } : {}),
+    });
   }
 
   // ---------- resolution, free heals, repair ----------
 
   private renderTarget(t: Target): Target {
-    if (!t.candidates.some((c) => hasTemplate(JSON.stringify(c)))) return t;
+    if (!hasTemplate(JSON.stringify(t))) return t;
     const r = (s: string) => renderTemplate(s, this.values);
+    const fp = t.fingerprint;
     return {
-      ...t,
       candidates: t.candidates.map((c) =>
         c.by === "role" ? { ...c, name: r(c.name) } : c.by === "css" ? c : { ...c, value: r(c.value) },
       ),
+      fingerprint: {
+        ...fp,
+        ...(fp.name ? { name: r(fp.name) } : {}),
+        ...(fp.label ? { label: r(fp.label) } : {}),
+      },
     };
   }
 
@@ -506,6 +527,15 @@ class SkillRun {
         `${failure.detail}; a repaired step is not repaired twice`,
       );
     }
+    // Free: a dropdown that became radio buttons (the option named like the value), before any paid rung.
+    const swapped = await this.widgetSwap(step);
+    if (swapped) {
+      this.steps[idx] = swapped;
+      this.changed = true;
+      this.origin.set(step.id, { status: "healed", rung: "similarity" });
+      this.notes.push({ stepId: step.id, rung: "similarity" });
+      return { next: idx };
+    }
     for (const repairer of this.hooks.repairers ?? []) {
       let res: RepairResult;
       try {
@@ -550,6 +580,62 @@ class SkillRun {
       return { next: idx };
     }
     return this.stop(idx, step, started, "failed", failure.code, [failure.detail, ...reasons].join("; "));
+  }
+
+  /**
+   * Widget swap: the dropdown (or field) a step wrote is gone, and exactly one radio button is named like the
+   * value it writes. The step becomes "check the option named {{param}}" in that group, which holds for any
+   * value; the group must carry the old label, or the old label must be gone from the page. Read-back verifies
+   * the pick before any submit.
+   */
+  private async widgetSwap(step: Step): Promise<Step | null> {
+    if (step.op !== "select" && step.op !== "fill") return null;
+    const template = step.op === "select" ? step.option : step.value;
+    const [param, ...more] = templateParams(template);
+    if (!param || more.length > 0 || template.trim() !== `{{${param}}}`) return null;
+    let value: string;
+    try {
+      value = renderTemplate(template, this.values);
+    } catch {
+      return null;
+    }
+    if (!value.trim()) return null;
+    const radio = this.page.getByRole("radio", { name: value, exact: true });
+    if ((await radio.count().catch(() => 0)) !== 1) return null;
+    const oldLabel = displayName(stepTarget(step)?.fingerprint);
+    const group = await radio
+      .evaluate((el) => {
+        const g = el.closest('[role="radiogroup"], fieldset');
+        if (!g) return null;
+        const by = g.getAttribute("aria-labelledby");
+        const raw = by
+          ? by
+              .split(/s+/)
+              .map((id) => document.getElementById(id)?.textContent ?? "")
+              .join(" ")
+          : (g.getAttribute("aria-label") ?? g.querySelector("legend")?.textContent ?? "");
+        return raw
+          .replace(/s+/g, " ")
+          .replace(/[s*:]+$/, "")
+          .trim();
+      })
+      .catch(() => null);
+    if (!group || normalizeText(group) !== normalizeText(oldLabel)) {
+      const oldStillThere = await this.page
+        .getByText(oldLabel, { exact: true })
+        .count()
+        .catch(() => 1);
+      if (oldStillThere > 0) return null;
+    }
+    const fresh = await describeLocator(radio).catch(() => null);
+    if (!fresh) return null;
+    return {
+      id: step.id,
+      intent: step.intent,
+      op: "check",
+      target: optionPickTarget(fresh, param, group ?? oldLabel),
+      checked: true,
+    };
   }
 
   /** Replacement steps keep the failing step's id and intent first; extra steps get fresh ids. */
@@ -701,7 +787,7 @@ class SkillRun {
         (step.op === "check" ? toBool(actual) === toBool(w.intended) : valuesEquivalent(w.intended, actual));
       if (ok) matched++;
       else mismatches.push({ stepId: step.id, label: w.label, expected: w.intended, actual: actual ?? "" });
-      list.push({ label: w.label, value: actual ?? "" });
+      list.push({ label: w.label, value: ok && w.display ? w.display : (actual ?? "") });
       shown.push({
         stepId: step.id,
         locator: w.locator,

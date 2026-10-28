@@ -419,6 +419,34 @@ describe("runSkill on the partner portal", () => {
     }
   });
 
+  it("heals a dropdown that became radio buttons for free, picking the option by value", async () => {
+    const id = runId("radio");
+    const { hooks } = recordingHooks();
+    const { page, close } = await openPage({
+      ui: "v1",
+      mutation: { seed: 5, operators: ["combobox_to_radio"] },
+      runId: id,
+    });
+    try {
+      const params = freshParams({ company: "Ipê Roxo Ltda." });
+      const r = await runSkill(page, v1, params, hooks, options(id));
+      expect(r.error).toBeUndefined();
+      expect(r.outcome).toBe("success");
+      expect(r.steps).toContainEqual(expect.objectContaining({ status: "healed", rung: "similarity" }));
+      const pick = r.patched?.steps.find((s) => s.op === "check" && s.target.fingerprint.role === "radio");
+      expect(pick?.op === "check" ? pick.target.candidates[0] : undefined).toEqual({
+        by: "role",
+        role: "radio",
+        name: "{{product}}",
+        exact: true,
+      });
+      expect(r.verification?.mismatches).toEqual([]);
+      expect(portal.submissions({ runId: id })[0]?.fields).toEqual(expectedFields(params));
+    } finally {
+      await close();
+    }
+  });
+
   it("stops safely with needs_input when the rep gives no answer", async () => {
     const id = runId("noanswer");
     const { hooks } = recordingHooks({ askRep: async () => null });
