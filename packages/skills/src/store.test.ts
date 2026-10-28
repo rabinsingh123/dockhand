@@ -108,6 +108,19 @@ describe("createSkillStore", () => {
     expect(store.getDraft(id)).toEqual(draft);
   });
 
+  it("keeps the teach recording a draft came from", () => {
+    const id = store.saveDraft(draft, "01JJOB", "01JVIDEO");
+    const none = store.saveDraft(draft, "01JJOB");
+    const video = (draftId: string) =>
+      (
+        db.raw.prepare("SELECT video_artifact_id FROM skill_drafts WHERE id = ?").get(draftId) as {
+          video_artifact_id: string | null;
+        }
+      ).video_artifact_id;
+    expect(video(id)).toBe("01JVIDEO");
+    expect(video(none)).toBeNull();
+  });
+
   it("returns undefined for unknown skills", () => {
     expect(store.active("nope")).toBeUndefined();
     expect(store.get("nope", 1)).toBeUndefined();

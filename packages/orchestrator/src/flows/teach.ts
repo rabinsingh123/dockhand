@@ -93,7 +93,7 @@ export async function runTeach(
     );
   }
   draft = normalizeDraft(draft, env.portals);
-  const draftId = env.skills.saveDraft(draft, job.id);
+  const draftId = env.skills.saveDraft(draft, job.id, action.video.id);
   const card = await env.cards.card(job.id, teachCardHtml(draft, narration));
   const portalName = env.portals[draft.portalId]?.name ?? draft.portalId;
 

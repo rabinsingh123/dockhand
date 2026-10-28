@@ -36,7 +36,7 @@ export function createSkillStore(db: Db, clock: Clock = systemClock): SkillStore
       `SELECT name, version, active, json_extract(json, '$.title') AS title FROM skills ORDER BY name, version`,
     ),
     insertDraft: db.raw.prepare(
-      `INSERT INTO skill_drafts (id, name, json, job_id, status, created_at) VALUES (?, ?, ?, ?, 'draft', ?)`,
+      `INSERT INTO skill_drafts (id, name, json, job_id, video_artifact_id, status, created_at) VALUES (?, ?, ?, ?, ?, 'draft', ?)`,
     ),
     getDraft: db.raw.prepare("SELECT json FROM skill_drafts WHERE id = ?"),
     openDraftForPortal: db.raw.prepare(
@@ -129,10 +129,10 @@ export function createSkillStore(db: Db, clock: Clock = systemClock): SkillStore
       });
     },
 
-    saveDraft(d, jobId) {
+    saveDraft(d, jobId, videoArtifactId) {
       const draft = SkillDraft.parse(d);
       const id = ulid(clock);
-      sql.insertDraft.run(id, draft.name, JSON.stringify(draft), jobId, clock.now());
+      sql.insertDraft.run(id, draft.name, JSON.stringify(draft), jobId, videoArtifactId ?? null, clock.now());
       return id;
     },
 

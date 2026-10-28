@@ -185,7 +185,8 @@ export interface SkillStore {
     sourceRunId?: Id,
   ): Skill;
   activate(name: string, version: number): void; // rollback
-  saveDraft(d: SkillDraft, jobId: Id): Id;
+  /** `videoArtifactId`: the teach recording the draft came from (shown by the flight recorder). */
+  saveDraft(d: SkillDraft, jobId: Id, videoArtifactId?: Id): Id;
   getDraft(id: Id): SkillDraft | undefined;
   /** Draft for a portal that has not compiled yet, if any. */
   draftForPortal(portalId: string): { id: Id; draft: SkillDraft } | undefined;
