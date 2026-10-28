@@ -42,8 +42,8 @@ WhatsApp message ─► understand ─► plan ─► Approve ─► replay (0 m
 | Model | Job |
 |---|---|
 | Muse Voice Transcribe | Code-switched Portuguese/English voice notes |
-| Muse Spark 1.3 | Reading photos and PDFs, understanding requests, annotating compiled skills, first-run computer use |
-| Muse Wonder | Turning a screen recording into a skill draft; computer-use repair |
+| Muse Spark 1.3 | Reading photos and PDFs, understanding requests, annotating compiled skills, computer use (first runs and repairs) |
+| Muse Wonder | Turning a screen recording into a skill draft |
 | Muse Spark Open (via Baseten) | Heal rung: picks the replacement element from the page's accessibility list, text only |
 
 Every call is recorded in a ledger with tokens, images, latency and cost at Standard list prices. Receipts split intake cost (transcribing, reading) from execution cost.
@@ -52,7 +52,15 @@ Built with Muse Spark Open.
 
 ## Results so far
 
-Measured on the mock partner portal with **no model at all** (deterministic rungs only). Live-model numbers will be added here with model names, run counts and dates once they exist.
+Live, real Meta API calls at Standard list prices, on the mock partner portal (Oct 28, 2026; field-level ground truth from the portal's stored submission):
+
+| What | Model | Runs | Result |
+|---|---|---|---|
+| First run with computer use, deal registration | muse-spark-1.3, low effort | 3 | 3/3 correct, 13/13 fields each; 29–31 actions; 74–116 s; $0.11–$0.20 per run |
+| Heal rung 2 on a renamed submit button | Muse Spark Open (Baseten) | 4 | 4/4 healed, about 3 s and $0.002 each |
+| Heal rungs 2–3 on six seeded UI changes | Muse Spark Open, then muse-spark-1.3 | 6 | 4/6 healed; the 2 widget-type changes stopped before writing; 0 wrong submissions |
+
+Measured with **no model at all** (deterministic rungs only):
 
 | Suite | Runs | Result |
 |---|---|---|

@@ -16,7 +16,8 @@
     "format": "biome format --write .",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "preflight": "tsx apps/gateway/src/doctor.ts",
-    "eval": "tsx packages/evals/src/cli.ts"
+    "eval": "tsx packages/evals/src/cli.ts",
+    "tunnel": "tsx scripts/tunnel.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",

@@ -125,15 +125,16 @@ Every fix is verified by the harness before it is used (role and fingerprint for
 - The draft is saved; the first real request for that portal runs agentically, guided by the draft; its trace compiles v1.
 
 ### 2.2 First run (computer use)
-- Meta Responses API, native `computer` tool, `previous_response_id`, plus function tools `request_commit`, `attach_file`, `propose_target`.
+- Meta Responses API, native `computer` tool, plus function tools `request_commit`, `attach_file`, `propose_target`. Sessions are stateless (`store: false`, a bounded history resent each turn): measured live, a turn took 2.4–3.2 s this way and 9–11 s chained with `previous_response_id`. A turn slower than 40 s is sent once more.
 - Fixed viewport 1280×800, device scale factor 1, `scale: 'css'` screenshots, scrollbars hidden; every screenshot is asserted to be exactly 1280×800.
 - Each screenshot is paired with an element map. Before every click the harness re-resolves the element under the point; if it no longer matches what the batch intended, the batch stops.
 - Batches also stop on URL change, `scrollY` change, or a new dialog.
 - Trace capture before every action: `elementFromPoint` → nearest interactive ancestor → descriptor (accessible name from `ariaSnapshot`, label, testid, placeholder, section) → ranked candidates, keeping only candidates that resolve to exactly that element. Form values are snapshotted before every action so the compiler sees end states, not keystrokes.
 - Commit guard (harness-enforced, not model-trusted): a click or Enter on a commit target without an approval token is not executed; the model is told to call `request_commit`. The approval card carries the screenshot and a read-back of every field.
 - Write guard (network backstop): POST/PUT/PATCH/DELETE to the portal origin are held by `page.route` until a commit approval token exists; one token releases one write.
-- `pending_safety_checks` go to WhatsApp as approvals; acknowledged checks are echoed.
-- Session rollover after N screenshots (50-images-per-request cap). Long runs post progress to WhatsApp every ~5 actions.
+- Safety checks: Meta attaches `computer_action_requires_confirmation` to every acting turn, even a scroll, so the harness acknowledges that one code by policy (the rep approved the plan; the commit and write guards hold every write). Any other check code goes to the rep in WhatsApp as an approval; acknowledged checks are echoed.
+- Actions are taken literally and checked: points outside the viewport are refused rather than clamped, scroll deltas sent in wheel notches are converted to pixels, and screenshots wait for smooth scrolling to settle.
+- The resent history keeps a bounded number of screenshots (50-images-per-request cap). Long runs post a one-line progress update to WhatsApp about every 20 s.
 
 ### 2.3 Compile ("the model writes its own automation")
 1. Deterministic normalization: drop noise (scrolls, moves, misclicks that changed nothing, focus clicks), merge click+type into `fill` using final field values, combobox open+option into `select`, file chooser into `upload`, navigations into `waitFor`.
@@ -224,9 +225,9 @@ erDiagram
 | Job | Model |
 |---|---|
 | Voice notes (pt/en code-switching) | muse-voice-transcribe-1.0 (OGG/Opus → 16 kHz mono WAV via ffmpeg first) |
-| Photo/PDF extraction, understanding, compile annotation | muse-spark-1.3 |
-| Teach from video, computer-use repair | muse-wonder-1.0 (fallback muse-spark-1.3) |
-| First-run computer use | configurable, chosen by measurement |
+| Photo/PDF extraction, understanding, compile annotation | muse-spark-1.3, low effort |
+| Teach from video | muse-wonder-1.0, medium effort |
+| First-run computer use, rung 3 repair | muse-spark-1.3, low effort (measured; muse-wonder-1.0 answers HTTP 400 "Unsupported tool type: 'computer'") |
 | Heal rung 2 | Muse Spark Open via Baseten (`meta-models/muse-spark-open`), reasoning effort low, JSON validated by us |
 
 Every call goes through `ModelGateway` and lands in the `model_calls` ledger (provider, model, tokens, images, latency, cost at Standard list price). Receipts and charts split intake cost from execution cost. Scripted and cassette runs are labeled by provider and never appear in reported numbers.
