@@ -1,6 +1,6 @@
 import type { CuReply, CuTurn, TraceStep } from "@dockhand/core";
-import type { Browser, Page } from "playwright";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import type { Browser, BrowserContext, Page } from "playwright";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { REGISTER_FORM } from "../helpers/fixtures.ts";
 import { pngSize } from "../png.ts";
 import { createScriptedModel } from "../scripted.ts";
@@ -29,6 +29,7 @@ const LONG_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui">
   <button id=save onclick="fetch('/api/save', { method: 'POST', body: '{}' })">Go</button></body>`;
 
 let browser: Browser;
+let context: BrowserContext;
 let page: Page;
 let server: FixtureServer;
 
@@ -39,12 +40,16 @@ afterAll(async () => {
   await browser?.close();
 });
 beforeEach(async () => {
-  ({ page, server } = await fixtureContext(browser, {
+  ({ context, page, server } = await fixtureContext(browser, {
     "/form": REGISTER_FORM,
     "/stale": STALE_PAGE,
     "/long": LONG_PAGE,
     "/next": "<!doctype html><h1>Next page</h1>",
   }));
+});
+// One context per test, closed after it: 18 contexts left open in one Chromium add up under a loaded suite.
+afterEach(async () => {
+  await context?.close().catch(() => {});
 });
 
 const tagsOf = (steps: TraceStep[]) => steps.map((s) => `${s.action.type}:${s.tags.join("+")}`);
@@ -121,6 +126,27 @@ describe("runComputerUse: commit guard", () => {
     const out = model.replies.find((r) => r.kind === "function_output");
     expect(out?.kind === "function_output" && out.output).toMatch(/^not_ready: "Company" is empty/);
     expect(hooks.commits).toHaveLength(0);
+  });
+
+  it('answers not_needed on an entry page ("Start registration"), so the rep never approves an empty form', async () => {
+    await page.setContent(`<h1>You've been invited to register as a supplier</h1>
+      <button type="button" onclick="this.textContent='Starting…'">Start registration</button>`);
+    const model = createScriptedModel(
+      [
+        { do: "call", name: "request_commit", args: { summary: "Start the supplier registration" } },
+        { do: "click", target: { role: "button", name: "Start registration" } },
+        { do: "done", text: "Started." },
+      ],
+      page,
+    );
+    const hooks = recordingHooks();
+    const r = await runComputerUse(model, cuInput(page), hooks, CTX);
+    const out = model.replies.find((x) => x.kind === "function_output");
+    expect(out?.kind === "function_output" && out.output).toMatch(
+      /^not_needed: nothing on this page submits/,
+    );
+    expect(hooks.commits).toHaveLength(0);
+    expect(r.trace.steps.some((s) => s.tags.includes("commit") || s.tags.includes("blocked"))).toBe(false);
   });
 
   it("holds writes the commit guard did not classify (network backstop)", async () => {
