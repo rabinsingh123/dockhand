@@ -1,0 +1,130 @@
+{
+  "label": "LIVE: muse-spark-1.3 (low) computer use, meta-models/muse-spark-open (low) rung 2, Standard list prices, 2026-10-28",
+  "healRates": {
+    "cases": 42,
+    "seeds": [
+      101,
+      102,
+      103
+    ],
+    "ok": 42,
+    "falseHeals": 0,
+    "safeStops": {
+      "correct": 3,
+      "of": 3
+    },
+    "failedNoWrite": 0,
+    "freeHeals": {
+      "fallback": 78,
+      "similarity": 6
+    },
+    "rung2": {
+      "attempts": 18,
+      "healedSteps": 16,
+      "share": "89%",
+      "casesTried": 9,
+      "casesHealed": 9,
+      "calls": 18,
+      "costUsd": 0.0514,
+      "costPerAttemptUsd": 0.0029,
+      "msPerAttempt": 2654
+    },
+    "rung3": {
+      "attempts": 2,
+      "healedSteps": 2,
+      "share": "100%",
+      "casesTried": 2,
+      "casesHealed": 2,
+      "calls": 6,
+      "costUsd": 0.033,
+      "costPerAttemptUsd": 0.0165,
+      "msPerAttempt": 8910
+    },
+    "perOperator": {
+      "label_synonym": "3/3",
+      "testid_churn": "3/3",
+      "button_rename": "6/6",
+      "reorder_fields": "3/3",
+      "wrapper_divs": "3/3",
+      "class_churn": "3/3",
+      "id_churn": "3/3",
+      "placeholder_change": "3/3",
+      "insert_optional_field": "3/3",
+      "insert_required_field": "3/3",
+      "combobox_to_radio": "6/6"
+    }
+  },
+  "pureCuVsCompile": {
+    "pureCu": {
+      "runs": 8,
+      "ok": 8,
+      "meanCostUsd": 0.1107,
+      "meanSeconds": 145.2
+    },
+    "compileOnce": {
+      "firstRunCostUsd": 0.1667,
+      "annotateCostUsd": 0.0113,
+      "canary": "2/2",
+      "replays": {
+        "runs": 50,
+        "ok": 50,
+        "modelCalls": 0,
+        "meanMs": 3875
+      },
+      "driftEvents": {
+        "runs": 42,
+        "okOrSafeStop": 42,
+        "costUsd": 0.0843
+      }
+    },
+    "totalRuns": 93,
+    "cumulativeUsd": {
+      "compileOnce": 0.262,
+      "pureCuProjected": 10.296
+    },
+    "breakEvenRun": 2
+  },
+  "videoVsGoal": {
+    "videoGuidedFirst3": {
+      "runs": 3,
+      "ok": 3,
+      "meanActions": 36.3,
+      "meanCostUsd": 0.1198,
+      "meanSeconds": 152.5,
+      "perRun": [
+        "ok 13/13 43a $0.1564 179.3s",
+        "ok 13/13 33a $0.118 164.1s",
+        "ok 13/13 33a $0.0851 114.1s"
+      ]
+    },
+    "videoGuidedAll": {
+      "runs": 8,
+      "ok": 8,
+      "meanActions": 34.6,
+      "meanCostUsd": 0.1107,
+      "meanSeconds": 145.2,
+      "perRun": [
+        "ok 13/13 43a $0.1564 179.3s",
+        "ok 13/13 33a $0.118 164.1s",
+        "ok 13/13 33a $0.0851 114.1s",
+        "ok 13/13 33a $0.1177 177.3s",
+        "ok 13/13 33a $0.087 108.3s",
+        "ok 13/13 37a $0.1246 158.3s",
+        "ok 13/13 32a $0.08 108.7s",
+        "ok 13/13 33a $0.1169 151.6s"
+      ]
+    },
+    "goalOnly": {
+      "runs": 3,
+      "ok": 3,
+      "meanActions": 32.3,
+      "meanCostUsd": 0.1181,
+      "meanSeconds": 124.5,
+      "perRun": [
+        "ok 13/13 33a $0.1255 132s",
+        "ok 13/13 34a $0.156 158.6s",
+        "ok 13/13 30a $0.0729 82.9s"
+      ]
+    }
+  }
+}

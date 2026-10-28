@@ -506,7 +506,7 @@ function cumulativeChartHtml(
   const L = 80;
   const R = 220;
   const T = 96;
-  const B = 92;
+  const B = 120;
   const runs = Math.max(...series.map((s) => s.points.length));
   const maxY = Math.max(...series.flatMap((s) => s.points)) * 1.08;
   const x = (i: number) => L + ((i - 1) / Math.max(1, runs - 1)) * (W - L - R);
@@ -548,11 +548,12 @@ function cumulativeChartHtml(
   // Legend (two series: also direct-labelled at the line ends).
   let lx = L;
   for (const s of series) {
-    svg += `<line x1="${lx}" x2="${lx + 22}" y1="${H - 24}" y2="${H - 24}" stroke="${s.color}" stroke-width="2"/>`;
-    svg += `<text x="${lx + 28}" y="${H - 20}" font-size="12" fill="${INK.secondary}">${esc(s.label)}</text>`;
+    svg += `<line x1="${lx}" x2="${lx + 22}" y1="${H - 40}" y2="${H - 40}" stroke="${s.color}" stroke-width="2"/>`;
+    svg += `<text x="${lx + 28}" y="${H - 36}" font-size="12" fill="${INK.secondary}">${esc(s.label)}</text>`;
     lx += 300;
   }
-  svg += `<text x="${lx}" y="${H - 20}" font-size="12" fill="${INK.secondary}">○ run without a correct submission · dashed: projected from the measured mean</text>`;
+  const anyFailure = series.some((s) => s.failures.length > 0);
+  svg += `<text x="${L}" y="${H - 12}" font-size="12" fill="${INK.muted}">Dashed: projected from the measured mean${anyFailure ? " · ○ run without a correct submission" : ""}</text>`;
   return `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#fcfcfb;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}svg{display:block}</style></head><body><svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="system-ui,-apple-system,Segoe UI,sans-serif">${svg}</svg></body></html>`;
 }
 
@@ -618,7 +619,10 @@ async function report(): Promise<void> {
   // 2. pure CU vs compile once (+ the held-out drift events)
   const cuCosts = video.map((r) => r.costUsd);
   const cuMean = mean(cuCosts);
-  const firstRun = video.find((r) => r.runId === compileRow?.fromRunId);
+  // The compiled run may predate the current baseline (prefix-*: same task, earlier loop build).
+  const firstRun = [...video, ...readJsonl<FirstRunRow>("prefix-commitclick-firstrun")].find(
+    (r) => r.runId === compileRow?.fromRunId,
+  );
   const compileCost = (firstRun?.costUsd ?? 0) + (compileRow?.annotateCostUsd ?? 0);
   const sequence = [
     { cost: compileCost, ok: firstRun?.ok ?? false },
@@ -709,7 +713,7 @@ async function report(): Promise<void> {
   writeFileSync(join(RESULTS, "live-cu-vs-compile.png"), await renderChart({ html, w: 960, h: 520 }));
   const mutation = mutationChartHtml(heals as EvalRecord[], {
     title: "Held-out drift · live heal ladder · Caravela",
-    scope: `seeds ${healSummary.seeds.join(", ")} · rung 2 muse-spark-open · rung 3 muse-spark-1.3 · LIVE`,
+    scope: `seeds ${healSummary.seeds.join("/")} · LIVE`,
     date: today,
   });
   writeFileSync(join(RESULTS, "live-heal-rates.png"), await renderChart(mutation));
@@ -719,7 +723,7 @@ async function report(): Promise<void> {
     "",
     "Real Meta and Baseten calls only (ledger providers meta/baseten); costs at Standard list price. Raw rows: `evals/results/live/`. Script: `scripts/live/headline.ts`.",
     "",
-    "## 1. Heal ladder on held-out drift (Caravela mutation suite, every operator)",
+    "## 1. Heal ladder on held-out drift (Caravela: every mutation operator, plus the v2 UI and the model-heal operators)",
     `Seeds ${healSummary.seeds.join(", ")} (not used in development), ${heals.length} cases, compiled from a live first run. ${healSummary.ok} correct, ${healSummary.falseHeals} false heals (silent wrong), must-fail-safe stopped ${healSummary.safeStops.correct}/${healSummary.safeStops.of}, ${healSummary.failedNoWrite} failed without writing.`,
     "",
     "| Rung | Steps tried | Healed | Share | Cost per attempt | Latency per attempt |",
@@ -735,7 +739,7 @@ async function report(): Promise<void> {
     "![heal rates](live-heal-rates.png)",
     "",
     "## 2. Pure computer use vs compile once",
-    `Pure computer use: ${comparison.pureCu.ok}/${comparison.pureCu.runs} correct, $${comparison.pureCu.meanCostUsd} and ${comparison.pureCu.meanSeconds} s per run. Compile once: first run $${comparison.compileOnce.firstRunCostUsd} + annotation $${comparison.compileOnce.annotateCostUsd} (dry runs ${comparison.compileOnce.canary}), then ${comparison.compileOnce.replays.ok}/${comparison.compileOnce.replays.runs} replays correct with ${comparison.compileOnce.replays.modelCalls} model calls (${comparison.compileOnce.replays.meanMs} ms mean, randomized params, jittered latency), then ${comparison.compileOnce.driftEvents.runs} drift cases (${comparison.compileOnce.driftEvents.okOrSafeStop} correct or safe stop, $${comparison.compileOnce.driftEvents.costUsd}). Over ${comparison.totalRuns} runs: $${comparison.cumulativeUsd.compileOnce} vs $${comparison.cumulativeUsd.pureCuProjected} (pure computer use projected from its measured mean after run ${video.length}). Break-even at run ${comparison.breakEvenRun}.`,
+    `Pure computer use: ${comparison.pureCu.ok}/${comparison.pureCu.runs} correct, $${comparison.pureCu.meanCostUsd} and ${comparison.pureCu.meanSeconds} s per run. Compile once: first run $${comparison.compileOnce.firstRunCostUsd} (same task, loop build before the harness-click fix 5b2164a) + annotation $${comparison.compileOnce.annotateCostUsd} (dry runs ${comparison.compileOnce.canary}), then ${comparison.compileOnce.replays.ok}/${comparison.compileOnce.replays.runs} replays correct with ${comparison.compileOnce.replays.modelCalls} model calls (${comparison.compileOnce.replays.meanMs} ms mean, randomized params, jittered latency), then ${comparison.compileOnce.driftEvents.runs} drift cases (${comparison.compileOnce.driftEvents.okOrSafeStop} correct or safe stop, $${comparison.compileOnce.driftEvents.costUsd}). Over ${comparison.totalRuns} runs: $${comparison.cumulativeUsd.compileOnce} vs $${comparison.cumulativeUsd.pureCuProjected} (pure computer use projected from its measured mean after run ${video.length}). Break-even at run ${comparison.breakEvenRun}.`,
     "",
     "![cumulative cost](live-cu-vs-compile.png)",
     "",
