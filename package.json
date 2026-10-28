@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "tsx apps/gateway/src/main.ts",
+    "demo:check": "tsx apps/gateway/src/demo-check.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json",

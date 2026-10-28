@@ -46,6 +46,8 @@ export interface DevProcessOptions {
   portals?: boolean;
   /** How long close() waits for running message handlers (default 3 s). */
   drainTimeoutMs?: number;
+  /** Extra local routes mounted on the gateway port before it listens (dev tools such as GET /__dev/crm). */
+  routes?: Hono;
 }
 
 export interface DevProcess {
@@ -113,6 +115,7 @@ export async function startDevProcess(opts: DevProcessOptions = {}): Promise<Dev
     });
     const root = new Hono();
     root.route("/", gateway.app);
+    if (opts.routes) root.route("/", opts.routes);
 
     let emulator: Emulator | undefined;
     if (config.whatsapp.mode === "emulator") {

@@ -46,7 +46,7 @@ export function chatPage(opts: { base: string; defaultFrom: string; business: st
       </label>
       <label class="fwd" title="Mark as forwarded"><input type="checkbox" name="forwarded" id="forwarded"> fwd</label>
       <input id="text" name="text" class="text" autocomplete="off" placeholder="Message">
-      <button type="submit" class="send">Send</button>
+      <button type="submit" id="send" class="send">Send</button>
     </div>
   </form>
 </main>
@@ -213,7 +213,7 @@ const SCRIPT = `
       for (const b of entry.buttons) {
         const button = el("button", "", b.title);
         button.type = "button";
-        button.title = b.id;
+        button.dataset.buttonId = b.id;
         button.addEventListener("click", () => tap(entry, b, button));
         buttons.append(button);
       }

@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/testing/harness.ts"
+    "./testing": "./src/testing/harness.ts",
+    "./stand-ins": "./src/testing/stand-ins.ts"
   },
   "dependencies": {
     "@dockhand/browser": "workspace:*",

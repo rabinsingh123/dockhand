@@ -15,6 +15,7 @@ import type {
   Ledger,
   Logger,
   ModelGateway,
+  ParamValue,
   Purpose,
   QuoteService,
   RepProfile,
@@ -29,10 +30,18 @@ import type { CompanyKit } from "../profile.ts";
 import type { Repos } from "../repo.ts";
 import type { CardRenderer } from "../tools/receipts.ts";
 
+/** What a model source learns about the session it serves (scripted stand-ins script from it). */
+export interface CuSessionInfo {
+  page: Page;
+  purpose: "cu_first_run" | "cu_repair";
+  runId: Id;
+  portalId: string;
+  /** The run's values (a first run's, or the replay's being repaired). */
+  params: Record<string, ParamValue>;
+}
+
 /** A model for one browser page (the scripted CI model needs the page; real models ignore it). */
-export type CuModelSource =
-  | ComputerUseModel
-  | ((o: { page: Page; purpose: "cu_first_run" | "cu_repair"; runId: Id }) => ComputerUseModel);
+export type CuModelSource = ComputerUseModel | ((o: CuSessionInfo) => ComputerUseModel);
 
 export interface FlowEnv {
   db: Db;
@@ -67,10 +76,7 @@ export interface JobCtx {
   rep: RepProfile;
 }
 
-export function modelFor(
-  source: CuModelSource,
-  o: { page: Page; purpose: "cu_first_run" | "cu_repair"; runId: Id },
-): ComputerUseModel {
+export function modelFor(source: CuModelSource, o: CuSessionInfo): ComputerUseModel {
   return typeof source === "function" ? source(o) : source;
 }
 

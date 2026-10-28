@@ -170,7 +170,13 @@ export async function runFirstRun(
       },
     };
     res = await runComputerUse(
-      modelFor(env.cu, { page: lease.page, purpose: "cu_first_run", runId }),
+      modelFor(env.cu, {
+        page: lease.page,
+        purpose: "cu_first_run",
+        runId,
+        portalId: portal.id,
+        params: action.params,
+      }),
       {
         page: lease.page,
         portalId: portal.id,
@@ -410,7 +416,13 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
     }
     repairers.push(
       createCuRepairer({
-        model: modelFor(env.repairCu, { page: lease.page, purpose: "cu_repair", runId }),
+        model: modelFor(env.repairCu, {
+          page: lease.page,
+          purpose: "cu_repair",
+          runId,
+          portalId: portal.id,
+          params: action.params,
+        }),
         runComputerUse,
         artifacts: env.artifacts,
         writeGuard: writeGuardFor(portal),
