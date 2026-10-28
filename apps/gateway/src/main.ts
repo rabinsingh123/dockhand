@@ -32,7 +32,15 @@ async function main(): Promise<void> {
     const fake = config.meta.mode === "fake";
     const models: FromDevOptions["models"] = fake
       ? createStandInGateway({ ledger, clock: dev.clock })
-      : createModelGateway({ config, ledger, artifacts: dev.artifacts, clock: dev.clock, log: dev.log });
+      : createModelGateway({
+          config,
+          ledger,
+          artifacts: dev.artifacts,
+          clock: dev.clock,
+          log: dev.log,
+          // pnpm demo:check records and replays its own tapes (fixtures/cassettes-demo by default).
+          ...(process.env.DOCKHAND_CASSETTE_DIR ? { cassetteDir: process.env.DOCKHAND_CASSETTE_DIR } : {}),
+        });
     wired = createOrchestratorFromDev(dev, {
       models,
       firstRunModel: process.env.FIRST_RUN_MODEL,

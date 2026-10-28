@@ -23,7 +23,11 @@ import { type Browser, chromium, type Page } from "playwright";
 interface Options {
   headed: boolean;
   slowMo: number;
-  mode: "fake" | "cassette";
+  mode: "fake" | "cassette" | "record";
+  /** Record mode only: abort once the run's model calls cost more than this (USD). */
+  maxUsd: number;
+  /** Where record mode writes tapes and cassette mode reads them. */
+  cassettes: string;
   varDir: string;
   ports: { gateway: number; partner: number; supplier: number };
   rep: string;
@@ -36,6 +40,8 @@ function parseArgs(argv: string[]): Options {
     headed: false,
     slowMo: 0,
     mode: "fake",
+    maxUsd: 3,
+    cassettes: join(root, "fixtures", "cassettes-demo"),
     varDir: join(root, "var", "demo-check"),
     ports: { gateway: 8797, partner: 5111, supplier: 5112 },
     rep: "5511999990001",
@@ -62,6 +68,14 @@ function parseArgs(argv: string[]): Options {
       const [g, p, s] = next().split(",").map(Number);
       if (!g || !p || !s) throw new Error("--ports gateway,partner,supplier");
       o.ports = { gateway: g, partner: p, supplier: s };
+    } else if (a === "--record") {
+      // Live calls written to tapes: costs money, so only behind this explicit flag and under --max-usd.
+      o.mode = "record";
+      o.stepTimeoutMs = 900_000;
+    } else if (a === "--max-usd") o.maxUsd = Number(next());
+    else if (a === "--cassettes") {
+      const v = next();
+      o.cassettes = isAbsolute(v) ? v : join(root, v);
     } else if (a === "--rep") o.rep = next();
     else if (a === "--help" || a === "-h") {
       process.stdout.write(
@@ -115,9 +129,10 @@ async function startDev(o: Options): Promise<Dev> {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     META_MODE: o.mode,
-    // Unset keys (empty counts as unset): the check never calls a paid API, whatever .env holds.
+    // Unset keys (empty counts as unset): only --record may call a paid API.
     MODEL_API_KEY: "",
     BASETEN_API_KEY: "",
+    ...(o.mode === "fake" ? {} : { DOCKHAND_CASSETTE_DIR: o.cassettes }),
     HUBSPOT_TOKEN: "",
     WHATSAPP_MODE: "emulator",
     WHATSAPP_TOKEN: "",
@@ -133,6 +148,11 @@ async function startDev(o: Options): Promise<Dev> {
     HEADLESS: "true",
     LOG_LEVEL: "info",
   };
+  if (o.mode === "record") {
+    // The child reads the keys from .env itself (a variable set to "" would block that).
+    delete env.MODEL_API_KEY;
+    delete env.BASETEN_API_KEY;
+  }
   const child = spawn(
     process.execPath,
     [...process.execArgv, join(root, "apps", "gateway", "src", "main.ts")],
@@ -220,7 +240,7 @@ class Rep {
 
   /** Waits for the next outbound message (after the cursor) matching `pred`; moves the cursor past it. */
   async expect(what: string, pred: (e: ChatEntry) => boolean, timeoutMs?: number): Promise<ChatEntry> {
-    const deadline = Date.now() + (timeoutMs ?? this.o.stepTimeoutMs);
+    const deadline = Date.now() + Math.max(timeoutMs ?? 0, this.o.stepTimeoutMs);
     for (;;) {
       const entries = await this.timeline();
       const fresh = entries.filter((e) => e.seq > this.cursor && e.dir === "out");
@@ -407,6 +427,8 @@ interface World {
   partner: string;
   supplier: string;
   dbPath: string;
+  /** The Caravela skill's name, learned from the teach step. */
+  skill: string;
 }
 
 async function submissions(url: string): Promise<Submission[]> {
@@ -442,7 +464,8 @@ type Step = { name: string; run: (w: World) => Promise<void> };
 const STEPS: Step[] = [
   {
     name: "teach",
-    async run({ rep }) {
+    async run(w) {
+      const { rep } = w;
       await rep.sendFile(fixture("teach", "caravela-register-deal.mp4"), { asDocument: true });
       await rep.textMsg("Watching your recording");
       const card = await rep.card(/^I learned \*/, ["Looks right", "Cancel"]);
@@ -450,7 +473,9 @@ const STEPS: Step[] = [
       check(/\d+ steps, \d+ values/.test(card.text ?? ""), "the teach card does not count steps and values");
       await rep.shot("teach-card");
       await rep.tap(card, "Looks right");
-      await rep.textMsg(/^Saved the draft "register_partner_deal"/);
+      const saved = await rep.textMsg(/^Saved the draft "[a-z][a-z0-9_]*"/);
+      // The model names the skill (the fixture says register_partner_deal; live Wonder said register_deal).
+      w.skill = /"([a-z][a-z0-9_]*)"/.exec(saved.text ?? "")?.[1] ?? w.skill;
       await rep.shot("teach-saved");
     },
   },
@@ -480,7 +505,7 @@ const STEPS: Step[] = [
       const receipt = await rep.image(/First run · computer use/);
       const id = REG_ID.exec(receipt.caption ?? "")?.[0];
       check(id, `the first-run receipt has no registration ID: ${receipt.caption}`);
-      const skill = await rep.image(/^New skill: register_partner_deal v1\b/);
+      const skill = await rep.image(`New skill: ${w.skill} v1.`);
       check(skill.media, "the skill card has no image");
       await rep.shot("first-run-receipt");
       const subs = await submissions(w.partner);
@@ -499,7 +524,7 @@ const STEPS: Step[] = [
     async run(w) {
       const { rep } = w;
       await rep.sendFile(fixture("inbound", "referral-vila-nova.jpg"));
-      const plan = await rep.card("register_partner_deal v1", ["Approve", "Cancel"]);
+      const plan = await rep.card(`${w.skill} v1`, ["Approve", "Cancel"]);
       await rep.shot("replay-plan");
       await rep.tap(plan, "Approve");
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
@@ -532,7 +557,7 @@ const STEPS: Step[] = [
         body: JSON.stringify({ version: "v2" }),
       });
       await rep.sendFile(fixture("inbound", "referral-cafe-aurora.jpg"));
-      const plan = await rep.card("register_partner_deal v1", ["Approve", "Cancel"]);
+      const plan = await rep.card(`${w.skill} v1`, ["Approve", "Cancel"]);
       await rep.tap(plan, "Approve");
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       await rep.shot("v2-submit-card");
@@ -541,9 +566,9 @@ const STEPS: Step[] = [
       check(REG_ID.test(receipt.caption ?? ""), "the repaired receipt has no registration ID");
       const diff = await rep.image(/^Portal changed: Caravela Partner Hub\./);
       const caption = diff.caption ?? "";
-      check(/Saved register_partner_deal v2\b/.test(caption), `the diff does not save v2: ${caption}`);
+      check(caption.includes(`Saved ${w.skill} v2 (`), `the diff does not save v2: ${caption}`);
       check(/\d+\/\d+ dry runs/.test(caption), `the diff does not report the canary: ${caption}`);
-      check(caption.includes("/rollback register_partner_deal 1"), "the diff does not offer the rollback");
+      check(caption.includes(`/rollback ${w.skill} 1`), "the diff does not offer the rollback");
       await rep.shot("v2-diff");
       const sub = (await submissions(w.partner)).at(-1) as Submission;
       same(sub.version, "v2", "the healed submission's portal version");
@@ -560,7 +585,7 @@ const STEPS: Step[] = [
         body: JSON.stringify({ seed: 1, operators: ["insert_required_field"] }),
       });
       await rep.sendFile(fixture("inbound", "referral-vila-nova.jpg"));
-      const plan = await rep.card("register_partner_deal v2", ["Approve", "Cancel"]);
+      const plan = await rep.card(`${w.skill} v2`, ["Approve", "Cancel"]);
       await rep.tap(plan, "Approve");
       const question = await rep.card(/"Partner tier"/, ["Gold", "Silver", "Bronze"]);
       await rep.shot("ask-rep-question");
@@ -570,7 +595,7 @@ const STEPS: Step[] = [
       await rep.tap(commit, "Approve");
       await rep.image(/^Register a partner deal|Replay ·/);
       const diff = await rep.image(/^Portal changed: Caravela Partner Hub\./);
-      check(/Saved register_partner_deal v3\b/.test(diff.caption ?? ""), `no v3: ${diff.caption}`);
+      check((diff.caption ?? "").includes(`Saved ${w.skill} v3 (`), `no v3: ${diff.caption}`);
       await rep.shot("ask-rep-v3");
       const sub = (await submissions(w.partner)).at(-1) as Submission;
       same(sub.fields.partnerTier, "Gold", "partner tier on the portal");
@@ -579,14 +604,15 @@ const STEPS: Step[] = [
   },
   {
     name: "skills, rollback, history",
-    async run({ rep }) {
+    async run(w) {
+      const { rep } = w;
       await rep.sendText("/skills");
-      await rep.textMsg(/register_partner_deal v3/);
-      await rep.sendText("/rollback register_partner_deal 2");
-      await rep.textMsg(/^Rolled back: register_partner_deal v2 is active/);
-      await rep.sendText("/skills register_partner_deal");
-      await rep.textMsg(/^\*register_partner_deal v2\* \(active/);
-      await rep.sendText("/rollback register_partner_deal 3");
+      await rep.textMsg(`${w.skill} v3`);
+      await rep.sendText(`/rollback ${w.skill} 2`);
+      await rep.textMsg(`Rolled back: ${w.skill} v2 is active`);
+      await rep.sendText(`/skills ${w.skill}`);
+      await rep.textMsg(`*${w.skill} v2* (active`);
+      await rep.sendText(`/rollback ${w.skill} 3`);
       await rep.textMsg(/v3 is active/);
       await rep.sendText("/history");
       await rep.textMsg(/Recent requests/);
@@ -688,6 +714,39 @@ const STEPS: Step[] = [
   },
 ];
 
+// ---------- cost cap (record mode) ----------
+
+let costAbort: string | undefined;
+
+function modelCost(dbPath: string): number {
+  if (!existsSync(dbPath)) return 0;
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    return (db.prepare("SELECT COALESCE(SUM(cost_usd), 0) AS c FROM model_calls").get() as { c: number }).c;
+  } finally {
+    db.close();
+  }
+}
+
+/** Polls the ledger; above the cap it stops the dev process, so no further call can be made. */
+function watchCost(o: Options, dbPath: string, dev: Dev): void {
+  const timer = setInterval(() => {
+    let spent = 0;
+    try {
+      spent = modelCost(dbPath);
+    } catch {
+      return;
+    }
+    if (spent <= o.maxUsd) return;
+    clearInterval(timer);
+    costAbort = `model calls cost ${spent.toFixed(2)}, over the ${o.maxUsd} cap`;
+    process.stdout.write(`  STOP  ${costAbort}
+`);
+    void dev.stop();
+  }, 2_000);
+  timer.unref();
+}
+
 // ---------- main ----------
 
 async function main(): Promise<number> {
@@ -701,7 +760,9 @@ async function main(): Promise<number> {
   let dev: Dev | undefined;
   let browser: Browser | undefined;
   try {
+    if (o.mode === "record" && !(o.maxUsd > 0)) throw new Error("--record needs a positive --max-usd");
     dev = await startDev(o);
+    if (o.mode === "record") watchCost(o, join(o.varDir, "dockhand.sqlite"), dev);
     const base = `http://127.0.0.1:${o.ports.gateway}`;
     browser = await chromium.launch({ headless: !o.headed, slowMo: o.slowMo });
     const context = await browser.newContext({ viewport: { width: 520, height: 940 }, deviceScaleFactor: 1 });
@@ -717,6 +778,7 @@ async function main(): Promise<number> {
       partner: `http://127.0.0.1:${o.ports.partner}`,
       supplier: `http://127.0.0.1:${o.ports.supplier}`,
       dbPath: join(o.varDir, "dockhand.sqlite"),
+      skill: "register_partner_deal",
     };
     for (const step of STEPS) {
       const s0 = performance.now();
@@ -754,6 +816,12 @@ async function main(): Promise<number> {
   } finally {
     await browser?.close().catch(() => {});
     await dev?.stop().catch(() => {});
+  }
+  if (o.mode !== "fake") {
+    const spent = modelCost(join(o.varDir, "dockhand.sqlite"));
+    process.stdout.write(`model calls: ${spent.toFixed(3)} at list price (${o.mode})${costAbort ? ` - ABORTED: ${costAbort}` : ""}
+`);
+    if (costAbort) results.push({ name: "cost cap", ok: false, ms: 0, error: costAbort });
   }
   const failed = results.filter((r) => !r.ok);
   const skipped = STEPS.length - results.filter((r) => STEPS.some((s) => s.name === r.name)).length;

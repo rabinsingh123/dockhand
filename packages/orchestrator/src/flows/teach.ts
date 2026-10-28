@@ -92,7 +92,7 @@ export async function runTeach(
       { purpose: "teach", jobId: job.id, timeoutMs: 180_000 },
     );
   }
-  draft = normalizeDraft(draft, env.portals);
+  draft = await reachableStart(normalizeDraft(draft, env.portals), env.portals);
   const draftId = env.skills.saveDraft(draft, job.id, action.video.id);
   const card = await env.cards.card(job.id, teachCardHtml(draft, narration));
   const portalName = env.portals[draft.portalId]?.name ?? draft.portalId;
@@ -147,4 +147,21 @@ async function narrationOf(
     env.log.warn("narration skipped", { jobId: job.id, err });
     return undefined;
   }
+}
+
+/**
+ * A recording rarely shows the address bar, so the model may guess a start path the portal does not have (live
+ * Wonder said "/deal-registrations"). A start page that answers 404 falls back to the portal's own start path.
+ */
+export async function reachableStart(d: SkillDraft, portals: PortalDirectory): Promise<SkillDraft> {
+  const portal = portals[d.portalId];
+  if (!portal || d.startUrl.includes("{{")) return d;
+  try {
+    const res = await fetch(d.startUrl, { redirect: "manual", signal: AbortSignal.timeout(5_000) });
+    await res.arrayBuffer().catch(() => undefined);
+    if (res.status !== 404) return d;
+  } catch {
+    return d;
+  }
+  return { ...d, startUrl: startUrlFor(portal, undefined) };
 }
