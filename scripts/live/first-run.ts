@@ -38,6 +38,8 @@ const { values } = parseArgs({
     draft: { type: "string" },
     referral: { type: "string", default: "inbound/referral-cafe-aurora.expected.json" },
     port: { type: "string", default: "5101" },
+    // approved (default) | rejected: what the commit gate answers; rejected checks that nothing is submitted.
+    commit: { type: "string", default: "approved" },
   },
 });
 const MAX_COST = Math.min(3, Number(values["max-cost"]));
@@ -219,7 +221,7 @@ try {
             approvals.push(
               `${r.summary} | readback: ${(r.readback ?? []).map((x) => `${x.label}=${x.value}`).join("; ")}`,
             );
-            return "approved";
+            return values.commit === "rejected" ? "rejected" : "approved";
           },
           approveSafety: async (r) => {
             safety.push(r.checks);
@@ -261,7 +263,10 @@ try {
       .get(runId) as Record<string, number>;
     const rollovers = turnLog.filter((t) => t.reply === "rollover").length;
     const blocked = steps.filter((s) => s.tags.includes("blocked")).length;
-    const ok = subs.length === 1 && mismatches.length === 0;
+    const ok =
+      values.commit === "rejected"
+        ? subs.length === 0 && res.outcome === "rejected" && approvals.length === 1
+        : subs.length === 1 && mismatches.length === 0;
 
     writeFileSync(join(dir, "trace.json"), JSON.stringify(res.trace, null, 1));
     writeFileSync(
