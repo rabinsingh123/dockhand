@@ -420,7 +420,7 @@ export function runView(d: RecorderData, base: string, run: RunRow, trace: Trace
   const actions = trace ? trace.steps.filter((s) => s.action.type !== "screenshot").length : 0;
 
   const body = html`
-  <div class="crumbs"><a href="${base}">Runs</a> / <span class="mono">${run.id}</span></div>
+  <div class="crumbs"><a href="${base.slice(0, -1)}">Runs</a> / <span class="mono">${run.id}</span></div>
   <div class="head"><div>
     <h1 class="title">${chip(MODE_LABEL[run.mode] ?? run.mode, MODE_COLOR[run.mode] ?? COLORS.muted, { dot: true, lg: true })}
       ${run.skillName ? html`<a href="${base}skills/${run.skillName}${run.skillVersion ? `?v=${run.skillVersion}` : ""}">${run.skillName}${run.skillVersion ? html` <span class="muted">v${run.skillVersion}</span>` : ""}</a>` : "Run"}
@@ -432,7 +432,7 @@ export function runView(d: RecorderData, base: string, run: RunRow, trace: Trace
     ${stat("Time", ms(run.ms), run.mode === "agentic" ? "wall clock, incl. approvals" : "incl. the approval wait")}
     ${stat("Model calls", int(run.modelCalls ?? calls.length), run.mode === "replay" ? "replay path: none" : `${calls.length} in the ledger`)}
     ${stat("Execution cost", usd(run.costUsd), "Standard list price")}
-    ${stat(trace ? "Actions" : "Steps", int(trace ? actions : steps.length), trace ? `${trace.steps.filter((s) => s.tags.includes("noise")).length} noise, dropped at compile` : `${steps.filter((s) => s.status === "ok").length} as recorded`)}
+    ${stat(trace ? "Actions" : "Steps", int(trace ? actions : steps.length), trace ? `${trace.steps.filter((s) => s.tags.includes("noise")).length} noise (dropped)` : `${steps.filter((s) => s.status === "ok").length} as recorded`)}
     ${stat("Heals", int(heals.length), heals.length ? heals.map((h) => `rung ${RUNG[h.rung ?? ""]?.n ?? "?"}`).join(" · ") : "none needed")}
     ${stat("Verified", verified.length ? html`${verified.filter((r) => r.ok).length}<small>/ ${verified.length}</small>` : "–", "read back before submit")}
     ${stat("Result", id ? html`<span class="mono" style="font-size:17px">${id}</span>` : (run.outcome ?? "–"), run.extracted ? Object.keys(run.extracted).join(", ") : "")}
@@ -446,7 +446,7 @@ export function runView(d: RecorderData, base: string, run: RunRow, trace: Trace
     ${commitGate?.imageArtifactId ? html`<section class="panel"><h2>On the approval card <span>${commitGate.status}</span></h2><div class="pb">${img(base, commitGate.imageArtifactId)}</div></section>` : ""}
     ${readbackPanel(rb)}
     <section class="panel"><h2>Links</h2><div class="pb"><dl class="kv">
-      ${run.skillName ? html`<dt>Skill run</dt><dd><a href="${base}skills/${run.skillName}${run.skillVersion ? `?v=${run.skillVersion}` : ""}">${run.skillName} v${run.skillVersion ?? "?"}</a></dd>` : ""}
+      ${run.skillName && run.skillVersion ? html`<dt>Skill run</dt><dd><a href="${base}skills/${run.skillName}${run.skillVersion ? `?v=${run.skillVersion}` : ""}">${run.skillName} v${run.skillVersion ?? "?"}</a></dd>` : ""}
       ${created ? html`<dt>Created</dt><dd><a href="${base}skills/${created.name}?v=${created.version}">${created.name} v${created.version}</a> <span class="muted">(${created.source})</span></dd>` : ""}
       ${draftId ? html`<dt>Taught from</dt><dd><a href="${base}teach/${draftId}">teach draft</a></dd>` : ""}
       ${run.jobId ? html`<dt>Job</dt><dd class="mono">${run.jobId}</dd>` : ""}
@@ -518,7 +518,7 @@ export function skillView(d: RecorderData, base: string, name: string, v: number
   const json = JSON.stringify(sel.skill, null, 2);
   const ts = exportPlaywright(sel.skill);
   const body = html`
-  <div class="crumbs"><a href="${base}#skills">Skills</a> / <span class="mono">${name}</span></div>
+  <div class="crumbs"><a href="${base.slice(0, -1)}#skills">Skills</a> / <span class="mono">${name}</span></div>
   <div class="head"><div><h1 class="title">${sel.skill.title} ${chip(`v${sel.version}`, COLORS.replay, { lg: true })}${sel.active ? chip("active", COLORS.ok, { lg: true }) : chip("inactive (kept for rollback)", COLORS.muted, { lg: true })}</h1>
   <p class="sub"><span class="mono">${name}</span> · ${sel.skill.portalId} · ${sel.skill.params.length} params · ${sel.skill.steps.length} steps · source: ${sel.source}${sel.sourceRunId ? html` (<a href="${base}runs/${sel.sourceRunId}">run</a>)` : ""} · ${when(sel.createdAt)}</p></div></div>
   <div class="versions" style="margin-bottom:20px">${versions.map(
@@ -564,7 +564,7 @@ export function teachView(d: RecorderData, base: string, t: DraftRow, frames: nu
   const compiled = d.skillFromDraft(t.id);
   const observed = draft.observedValues ?? {};
   const body = html`
-  <div class="crumbs"><a href="${base}#teach">Teach</a> / <span class="mono">${t.id}</span></div>
+  <div class="crumbs"><a href="${base.slice(0, -1)}#teach">Teach</a> / <span class="mono">${t.id}</span></div>
   <div class="head"><div><h1 class="title">${draft.title} ${chip(t.status, t.status === "compiled" ? COLORS.ok : t.status === "draft" ? COLORS.agentic : COLORS.muted, { lg: true })}</h1>
   <p class="sub">${draft.goal}</p></div></div>
   <div class="stats">

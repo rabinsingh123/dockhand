@@ -39,7 +39,7 @@ export function createRecorder(deps: RecorderDeps): Hono {
   const htmlHeaders = { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" };
   const notFound = (what: string) =>
     new Response(
-      `<!doctype html><title>Not found</title><p style="font:14px system-ui;padding:24px">${what} not found. <a href="${base}">Back to the flight recorder</a></p>`,
+      `<!doctype html><title>Not found</title><p style="font:14px system-ui;padding:24px">${what} not found. <a href="${base.slice(0, -1)}">Back to the flight recorder</a></p>`,
       {
         status: 404,
         headers: htmlHeaders,

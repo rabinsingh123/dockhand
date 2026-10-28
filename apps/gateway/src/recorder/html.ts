@@ -48,10 +48,11 @@ export function page(o: {
   base: string;
 }): string {
   const b = o.base;
+  const home = b.endsWith("/") ? b.slice(0, -1) : b; // "/recorder" (the mount path has no trailing slash)
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(o.title)} · Dockhand flight recorder</title><style>${RECORDER_CSS}</style></head><body>
-<header class="top"><a class="brand" href="${b}">${LOGO.value}<span>Dockhand</span><small>Flight recorder</small></a>
-<nav class="nav"><a href="${b}#runs" class="${o.nav === "runs" ? "on" : ""}">Runs</a><a href="${b}#skills" class="${o.nav === "skills" ? "on" : ""}">Skills</a><a href="${b}#teach" class="${o.nav === "teach" ? "on" : ""}">Teach</a></nav>
+<header class="top"><a class="brand" href="${home}">${LOGO.value}<span>Dockhand</span><small>Flight recorder</small></a>
+<nav class="nav"><a href="${home}#runs" class="${o.nav === "runs" ? "on" : ""}">Runs</a><a href="${home}#skills" class="${o.nav === "skills" ? "on" : ""}">Skills</a><a href="${home}#teach" class="${o.nav === "teach" ? "on" : ""}">Teach</a></nav>
 <span class="note">Read-only view of the run ledger · synthetic data</span></header>
 <main class="wrap">${o.body.value}</main>
 <script>
