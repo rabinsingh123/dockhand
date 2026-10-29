@@ -39,6 +39,8 @@ export interface ModelGatewayDeps {
   computerUseState?: CuState;
   /** A computer-use turn slower than this is abandoned and sent once more. Default 30 s; 0 turns it off. */
   computerUseSlowMs?: number;
+  /** An extract or understand request slower than this is abandoned and sent once more. Default 30 s; 0 turns it off. */
+  structuredSlowMs?: number;
   /** Transport retry tuning (tests pass a no-op sleep). */
   retry?: Partial<RetryPolicy>;
 }
@@ -100,6 +102,7 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
     disableParallelToolCalls: deps.disableParallelToolCalls ?? false,
     computerUseState: deps.computerUseState ?? "stateless",
     computerUseSlowMs: deps.computerUseSlowMs ?? 30_000,
+    structuredSlowMs: deps.structuredSlowMs ?? 30_000,
   };
 
   if (config.openWeights.apiKey && !openWeightsPrices(config.openWeights)) {

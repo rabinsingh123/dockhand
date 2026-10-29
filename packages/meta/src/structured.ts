@@ -1,6 +1,6 @@
 import { type CallCtx, DockhandError, type Effort, type StructuredRequest } from "@dockhand/core";
 import { type ZodType, z } from "zod";
-import { openScope, recordCall } from "./call.ts";
+import { openScope, recordCall, withSlowRetry } from "./call.ts";
 import { cassetteKey } from "./cassette.ts";
 import { chatUsage, openWeightsPrices, responsesUsage, type TokenUsage, tokenCostUsd } from "./cost.ts";
 import type { GatewayEnv } from "./env.ts";
@@ -150,6 +150,9 @@ export async function runStructured<T>(env: GatewayEnv, req: StructuredRequest<T
   );
 }
 
+/** Short reads that may be resent when slow; teach and annotation are legitimately long and are not. */
+const SLOW_RESEND: ReadonlySet<CallCtx["purpose"]> = new Set(["extract", "understand"]);
+
 function metaRoute<T>(
   env: GatewayEnv,
   req: StructuredRequest<T>,
@@ -165,26 +168,31 @@ function metaRoute<T>(
     budget: outputBudget(req.maxOutputTokens, effort, ctx.purpose),
     async send(previous, budget) {
       userMessage ??= buildResponsesUserMessage(req.input, env, scope);
-      return env.meta.postJson(
-        "/responses",
-        {
-          model: req.model,
-          instructions: req.instructions,
-          input: [await userMessage, ...responsesCorrection(previous)],
-          text: {
-            format: {
-              type: "json_schema",
-              name: formatName(req.schemaName),
-              schema: wire.schema,
-              strict: false,
-            },
+      const body = {
+        model: req.model,
+        instructions: req.instructions,
+        input: [await userMessage, ...responsesCorrection(previous)],
+        text: {
+          format: {
+            type: "json_schema",
+            name: formatName(req.schemaName),
+            schema: wire.schema,
+            strict: false,
           },
-          ...(effort !== undefined ? { reasoning: { effort } } : {}),
-          ...(budget !== undefined ? { max_output_tokens: budget } : {}),
-          // Single-shot: nothing chains from it, and store=true can 413 on large inline media.
-          store: false,
         },
+        ...(effort !== undefined ? { reasoning: { effort } } : {}),
+        ...(budget !== undefined ? { max_output_tokens: budget } : {}),
+        // Single-shot: nothing chains from it, and store=true can 413 on large inline media.
+        store: false,
+      };
+      // Reads stall now and then (a 9-11 s PDF extraction once outlived 45 s); slow ones are sent once more.
+      const slowMs = SLOW_RESEND.has(ctx.purpose) ? env.structuredSlowMs : 0;
+      return withSlowRetry(
+        env,
         scope,
+        (s) => env.meta.postJson("/responses", body, s),
+        slowMs,
+        `${ctx.purpose} request`,
       );
     },
     read(raw) {

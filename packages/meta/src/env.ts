@@ -24,4 +24,6 @@ export interface GatewayEnv extends RecorderDeps {
   computerUseState: CuState;
   /** A computer-use turn slower than this is sent once more (0: never). */
   computerUseSlowMs: number;
+  /** An extract or understand request slower than this is sent once more (0: never). */
+  structuredSlowMs: number;
 }

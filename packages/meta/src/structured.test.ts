@@ -583,7 +583,50 @@ describe("output budget floors", () => {
       ctx("compile_annotate"),
     );
     expect(
-      (world.server.requestsTo("/v1/responses")[0]?.json as { max_output_tokens: number }).max_output_tokens,
+      (world.server.requestsTo("/v1/responses")[0]?.json as { max_output_tokens: number } | undefined)
+        ?.max_output_tokens,
     ).toBe(16_384);
+  });
+});
+
+describe("structured: a read that hangs", () => {
+  it("is abandoned after structuredSlowMs and sent once more", async () => {
+    world = await makeWorld({ structuredSlowMs: 150 });
+    world.server.on(
+      "/v1/responses",
+      { delayMs: 2_000, json: responseBody([messageItem('{"company":"late","seats":1,"note":null}')]) },
+      { json: responseBody([messageItem('{"company":"Acme Group","seats":25,"note":null}')]) },
+    );
+    const result = await world.gateway.structured(
+      {
+        model: "muse-spark-1.3",
+        instructions: "Extract the fields.",
+        input: [{ type: "text", text: "Acme Group, 25 seats" }],
+        schemaName: "Extraction",
+        schema: Extraction,
+      },
+      ctx("extract"),
+    );
+    expect(result.company).toBe("Acme Group");
+    expect(world.server.requestsTo("/v1/responses")).toHaveLength(2);
+  });
+
+  it("is never resent for long purposes such as teach", async () => {
+    world = await makeWorld({ structuredSlowMs: 150 });
+    world.server.on("/v1/responses", {
+      delayMs: 400,
+      json: responseBody([messageItem('{"company":"Acme Group","seats":25,"note":null}')]),
+    });
+    await world.gateway.structured(
+      {
+        model: "muse-spark-1.3",
+        instructions: "Draft the skill.",
+        input: [{ type: "text", text: "a recording" }],
+        schemaName: "Extraction",
+        schema: Extraction,
+      },
+      ctx("teach"),
+    );
+    expect(world.server.requestsTo("/v1/responses")).toHaveLength(1);
   });
 });

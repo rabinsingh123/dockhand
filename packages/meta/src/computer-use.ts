@@ -9,7 +9,7 @@ import {
   type FunctionTool,
   type ModelId,
 } from "@dockhand/core";
-import { openScope, recordCall } from "./call.ts";
+import { openScope, recordCall, withSlowRetry } from "./call.ts";
 import { cassetteKey, type Tape } from "./cassette.ts";
 import { MAX_IMAGES_PER_REQUEST } from "./config.ts";
 import { responsesUsage, tokenCostUsd } from "./cost.ts";
@@ -317,7 +317,13 @@ ${SCREEN_CHANGED}`
 
 async function post(env: GatewayEnv, body: Item, chained: boolean, scope: RequestScope) {
   try {
-    return await withSlowRetry(env, scope, (s) => env.meta.postJson("/responses", body, s));
+    return await withSlowRetry(
+      env,
+      scope,
+      (s) => env.meta.postJson("/responses", body, s),
+      env.computerUseSlowMs,
+      "computer-use turn",
+    );
   } catch (err) {
     const d = providerErrorDetail(err);
     const chainLag =
@@ -328,37 +334,6 @@ async function post(env: GatewayEnv, body: Item, chained: boolean, scope: Reques
     env.log.warn("previous response not found yet; retrying once", { retryInMs: CHAIN_LAG_RETRY_MS });
     await env.sleep(CHAIN_LAG_RETRY_MS, scope.signal);
     return env.meta.postJson("/responses", body, scope);
-  }
-}
-
-/**
- * Live, one computer-use turn in ~190 took 108 s (the p99 was ~21 s), and on the supplier wizard the same
- * request hung twice until the 90 s deadline. A turn request is idempotent (stateless replay, or a new response
- * off the same previous_response_id), so one that outlives env.computerUseSlowMs is abandoned and sent once
- * more; if that one is slow too, the turn fails fast with MODEL_TIMEOUT (the loop then starts a fresh
- * conversation) instead of waiting out the whole deadline.
- */
-async function withSlowRetry<T>(
-  env: GatewayEnv,
-  scope: RequestScope,
-  send: (s: RequestScope) => Promise<T>,
-): Promise<T> {
-  const slowMs = env.computerUseSlowMs;
-  if (!(slowMs > 0) || scope.deadlineAt - Date.now() < slowMs * 2) return send(scope);
-  for (let attempt = 1; ; attempt++) {
-    const slow = AbortSignal.timeout(slowMs);
-    try {
-      return await send({
-        signal: AbortSignal.any([scope.signal, slow]),
-        deadlineAt: Math.min(scope.deadlineAt, Date.now() + slowMs),
-      });
-    } catch (err) {
-      if (!slow.aborted || scope.signal.aborted) throw err;
-      if (attempt >= 2) {
-        throw new DockhandError("MODEL_TIMEOUT", `computer-use turn took over ${slowMs} ms twice`);
-      }
-      env.log.warn("computer-use turn is slow; sending it once more", { afterMs: slowMs });
-    }
   }
 }
 

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { type Clock, DockhandError, type Logger, varDir } from "@dockhand/core";
 
@@ -60,11 +60,24 @@ export function createCassettes(o: { mode: TapeMode; dir: string; clock: Clock; 
     calls.set(key, n + 1);
     return n;
   };
+  /** Replay mode: recordings by key material with clock values blanked, for the fallback match (built once). */
+  let byClockless: Promise<Map<string, Exchange[][]>> | undefined;
+  const clockless = new Map<string, number>();
+  const fallback = async (purpose: string, material: unknown): Promise<Exchange[] | undefined> => {
+    byClockless ??= indexWithoutClock(o.dir);
+    const key = cassetteKey(purpose, withoutClock(material));
+    const recorded = (await byClockless).get(key);
+    if (!recorded?.length) return undefined;
+    const n = clockless.get(key) ?? 0;
+    clockless.set(key, n + 1);
+    o.log.info("cassette matched with clock values ignored", { purpose, call: n + 1 });
+    return recorded[Math.min(n, recorded.length - 1)];
+  };
   return {
     mode: o.mode,
     tape(purpose, key, material) {
       const path = cassettePath(o.dir, purpose, key);
-      if (o.mode === "replay") return replayTape(key, path, purpose, material, nextCall(key));
+      if (o.mode === "replay") return replayTape(key, path, purpose, material, nextCall(key), fallback);
       if (o.mode === "record")
         return recordTape({
           key,
@@ -87,14 +100,35 @@ function exchangesOf(file: CassetteFile, call: number): Exchange[] {
   return file.laterCalls[call - 1] ?? file.laterCalls[file.laterCalls.length - 1] ?? file.exchanges;
 }
 
-function replayTape(key: string, path: string, purpose: string, material: unknown, call: number): Tape {
+function replayTape(
+  key: string,
+  path: string,
+  purpose: string,
+  material: unknown,
+  call: number,
+  fallback: (purpose: string, material: unknown) => Promise<Exchange[] | undefined>,
+): Tape {
   let loaded: Promise<Exchange[]> | undefined;
   let cursor = 0;
+  const resolve = async (): Promise<Exchange[]> => {
+    const file = await readCassette(key, path);
+    if (file) return exchangesOf(file, call);
+    // A page's clock (a submission time, today's date) is part of some requests; a recording made at another
+    // time still answers the same request.
+    const matched = material !== undefined ? await fallback(purpose, material) : undefined;
+    if (matched) return matched;
+    const dump = await writeMiss(purpose, key, material);
+    throw new DockhandError(
+      "MODEL_ERROR",
+      `no cassette for key ${key} (expected ${path}); record it with META_MODE=record${dump ? `; key material written to ${dump}` : ""}`,
+      { key, path },
+    );
+  };
   return {
     key,
     replaying: true,
     async next(_send, label) {
-      loaded ??= loadCassette(key, path, purpose, material).then((file) => exchangesOf(file, call));
+      loaded ??= resolve();
       const exchanges = await loaded;
       const index = cursor++;
       const exchange = exchanges[index];
@@ -165,30 +199,58 @@ function recordTape(o: {
   };
 }
 
-async function loadCassette(
-  key: string,
-  path: string,
-  purpose: string,
-  material: unknown,
-): Promise<CassetteFile> {
+async function readCassette(key: string, path: string): Promise<CassetteFile | undefined> {
   let text: string;
   try {
     text = await readFile(path, "utf8");
-  } catch {
-    const dump = await writeMiss(purpose, key, material);
-    throw new DockhandError(
-      "MODEL_ERROR",
-      `no cassette for key ${key} (expected ${path}); record it with META_MODE=record${dump ? `; key material written to ${dump}` : ""}`,
-      {
-        key,
-        path,
-      },
-    );
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw err;
   }
   const file = JSON.parse(text) as CassetteFile;
   if (!Array.isArray(file.exchanges))
     throw new DockhandError("MODEL_ERROR", `cassette ${key} is malformed (${path})`);
   return file;
+}
+
+const MONTH = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\.?";
+const CLOCK_PATTERNS: [RegExp, string][] = [
+  [/\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b/g, "<date>"],
+  [new RegExp(`\\b\\d{1,2} ${MONTH},? \\d{4}\\b`, "g"), "<date>"],
+  [new RegExp(`\\b${MONTH} \\d{1,2},? \\d{4}\\b`, "g"), "<date>"],
+  [/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g, "<date>"],
+  [/\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp]\.?[Mm]\.?)?\b/g, "<time>"],
+  [/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? (?=<date>)/g, ""],
+];
+
+/** Key material with dates and times of day blanked: the fallback identity of a request. */
+export function withoutClock(value: unknown): unknown {
+  if (typeof value === "string") return CLOCK_PATTERNS.reduce((s, [re, to]) => s.replace(re, to), value);
+  if (Array.isArray(value)) return value.map(withoutClock);
+  if (value && typeof value === "object")
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withoutClock(v)]));
+  return value;
+}
+
+/** Every recording with stored material, by clockless key: its calls in recording order, oldest file first. */
+async function indexWithoutClock(dir: string): Promise<Map<string, Exchange[][]>> {
+  const found: { key: string; at: string; calls: Exchange[][] }[] = [];
+  for (const purpose of await readdir(dir).catch(() => [] as string[])) {
+    for (const name of await readdir(join(dir, purpose)).catch(() => [] as string[])) {
+      if (!name.endsWith(".json")) continue;
+      const file = await readCassette(name, join(dir, purpose, name)).catch(() => undefined);
+      if (!file || file.material === undefined) continue;
+      found.push({
+        key: cassetteKey(purpose, withoutClock(file.material)),
+        at: file.recordedAt,
+        calls: [file.exchanges, ...(file.laterCalls ?? [])],
+      });
+    }
+  }
+  found.sort((a, b) => a.at.localeCompare(b.at));
+  const index = new Map<string, Exchange[][]>();
+  for (const f of found) index.set(f.key, [...(index.get(f.key) ?? []), ...f.calls]);
+  return index;
 }
 
 async function writeAtomically(path: string, text: string): Promise<void> {

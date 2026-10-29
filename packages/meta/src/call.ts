@@ -134,3 +134,33 @@ function statusFor(code: ErrorCode): ModelCallRecord["status"] {
   if (code === "MODEL_INCOMPLETE") return "incomplete";
   return "error";
 }
+
+/**
+ * Live, one request in a few hundred hangs: a computer-use turn took 108 s against a p99 of ~21 s, and a PDF
+ * extraction that usually takes 9-11 s outlived its 45 s deadline. Model requests are idempotent (they write
+ * nothing), so one that outlives `slowMs` is abandoned and sent once more; if that one is slow too, the call
+ * fails fast with MODEL_TIMEOUT instead of waiting out the whole deadline. `slowMs` 0 sends once, as does a
+ * deadline too short for two attempts.
+ */
+export async function withSlowRetry<T>(
+  env: { log: Logger },
+  scope: RequestScope,
+  send: (s: RequestScope) => Promise<T>,
+  slowMs: number,
+  what: string,
+): Promise<T> {
+  if (!(slowMs > 0) || scope.deadlineAt - Date.now() < slowMs * 2) return send(scope);
+  for (let attempt = 1; ; attempt++) {
+    const slow = AbortSignal.timeout(slowMs);
+    try {
+      return await send({
+        signal: AbortSignal.any([scope.signal, slow]),
+        deadlineAt: Math.min(scope.deadlineAt, Date.now() + slowMs),
+      });
+    } catch (err) {
+      if (!slow.aborted || scope.signal.aborted) throw err;
+      if (attempt >= 2) throw new DockhandError("MODEL_TIMEOUT", `${what} took over ${slowMs} ms twice`);
+      env.log.warn(`${what} is slow; sending it once more`, { afterMs: slowMs });
+    }
+  }
+}

@@ -449,7 +449,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       // A request that names EspoCRM gets the lead understanding call; everything else is unchanged.
       const lead =
         !video && deps.portals[ESPOCRM] && inputsMentionEspo(inputs)
-          ? await understandLead(models, inputs, { jobId, timeoutMs: 45_000 })
+          ? await understandLead(models, inputs, { jobId, timeoutMs: 90_000 })
           : null;
       const u: Understanding = video
         ? teachUnderstanding(video.text)
@@ -458,7 +458,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
           : await understand(
               models,
               { rep: job.rep, nowMs: clock.now(), inputs, skills: knownSkills() },
-              { jobId, timeoutMs: 45_000 },
+              { jobId, timeoutMs: 90_000 },
             );
       repos.jobs.update(jobId, {
         understanding: u,

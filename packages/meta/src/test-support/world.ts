@@ -54,6 +54,7 @@ export interface WorldOptions {
   disableParallelToolCalls?: boolean;
   computerUseState?: CuState;
   computerUseSlowMs?: number;
+  structuredSlowMs?: number;
   openWeights?: Partial<MetaConfig["openWeights"]>;
   metaApiKey?: string;
   /** Replaces fetch (cassette tests pass one that fails on any network use). */
@@ -101,6 +102,7 @@ export async function makeWorld(opts: WorldOptions = {}): Promise<World> {
     ...(opts.disableParallelToolCalls ? { disableParallelToolCalls: true } : {}),
     ...(opts.computerUseState ? { computerUseState: opts.computerUseState } : {}),
     ...(opts.computerUseSlowMs !== undefined ? { computerUseSlowMs: opts.computerUseSlowMs } : {}),
+    ...(opts.structuredSlowMs !== undefined ? { structuredSlowMs: opts.structuredSlowMs } : {}),
     retry: {
       sleep: async (ms) => {
         sleeps.push(ms);

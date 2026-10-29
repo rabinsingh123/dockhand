@@ -107,7 +107,7 @@ export async function analyzeMedia(
   if (item.kind === "photo" || item.kind === "pdf") {
     const extraction = await deps.models.structured(
       extractionRequest({ type: item.kind === "photo" ? "image" : "pdf", ref: item.media }, item.text),
-      { purpose: "extract", jobId: ctx.jobId, timeoutMs: 45_000 },
+      { purpose: "extract", jobId: ctx.jobId, timeoutMs: 90_000 },
     );
     return { ...item, extraction };
   }

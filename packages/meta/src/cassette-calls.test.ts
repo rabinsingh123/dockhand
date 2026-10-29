@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createFixedClock, createLogger } from "@dockhand/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type CassetteFile, cassetteKey, cassettePath, createCassettes } from "./cassette.ts";
+import { type CassetteFile, cassetteKey, cassettePath, createCassettes, withoutClock } from "./cassette.ts";
 
 const clock = createFixedClock(Date.UTC(2026, 9, 29, 20, 0, 0));
 const log = createLogger({ level: "silent" });
@@ -83,5 +83,40 @@ describe("cassettes with repeated keys", () => {
       await readFile(join(dir, "var", "cassette-misses", "extract", `${missing}.json`), "utf8"),
     );
     expect(dump).toEqual({ key: missing, material: { photo: "never recorded" } });
+  });
+});
+
+describe("cassette replay with a page clock in the request", () => {
+  it("blanks dates and times of day in every common format", () => {
+    const s = withoutClock(
+      "SUBMITTED 29 Oct 2026, 17:32 · Thu 2026-10-29 · Oct 29, 2026 · 29/10/2026 · 5:32 PM · 2026-10-29T17:32:05Z",
+    );
+    expect(s).toBe("SUBMITTED <date>, <time> · <date> · <date> · <date> · <time> · <date>");
+  });
+
+  it("serves a recording whose request differed only in clock values, when the exact key misses", async () => {
+    const recordedAt = { page: "Registration received. SUBMITTED 29 Oct 2026, 17:32" };
+    const rec = createCassettes({ mode: "record", dir, clock, log });
+    const r = rec.tape("compile_annotate", cassetteKey("compile_annotate", recordedAt), recordedAt);
+    await r.next(async () => ({ intents: "recorded" }));
+    await r.save();
+
+    const later = { page: "Registration received. SUBMITTED 2 Nov 2026, 09:05" };
+    const play = createCassettes({ mode: "replay", dir, clock, log });
+    const tape = play.tape("compile_annotate", cassetteKey("compile_annotate", later), later);
+    expect(await tape.next(noNetwork)).toEqual({ intents: "recorded" });
+  });
+
+  it("still misses when the request differs in anything but the clock", async () => {
+    const rec = createCassettes({ mode: "record", dir, clock, log });
+    const a = { page: "Acme Group at 17:32" };
+    const r = rec.tape("extract", cassetteKey("extract", a), a);
+    await r.next(async () => "a");
+    await r.save();
+    const b = { page: "Globex Industrial at 09:05" };
+    const play = createCassettes({ mode: "replay", dir, clock, log });
+    await expect(play.tape("extract", cassetteKey("extract", b), b).next(noNetwork)).rejects.toThrow(
+      /no cassette/,
+    );
   });
 });
