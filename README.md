@@ -116,6 +116,13 @@ Set `META_MODE=live`, `WHATSAPP_MODE=cloud` and `CRM_MODE=hubspot` with the keys
 
 Design: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Third-party software
+
+| Software | Version | License | How it is used |
+|---|---|---|---|
+| [EspoCRM](https://github.com/espocrm/espocrm) | 10.0.11 | AGPLv3 | The real third-party app Dockhand drives, unmodified. `apps/oss/espocrm/setup.ps1` downloads the official release into `var/oss/` (git-ignored); it is never committed. |
+| PHP (Windows build) and MariaDB | 8.4.27, 11.4.13 | PHP License 3.01, GPLv2 | Portable runtimes for EspoCRM, downloaded by the same script, never committed. |
+
 ## Prior art
 
 Record-and-replay with an agent fallback exists: browser-use's workflow-use records through its own recorder and falls back to an agent, and UiPath sells a Healing Agent for enterprise RPA. Dockhand's focus is different: teaching from an ordinary screen recording, a heal ladder measured per rung against UI changes it did not design, read-back verification so a heal can never silently write a wrong field, and asking the human when the app needs new information.
