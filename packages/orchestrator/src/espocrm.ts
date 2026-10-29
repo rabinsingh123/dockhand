@@ -17,7 +17,8 @@ import { cardBody } from "./messages.ts";
 import { canonicalCountry, humanize, matchEnum } from "./params.ts";
 import { activeSkillFor, type BuildPlanContext, displayValue, type PlanOutcome } from "./plan.ts";
 import { ESPOCRM, type PortalTarget, startUrlFor } from "./portals.ts";
-import { blankUnderstanding, UNDERSTAND_MODEL, type UnderstandInput } from "./understand.ts";
+import { MAX, promptText, promptTextOrNull, quoted } from "./sanitize.ts";
+import { blankUnderstanding, extractionLines, UNDERSTAND_MODEL, type UnderstandInput } from "./understand.ts";
 
 export const ESPOCRM_DEFAULTS = { id: ESPOCRM, name: "EspoCRM", startPath: "/#Lead/create" } as const;
 export const ESPOCRM_COMMIT = "Save";
@@ -84,9 +85,9 @@ export function leadRequest(inputs: UnderstandInput[]): StructuredRequest<LeadUn
     const n = `[${i + 1}]`;
     if (input.kind === "text") return `${n} Text from the rep: ${input.text}`;
     if (input.kind === "caption") return `${n} Caption from the rep: ${input.text}`;
-    if (input.kind === "voice") return `${n} Voice note (transcript): ${input.text}`;
-    const fields = input.extraction.fields.map((f) => `  - ${f.name}: ${f.value}`).join("\n");
-    return `${n} ${input.source === "photo" ? "Photo" : "PDF"} of a document: ${input.extraction.summary}\n${fields}`;
+    if (input.kind === "voice")
+      return `${n} Voice note (transcript): ${promptText(input.text, MAX.transcript)}`;
+    return `${n} ${input.source === "photo" ? "Photo" : "PDF"} of a document: ${promptText(input.extraction.summary, MAX.sentence)}\n${extractionLines(input.extraction)}`;
   });
   return {
     model: UNDERSTAND_MODEL,
@@ -98,21 +99,20 @@ export function leadRequest(inputs: UnderstandInput[]): StructuredRequest<LeadUn
   };
 }
 
-/** Code checks every value: empty text is null, the email must look like one, enums must be EspoCRM's. */
+/**
+ * Code checks every value: one line each and capped (each reaches the plan card and a model prompt), empty text
+ * is null, the email must look like one, enums must be EspoCRM's.
+ */
 export function normalizeLead(l: LeadUnderstanding): LeadUnderstanding {
-  const text = (v: string | null) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
-  const out: LeadUnderstanding = { ...l, missing: l.missing.map((m) => m.trim()).filter(Boolean) };
-  for (const k of [
-    "firstName",
-    "lastName",
-    "company",
-    "email",
-    "title",
-    "website",
-    "city",
-    "country",
-  ] as const)
-    out[k] = text(out[k]);
+  const out: LeadUnderstanding = {
+    ...l,
+    missing: l.missing.map((m) => promptText(m, MAX.name)).filter(Boolean),
+    summaryForRep: promptText(l.summaryForRep, MAX.sentence),
+  };
+  for (const k of ["firstName", "lastName", "company", "title", "city", "country"] as const)
+    out[k] = promptTextOrNull(out[k], MAX.name);
+  out.email = promptTextOrNull(out.email, MAX.email);
+  out.website = promptTextOrNull(out.website, MAX.url);
   if (out.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(out.email)) out.email = null;
   if (out.website) out.website = out.website.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   if (out.country) out.country = canonicalCountry(out.country);
@@ -276,7 +276,7 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
           portalId: ESPOCRM,
           startUrl: startUrlFor(portal, found.draft.startUrl, params),
           draftId: found.id,
-          goal: `${found.draft.goal} Work on EspoCRM. Use exactly the values given below and leave every other field as it is. When every field is filled, ask for approval with request_commit before you click "${found.draft.commitStep || ESPOCRM_COMMIT}". Finish when the screen shows: ${found.draft.success}`,
+          goal: `${found.draft.goal} Work on EspoCRM. Use exactly the values given below and leave every other field as it is. When every field is filled, ask for approval with request_commit before you click ${quoted(found.draft.commitStep || ESPOCRM_COMMIT)}. Finish when the screen shows: ${found.draft.success}`,
           params,
           compileAs: LEAD_SKILL,
         },

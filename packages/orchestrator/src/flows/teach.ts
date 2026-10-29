@@ -13,6 +13,7 @@ import {
 import { mentionsEspo } from "../espocrm.ts";
 import { toWav, transcriptionKeywords } from "../intake.ts";
 import { CARAVELA, ESPOCRM, type PortalDirectory, SUPPLIER, startUrlFor } from "../portals.ts";
+import { MAX, promptText } from "../sanitize.ts";
 import { teachCardHtml } from "../tools/receipts.ts";
 import { type FlowEnv, type JobCtx, sendText, trySend } from "./env.ts";
 
@@ -68,8 +69,44 @@ export function teachPortals(portals: PortalDirectory, caption: string | undefin
   return rest;
 }
 
+/** At most this many steps reach a first run's prompt as hints. */
+const MAX_DRAFT_STEPS = 40;
+
+/**
+ * What the teach model read off a recording reaches the first run's prompt (goal, hints, the submit control's
+ * name, the success check) and the teach card: one line each, capped.
+ */
+function sanitizeDraft(d: SkillDraft): SkillDraft {
+  const line = (v: string, max: number) => promptText(v, max);
+  return {
+    ...d,
+    title: line(d.title, MAX.name),
+    goal: line(d.goal, MAX.text),
+    steps: d.steps
+      .map((st) => line(st, MAX.sentence))
+      .filter((st) => st !== "")
+      .slice(0, MAX_DRAFT_STEPS),
+    params: d.params.map((p) => ({
+      ...p,
+      description: line(p.description, MAX.sentence),
+      ...(p.example !== undefined ? { example: line(p.example, MAX.name) } : {}),
+      ...(p.enumValues ? { enumValues: p.enumValues.map((v) => line(v, MAX.name)) } : {}),
+    })),
+    commitStep: line(d.commitStep, MAX.name),
+    success: line(d.success, MAX.sentence),
+    ...(d.observedValues
+      ? {
+          observedValues: Object.fromEntries(
+            Object.entries(d.observedValues).map(([k, v]) => [k, line(v, MAX.text)]),
+          ),
+        }
+      : {}),
+  };
+}
+
 /** Code decides the portal and start URL: the model's guesses are checked against the configured portals. */
-export function normalizeDraft(d: SkillDraft, portals: PortalDirectory): SkillDraft {
+export function normalizeDraft(raw: SkillDraft, portals: PortalDirectory): SkillDraft {
+  const d = sanitizeDraft(raw);
   let portalId = portals[d.portalId] ? d.portalId : undefined;
   if (!portalId) {
     const text = `${d.portalId} ${d.title} ${d.startUrl}`.toLowerCase();

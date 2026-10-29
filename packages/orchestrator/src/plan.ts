@@ -22,6 +22,7 @@ import {
   profileParams,
 } from "./params.ts";
 import { CARAVELA, ESPOCRM, type PortalInfo, parseInviteUrl, SUPPLIER, startUrlFor } from "./portals.ts";
+import { quoted } from "./sanitize.ts";
 import { addDaysIso, firstOfNextMonth, todayIso } from "./time.ts";
 import {
   defaultPlan,
@@ -223,7 +224,7 @@ function planRegisterDeal(u: Understanding, ctx: BuildPlanContext): PlanOutcome 
 }
 
 function firstRunGoal(draft: SkillDraft, portal: PortalInfo): string {
-  return `${draft.goal} Work on ${portal.name}. Use exactly the values given below. When every field is filled, ask for approval with request_commit before you click "${draft.commitStep}". Finish when the screen shows: ${draft.success}`;
+  return `${draft.goal} Work on ${portal.name}. Use exactly the values given below. When every field is filled, ask for approval with request_commit before you click ${quoted(draft.commitStep)}. Finish when the screen shows: ${draft.success}`;
 }
 
 // ---------- supplier_onboarding ----------
@@ -313,7 +314,7 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
 
 export function supplierGoal(buyer: string): string {
   return [
-    `Register Tidewater Cloud as a supplier for ${buyer} on this supplier portal, starting from the invitation page that is open.`,
+    `Register Tidewater Cloud as a supplier for ${quoted(buyer)} on this supplier portal, starting from the invitation page that is open.`,
     "Start the registration, then fill every field on every step of the wizard with the values given (use the value whose name matches the field), choosing options exactly as given.",
     'Upload the W-9 into the W-9 field with attach_file slot "w9" and the certificate of insurance with slot "coi".',
     "Go through each step with its Next button. On the last step, call request_commit before the final submit and submit only after approval.",
