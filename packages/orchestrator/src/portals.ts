@@ -23,6 +23,11 @@ export interface PortalTarget extends PortalInfo {
   session(o: { runId: string }): Promise<CookieSpec[]>;
   /** URL substrings the write guard always lets through (sign-in, starting an invite). */
   writeGuardAllow: string[];
+  /**
+   * Other origins a run may navigate to and write to, such as a same-site sign-in origin. Empty by default:
+   * every other origin is aborted by the write guard.
+   */
+  writeGuardAllowOrigins?: string[];
   /** Names of the control that submits, for a first run no teach draft names it for (EspoCRM: "Save"). */
   commitHints?: string[];
   /** Runs on every leased page before its first navigation (EspoCRM keeps its sign-in in localStorage). */
@@ -42,8 +47,14 @@ export const WRITE_GUARD_ALLOW: Record<string, string[]> = {
   [SUPPLIER]: ["/api/login", "/api/logout", "/api/__config", "/start"],
 };
 
-export function writeGuardFor(portal: Pick<PortalTarget, "url" | "writeGuardAllow">): WriteGuardConfig {
-  return { origins: [new URL(portal.url).origin], allow: portal.writeGuardAllow };
+export function writeGuardFor(
+  portal: Pick<PortalTarget, "url" | "writeGuardAllow" | "writeGuardAllowOrigins">,
+): WriteGuardConfig {
+  return {
+    origins: [new URL(portal.url).origin],
+    allow: portal.writeGuardAllow,
+    allowOrigins: portal.writeGuardAllowOrigins ?? [],
+  };
 }
 
 /** The portal's origin plus the path (and query) of `url`; the default start path when `url` is unusable. */

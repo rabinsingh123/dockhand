@@ -88,16 +88,51 @@ describe("installWriteGuard", () => {
     await guard.dispose();
   });
 
-  it("ignores other origins and aborts held writes on dispose", async () => {
+  it("aborts writes to other origins at once: never held, never released by a token", async () => {
+    const reported: string[] = [];
     const other = await installWriteGuard(
+      page,
+      { origins: ["http://elsewhere.test"], allow: [] },
+      () => new Promise(() => {}),
+      (r) => reported.push(`${r.method} ${new URL(r.url).pathname} nav=${r.navigation}`),
+    );
+    other.grant(5); // tokens are for the portal origin only
+    await page.click("#save");
+    await page.locator("#out", { hasText: "POST failed;" }).waitFor();
+    await page.click("#get"); // a read from another origin passes
+    await page.locator("#out", { hasText: "GET ok;" }).waitFor();
+    expect(server.hits.map((h) => h.method)).toEqual(["GET"]);
+    expect(other.pending()).toBe(0);
+    expect(reported).toEqual(["POST /api/deals nav=false"]);
+    expect(other.foreign()).toHaveLength(1);
+    await other.dispose();
+  });
+
+  it("aborts a main-frame navigation to another origin, and lets an allow-listed origin through", async () => {
+    const guard = await installWriteGuard(
       page,
       { origins: ["http://elsewhere.test"], allow: [] },
       async () => "block",
     );
+    await page.evaluate(() => {
+      location.href = "/app?left=1";
+    });
+    await expect.poll(() => guard.foreign().map((r) => r.navigation)).toEqual([true]);
+    expect(page.url()).toBe(`${FIXTURE_ORIGIN}/app`);
+    await guard.dispose();
+
+    const allowed = await installWriteGuard(
+      page,
+      { origins: ["http://elsewhere.test"], allow: [], allowOrigins: [FIXTURE_ORIGIN] },
+      async () => "block",
+    );
     await page.click("#save");
     await page.locator("#out", { hasText: "POST ok;" }).waitFor();
-    await other.dispose();
+    expect(allowed.foreign()).toEqual([]);
+    await allowed.dispose();
+  });
 
+  it("aborts held writes on dispose", async () => {
     const guard = await installWriteGuard(
       page,
       { origins: [FIXTURE_ORIGIN], allow: [] },
@@ -107,6 +142,6 @@ describe("installWriteGuard", () => {
     await expect.poll(() => guard.pending()).toBe(1);
     await guard.dispose();
     await page.locator("#out", { hasText: "POST failed;" }).waitFor();
-    expect(server.hits.filter((h) => h.method === "POST")).toHaveLength(1);
+    expect(server.hits.filter((h) => h.method === "POST")).toHaveLength(0);
   });
 });

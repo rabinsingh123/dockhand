@@ -81,7 +81,7 @@ export function portalOfSkill(skill: { portalId: string }): PortalDef {
 }
 
 export function writeGuardFor(def: PortalDef, portalUrl: string): WriteGuardConfig {
-  return { origins: [new URL(portalUrl).origin], allow: def.writeGuardAllow };
+  return { origins: [new URL(portalUrl).origin], allow: def.writeGuardAllow, allowOrigins: [] };
 }
 
 /** Eval contexts approve commits only against local portals. */

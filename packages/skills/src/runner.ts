@@ -180,7 +180,7 @@ class SkillRun {
   private readonly retried = new Set<string>();
   /** Time spent on bounced attempts, added to the step's final result. */
   private readonly carriedMs = new Map<string, number>();
-  private readonly blockedWrites: { method: string; url: string }[] = [];
+  private readonly blockedWrites: { method: string; url: string; foreign?: boolean }[] = [];
   private readonly started = performance.now();
   private changed = false;
   private cost = 0;
@@ -219,14 +219,22 @@ class SkillRun {
     this.hud?.runStart({ skill: this.skill, dryRun: this.opts.dryRun === true });
     try {
       if (this.opts.writeGuard) {
-        this.guard = await installWriteGuard(this.page, this.opts.writeGuard, async (req) => {
-          if (this.commitWindow) {
-            this.commitWindow = false;
-            return "allow";
-          }
-          this.blockedWrites.push(req);
-          return "block";
-        });
+        this.guard = await installWriteGuard(
+          this.page,
+          this.opts.writeGuard,
+          async (req) => {
+            if (this.commitWindow) {
+              this.commitWindow = false;
+              return "allow";
+            }
+            this.blockedWrites.push(req);
+            return "block";
+          },
+          (req) => {
+            // Another origin: aborted by the guard, never released, even inside the commit window.
+            this.blockedWrites.push({ method: req.method, url: req.url, foreign: true });
+          },
+        );
       }
       let idx = 0;
       while (idx < this.steps.length) {
@@ -331,7 +339,9 @@ class SkillRun {
           started,
           "failed",
           "WRITE_BLOCKED",
-          `blocked ${w?.method} ${w?.url} outside a commit`,
+          w?.foreign
+            ? `blocked ${w.method} ${w.url}: another origin than the portal`
+            : `blocked ${w?.method} ${w?.url} outside a commit`,
         );
       }
       await this.record(idx, step, started, outcome);

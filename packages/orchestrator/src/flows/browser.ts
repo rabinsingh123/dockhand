@@ -230,6 +230,13 @@ export async function runFirstRun(
   } finally {
     await lease.release();
   }
+  if (res.blockedForeign?.length) {
+    env.log.warn("write guard aborted requests to another origin", {
+      runId,
+      portal: portal.id,
+      requests: res.blockedForeign,
+    });
+  }
   const seconds = (performance.now() - t0 - (res.humanMs ?? 0)) / 1000; // machine time: the rep's waits are left out
   const traceRef = await env.artifacts.put(
     new TextEncoder().encode(JSON.stringify(res.trace)),

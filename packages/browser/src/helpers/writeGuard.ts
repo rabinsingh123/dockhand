@@ -1,7 +1,8 @@
-// Network backstop for the commit gate: mutating requests to the portal origins are held until a token exists.
+// Network backstop for the commit gate: mutating requests to the portal origins are held until a token exists,
+// and writes or main-frame navigations to any other origin are aborted outright.
 
-import type { WriteGuardConfig } from "@dockhand/core";
-import type { Page, Route } from "playwright";
+import type { ForeignRequest, WriteGuardConfig } from "@dockhand/core";
+import type { Page, Request, Route } from "playwright";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -18,6 +19,8 @@ export interface WriteGuard {
   revoke(): number;
   /** Writes let through by a token so far. */
   released(): number;
+  /** Writes and main-frame navigations to other origins aborted so far (never held, never released). */
+  foreign(): ForeignRequest[];
 }
 
 interface Held {
@@ -33,18 +36,37 @@ function originOf(url: string): string | null {
   }
 }
 
+function isMainFrameNavigation(req: Request, page: Page): boolean {
+  try {
+    return req.isNavigationRequest() && req.frame() === page.mainFrame();
+  } catch {
+    return false; // service-worker requests have no frame
+  }
+}
+
 /**
  * Holds POST/PUT/PATCH/DELETE to `cfg.origins` (URLs containing an `cfg.allow` substring pass) until a token is
  * granted. A held write is also reported to `onWrite`: "allow" lets it through without a token, "block" aborts
  * it; whichever of grant / onWrite comes first decides.
+ *
+ * A write or main-frame navigation to any other http(s) origin (unless it is in `cfg.allowOrigins`) is aborted
+ * at once and reported to `onForeign`: no token or `onWrite` answer can release it, so an approval never
+ * covers data leaving the portal. Reads (images, scripts, fonts) from other origins pass. A server-side
+ * redirect from the portal is not routed by Playwright; writes from the page it lands on are still aborted.
  */
 export async function installWriteGuard(
   page: Page,
   cfg: WriteGuardConfig,
   onWrite: (req: { method: string; url: string }) => Promise<"allow" | "block">,
+  onForeign?: (req: ForeignRequest) => void,
 ): Promise<WriteGuard> {
   const origins = new Set(cfg.origins.map(originOf).filter((o): o is string => o !== null));
+  const trusted = new Set([
+    ...origins,
+    ...(cfg.allowOrigins ?? []).map(originOf).filter((o): o is string => o !== null),
+  ]);
   const held: Held[] = [];
+  const foreign: ForeignRequest[] = [];
   let tokens = 0;
   let released = 0;
 
@@ -79,7 +101,26 @@ export async function installWriteGuard(
     );
   };
 
+  const isForeign = (url: URL) =>
+    (url.protocol === "http:" || url.protocol === "https:") && !trusted.has(url.origin);
+  const foreignHandler = async (route: Route) => {
+    const req = route.request();
+    const method = req.method().toUpperCase();
+    const navigation = isMainFrameNavigation(req, page);
+    if (!WRITE_METHODS.has(method) && !navigation) return route.fallback();
+    const r: ForeignRequest = { method, url: req.url(), navigation };
+    foreign.push(r);
+    try {
+      onForeign?.(r);
+    } finally {
+      // "aborted" cancels a navigation without an error page: the page and its filled form stay as they were
+      // (any other code, and a 204, leave Chromium on chrome-error:// or Playwright waiting for the navigation).
+      await route.abort(navigation ? "aborted" : "blockedbyclient").catch(() => {});
+    }
+  };
+
   await page.route(matches, handler);
+  await page.route(isForeign, foreignHandler);
   return {
     grant(n = 1) {
       tokens += n;
@@ -97,8 +138,10 @@ export async function installWriteGuard(
       return n;
     },
     released: () => released,
+    foreign: () => [...foreign],
     async dispose() {
       await page.unroute(matches, handler).catch(() => {});
+      await page.unroute(isForeign, foreignHandler).catch(() => {});
       for (const h of [...held]) settle(h, "abort");
     },
   };

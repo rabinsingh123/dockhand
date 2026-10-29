@@ -107,9 +107,15 @@ export interface CuHooks {
 
 /** Network backstop: mutating requests (POST/PUT/PATCH/DELETE) to these origins are held until approved. */
 export interface WriteGuardConfig {
+  /**
+   * The run's portal origin(s). Writes to them wait for an approval token; writes and main-frame navigations
+   * to any other origin are aborted.
+   */
   origins: string[];
   /** URL substrings that never need approval (e.g. "/api/__config"). */
   allow: string[];
+  /** Other origins a run may navigate to and write to (a portal's same-site sign-in origin). Default none. */
+  allowOrigins?: string[];
 }
 
 export interface CuRunInput {
@@ -144,6 +150,16 @@ export interface CuRunResult {
   proposed?: Target; // propose_only mode: the element the model chose
   /** Time spent waiting for a person (approvals, safety checks). Machine time = wall time minus this. */
   humanMs?: number;
+  /** Writes and main-frame navigations to another origin that the write guard aborted. */
+  blockedForeign?: ForeignRequest[];
+}
+
+/** A request to an origin outside the run's portal, aborted by the write guard. */
+export interface ForeignRequest {
+  method: string;
+  url: string;
+  /** A main-frame navigation (a link, a GET form) rather than a write. */
+  navigation: boolean;
 }
 
 /** Runs the loop. Implemented in packages/browser. */

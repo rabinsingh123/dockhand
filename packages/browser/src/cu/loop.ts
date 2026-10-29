@@ -356,14 +356,22 @@ class ComputerUseRun {
     this.lastUrl = startUrl;
     this.attach();
     try {
-      this.guard = await installWriteGuard(page, input.writeGuard, async (req) => {
-        this.blockedWriteCount++;
-        this.note(
-          `A ${req.method} to ${new URL(req.url).pathname} was blocked: nothing is saved or submitted without approval.` +
-            (input.commitPolicy === "gate" ? " Call request_commit first." : ""),
-        );
-        return "block";
-      });
+      this.guard = await installWriteGuard(
+        page,
+        input.writeGuard,
+        async (req) => {
+          this.blockedWriteCount++;
+          this.note(
+            `A ${req.method} to ${new URL(req.url).pathname} was blocked: nothing is saved or submitted without approval.` +
+              (input.commitPolicy === "gate" ? " Call request_commit first." : ""),
+          );
+          return "block";
+        },
+        () => {
+          // Leaving the portal (a link or form to another origin) is aborted and stops the batch.
+          this.blockedWriteCount++;
+        },
+      );
       const size = page.viewportSize();
       if (!size || size.width !== VIEWPORT.w || size.height !== VIEWPORT.h) {
         throw new DockhandError(
@@ -464,6 +472,7 @@ class ComputerUseRun {
       outcome: this.outcome,
       ...(this.message !== undefined ? { message: this.message } : {}),
       ...(this.proposed ? { proposed: this.proposed } : {}),
+      ...(this.guard && this.guard.foreign().length > 0 ? { blockedForeign: this.guard.foreign() } : {}),
       humanMs: this.humanMs,
     };
   }

