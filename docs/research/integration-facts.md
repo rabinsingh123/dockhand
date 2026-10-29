@@ -501,7 +501,7 @@ curl https://api.hubapi.com/crm/objects/2026-09/companies/search \
   --header "authorization: Bearer $HUBSPOT_TOKEN" \
   --data '{
     "filterGroups": [
-      {"filters": [{"propertyName": "domain", "operator": "EQ", "value": "acme.com.br"}]},
+      {"filters": [{"propertyName": "domain", "operator": "EQ", "value": "acme.example"}]},
       {"filters": [{"propertyName": "name", "operator": "CONTAINS_TOKEN", "value": "acme*"}]}
     ],
     "properties": ["name", "domain"],

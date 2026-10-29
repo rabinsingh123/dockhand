@@ -58,11 +58,11 @@ const gw = createLocalFakeGateway((req) => {
 });
 const params = {
   company: "Cajá Logística S.A.",
-  website: "caja-logistica.com.br",
+  website: "caja-logistica.example",
   country: "Chile",
   city: "Valparaíso",
   contact_name: "Rodrigo Pereira",
-  contact_email: "rodrigo.pereira@caja-logistica.com.br",
+  contact_email: "rodrigo.pereira@caja-logistica.example",
   contact_phone: "+56 9 8765 4321",
   product: "Tidewater Cloud Enterprise",
   seats: 340,

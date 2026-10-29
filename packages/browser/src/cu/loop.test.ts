@@ -332,7 +332,7 @@ describe("runComputerUse: batches and trace", () => {
     const model = createScriptedModel(
       [
         { do: "misclick", x: 1200, y: 700 },
-        { do: "typo", target: { label: "Website" }, wrong: "sabiafods.com", right: "sabiafoods.com.br" },
+        { do: "typo", target: { label: "Website" }, wrong: "sabiafods.example", right: "sabiafoods.example" },
         { do: "check", target: { role: "checkbox", name: "I confirm the customer consented" } },
         { do: "done", text: "done" },
       ],
@@ -350,9 +350,9 @@ describe("runComputerUse: batches and trace", () => {
     ]);
     const [, , wrong, , right, check] = r.trace.steps;
     expect(wrong?.target?.fingerprint.name).toBe("Website");
-    expect(wrong?.fieldValueAfter).toBe("sabiafods.com"); // end of its own batch
-    expect(right?.fieldValueAfter).toBe("sabiafoods.com.br");
-    expect(right?.formSnapshotBefore?.Website).toBe("sabiafods.com");
+    expect(wrong?.fieldValueAfter).toBe("sabiafods.example"); // end of its own batch
+    expect(right?.fieldValueAfter).toBe("sabiafoods.example");
+    expect(right?.formSnapshotBefore?.Website).toBe("sabiafods.example");
     expect(check?.fieldValueAfter).toBe("true");
     for (const s of r.trace.steps) expect(s.screenshot).toBeDefined();
     for (const reply of model.replies) {

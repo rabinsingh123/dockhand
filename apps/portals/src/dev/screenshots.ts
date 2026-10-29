@@ -126,7 +126,7 @@ async function main() {
       "partner-v1-confirmation.png",
       async (page) => {
         await page.getByLabel("End customer company", { exact: true }).fill("Sabiá Foods Ltda.");
-        await page.getByLabel("Company website", { exact: true }).fill("sabiafoods.com.br");
+        await page.getByLabel("Company website", { exact: true }).fill("sabiafoods.example");
         await page.getByRole("combobox", { name: "Country" }).fill("Brazil");
         await page.keyboard.press("Enter");
         await page.getByLabel("City", { exact: true }).fill("São Paulo");

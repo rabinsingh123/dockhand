@@ -15,7 +15,7 @@ export const REGISTER_FORM = `<!doctype html><html><head><meta charset="utf-8"><
   <h2>Register a deal</h2>
   <fieldset><legend>Company</legend>
     <div class="row"><label for=":r1:" class="req">Company name</label> <input id=":r1:" name="company" data-testid="company"></div>
-    <div class="row"><label for=":r2:">Website</label> <input id=":r2:" placeholder="acme.com" data-testid="website"></div>
+    <div class="row"><label for=":r2:">Website</label> <input id=":r2:" placeholder="acme.example" data-testid="website"></div>
     <div class="row"><label id="country-lbl" for="country-input">Country</label>
       <input id="country-input" role="combobox" aria-expanded="true" aria-controls="country-list" autocomplete="off"></div>
   </fieldset>

@@ -51,8 +51,8 @@ describe("scripted model on Caravela Partner Hub v1", () => {
         {
           do: "typo",
           target: { label: "Company website" },
-          wrong: "sabiafods.com.br",
-          right: "sabiafoods.com.br",
+          wrong: "sabiafods.example",
+          right: "sabiafoods.example",
         },
         { do: "select", trigger: { role: "combobox", name: "Country" }, option: "Brazil" },
         { do: "fill", target: { label: "City" }, text: "São Paulo" },
@@ -94,7 +94,7 @@ describe("scripted model on Caravela Partner Hub v1", () => {
       expect(subs).toHaveLength(1);
       expect(subs[0]?.fields).toMatchObject({
         companyName: "Sabiá Foods Ltda.",
-        companyWebsite: "sabiafoods.com.br",
+        companyWebsite: "sabiafoods.example",
         country: "Brazil",
         city: "São Paulo",
         contactName: "Mariana Costa",
@@ -109,7 +109,7 @@ describe("scripted model on Caravela Partner Hub v1", () => {
       const typed = steps.filter(
         (s) => s.action.type === "type" && s.target?.fingerprint.label === "Company website",
       );
-      expect(typed.map((s) => s.fieldValueAfter)).toEqual(["sabiafods.com.br", "sabiafoods.com.br"]);
+      expect(typed.map((s) => s.fieldValueAfter)).toEqual(["sabiafods.example", "sabiafoods.example"]);
       const options = steps.filter((s) => s.tags.includes("option"));
       expect(options.map((s) => s.target?.fingerprint.name)).toEqual(["Brazil", "Tidewater Cloud Business"]);
       const submits = steps.filter((s) => s.target?.fingerprint.name === "Submit registration");
@@ -124,7 +124,7 @@ describe("scripted model on Caravela Partner Hub v1", () => {
       // The form snapshot before the commit holds every end value (what the compiler templates from).
       expect(commitStep?.formSnapshotBefore).toMatchObject({
         "End customer company": "Sabiá Foods Ltda.",
-        "Company website": "sabiafoods.com.br",
+        "Company website": "sabiafoods.example",
         Country: "Brazil",
         "Expected close date": closeDate,
         "The end customer agreed to be contacted by Caravela": "true",

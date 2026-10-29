@@ -139,7 +139,7 @@ describe("describeAt on a fixture form", () => {
   it("describeLocator matches describeAt", async () => {
     const { x, y } = await centreOf(page, "#\\:r2\\:");
     const viaPoint = await describeAt(page, x, y);
-    const viaLocator = await describeLocator(page.getByPlaceholder("acme.com"));
+    const viaLocator = await describeLocator(page.getByPlaceholder("acme.example"));
     expect(viaLocator.candidates).toEqual(viaPoint.candidates);
     expect(viaLocator.fingerprint.name).toBe("Website");
   });

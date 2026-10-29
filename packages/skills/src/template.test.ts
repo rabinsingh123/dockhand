@@ -214,8 +214,8 @@ describe("templateValue", () => {
 
   it("prefers the param named like the field and reports the alternatives", () => {
     const r = templateValue(
-      "ana@x.com",
-      { contact_email: "ana@x.com", notification_email: "ana@x.com" },
+      "ana@x.example",
+      { contact_email: "ana@x.example", notification_email: "ana@x.example" },
       { label: "Notification email" },
     );
     expect(r.template).toBe("{{notification_email}}");

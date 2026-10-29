@@ -212,10 +212,13 @@ function identityOf(f: Faker): Identity {
     company = `${f.helpers.arrayElement(ACCENTED_WORDS)} ${company} ${f.helpers.arrayElement(LONG_TAILS)}`;
   const legalName = clip(`${company} ${f.helpers.arrayElement(SUFFIXES)}`, 110);
   const slug = ascii(company).split("-").slice(0, 3).join("-") || "empresa";
+  // Synthetic companies live under the reserved .example TLD (RFC 2606). The old TLD draw stays, so every
+  // later value a seed produces (people, phones, codes) is unchanged.
+  f.helpers.arrayElement(["com.br", "com", "net.br", "ind.br"]);
   return {
     company: clip(company, 70),
     legalName,
-    domain: `${slug}.${f.helpers.arrayElement(["com.br", "com", "net.br", "ind.br"])}`,
+    domain: `${slug}.example`,
     people: [personOf(f), personOf(f), personOf(f), personOf(f)],
   };
 }

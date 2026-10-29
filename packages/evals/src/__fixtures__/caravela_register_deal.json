@@ -197,7 +197,7 @@
           "placeholder": "e.g. sabiafoods.com.br",
           "testId": "nw-company-website",
           "domId": "company-website",
-          "value": "sabiafoods.com.br",
+          "value": "sabiafoods.example",
           "section": "End customer",
           "bbox": {
             "x": 163,

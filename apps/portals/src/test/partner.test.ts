@@ -85,7 +85,7 @@ describe("partner portal v1", () => {
       expect(subs[0]).toMatchObject({ id, portal: "partner", version: "v1", runId });
       expect(subs[0]?.fields).toEqual({
         companyName: "Sabiá Foods Ltda.",
-        companyWebsite: "sabiafoods.com.br",
+        companyWebsite: "sabiafoods.example",
         country: "Brazil",
         city: "São Paulo",
         contactName: "Mariana Costa",

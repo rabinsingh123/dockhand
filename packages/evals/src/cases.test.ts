@@ -24,6 +24,16 @@ describe("generateCases", () => {
     ).toBe(true);
   });
 
+  it("puts every synthetic email and website under the reserved .example TLD", () => {
+    const values = [
+      ...generateCases("replay", caravela, 30, 1, { today: TODAY }),
+      ...generateCases("replay", supplier, 30, 1, { today: TODAY }),
+    ].flatMap((c) => Object.values(c.params).filter((v): v is string => typeof v === "string"));
+    const domains = values.filter((v) => /@|^[a-z0-9-]+\.[a-z.]+$/.test(v)).map((v) => v.split("@").pop());
+    expect(domains.length).toBeGreaterThan(30);
+    expect(domains.filter((d) => !d?.endsWith(".example"))).toEqual([]);
+  });
+
   it("normalizes expected fields: ISO future dates, plain numbers, catalog options, booleans", () => {
     const cases = generateCases("replay", caravela, 60, 1, { today: TODAY });
     const keys = new Set(PARTNER_FIELDS.map((f) => f.key));

@@ -7,11 +7,11 @@ import type { CuAction, ParamSpec, ParamValue, Target, Trace, TraceStep } from "
 
 export const PARTNER_PARAMS: Record<string, ParamValue> = {
   company: "Jabuticaba Tecnologia Ltda.",
-  website: "jabuticaba.com.br",
+  website: "jabuticaba.example",
   country: "Brazil",
   city: "São Paulo",
   contact_name: "Mariana Costa",
-  contact_email: "mariana.costa@jabuticaba.com.br",
+  contact_email: "mariana.costa@jabuticaba.example",
   contact_phone: "+5511987654321",
   product: "Tidewater Cloud Business",
   seats: 120,
@@ -302,7 +302,7 @@ function confirmationText(): string {
     "End customer company",
     "Jabuticaba Tecnologia Ltda.",
     "Company website",
-    "jabuticaba.com.br",
+    "jabuticaba.example",
     "Country",
     "Brazil",
     "City",
@@ -310,7 +310,7 @@ function confirmationText(): string {
     "Contact full name",
     "Mariana Costa",
     "Contact email",
-    "mariana.costa@jabuticaba.com.br",
+    "mariana.costa@jabuticaba.example",
     "Contact phone",
     "+55 11 98765-4321",
     "Product",
@@ -388,7 +388,7 @@ export function partnerTrace(origin = "http://127.0.0.1:4100"): Trace {
   click(T.company, { fieldValueAfter: "" });
   type(T.company, "Jabuticaba Tecnologia Ltda.", "End customer company", "Jabuticaba Tecnologia Ltda.");
   key(T.company, ["TAB"]);
-  type(T.website, "jabuticaba.com.br", "Company website", "jabuticaba.com.br");
+  type(T.website, "jabuticaba.example", "Company website", "jabuticaba.example");
   click(T.country, { fieldValueAfter: "" });
   type(T.country, "Bra", "Country", "Bra");
   click(T.brazil, { tags: ["option"], set: { Country: "Brazil" } });
@@ -402,9 +402,14 @@ export function partnerTrace(origin = "http://127.0.0.1:4100"): Trace {
   click(T.contactName, { fieldValueAfter: "" });
   type(T.contactName, "Mariana Costa", "Contact full name", "Mariana Costa");
   click(T.contactEmail, { fieldValueAfter: "" });
-  type(T.contactEmail, "mariana.costa@jabuticaba.co", "Contact email", "mariana.costa@jabuticaba.co");
-  key(T.contactEmail, ["CTRL", "A"], { fieldValueAfter: "mariana.costa@jabuticaba.co" });
-  type(T.contactEmail, "mariana.costa@jabuticaba.com.br", "Contact email", "mariana.costa@jabuticaba.com.br");
+  type(T.contactEmail, "mariana.costa@jabuticaba.exa", "Contact email", "mariana.costa@jabuticaba.exa");
+  key(T.contactEmail, ["CTRL", "A"], { fieldValueAfter: "mariana.costa@jabuticaba.exa" });
+  type(
+    T.contactEmail,
+    "mariana.costa@jabuticaba.example",
+    "Contact email",
+    "mariana.costa@jabuticaba.example",
+  );
   click(T.contactPhone, { fieldValueAfter: "" });
   type(T.contactPhone, "+55 11 98765-4321", "Contact phone", "+55 11 98765-4321");
   click(T.product, { fieldValueAfter: "" });

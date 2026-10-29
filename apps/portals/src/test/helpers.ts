@@ -93,7 +93,7 @@ export async function fillPartnerForm(
 export function samplePartner(handle: PortalHandle, overrides: Partial<PartnerInput> = {}): PartnerInput {
   return {
     companyName: "Sabiá Foods Ltda.",
-    companyWebsite: "sabiafoods.com.br",
+    companyWebsite: "sabiafoods.example",
     country: "Brazil",
     city: "São Paulo",
     contactName: "Mariana Costa",

@@ -53,7 +53,7 @@ export interface BootstrapDeps {
 function partnerValues(today: string): Record<string, string> {
   return {
     companyName: "Sabiá Foods Ltda.",
-    companyWebsite: "sabiafoods.com.br",
+    companyWebsite: "sabiafoods.example",
     country: "Brazil",
     city: "São Paulo",
     contactName: "Mariana Costa",
