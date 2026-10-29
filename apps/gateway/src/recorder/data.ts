@@ -216,6 +216,13 @@ export function createRecorderData(db: Db) {
         `${runId.replace(/[%_\\]/g, "")}-%`,
       ).map((r) => ({ id: String(r.id), runId: String(r.run_id), at: Number(r.created_at) }));
     },
+    /** Open-weights picks (heal rung 2) kept for a run, oldest first. */
+    picks(runId: string): { id: string; at: number }[] {
+      return all(
+        "SELECT id, created_at FROM artifacts WHERE kind = 'heal_pick' AND run_id = ? ORDER BY created_at, rowid",
+        runId,
+      ).map((r) => ({ id: String(r.id), at: Number(r.created_at) }));
+    },
     /** Screenshots stored for a run, oldest first (trace steps point at the ones taken after each batch). */
     screenshots(runId: string): { id: string; at: number }[] {
       return all(

@@ -451,7 +451,11 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
     const repairers: Repairer[] = [];
     if (env.models.hasOpenWeights()) {
       repairers.push(
-        createOpenWeightsRepairer(env.models, { model: env.config.openWeights.model, ledger: env.ledger }),
+        createOpenWeightsRepairer(env.models, {
+          model: env.config.openWeights.model,
+          ledger: env.ledger,
+          artifacts: env.artifacts, // keeps each pick for the flight recorder
+        }),
       );
     }
     repairers.push(

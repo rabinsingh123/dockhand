@@ -29,6 +29,7 @@ import {
   usd,
   when,
 } from "./html.ts";
+import type { PickDoc } from "./reveal.ts";
 
 const VIEW_W = 1280;
 const VIEW_H = 800;
@@ -426,6 +427,7 @@ export function runView(
   run: RunRow,
   trace: Trace | null,
   readbacks: ReadBackDoc[] = [],
+  picks: { id: string; doc: PickDoc }[] = [],
 ): string {
   const steps = d.steps(run.id);
   const calls = d.modelCalls(run.id);
@@ -475,6 +477,14 @@ export function runView(
     ${commitGate?.imageArtifactId ? html`<section class="panel"><h2>On the approval card <span>${commitGate.status}</span></h2><div class="pb">${img(base, commitGate.imageArtifactId)}</div></section>` : ""}
     ${readbackPanel(rb)}
     ${canaryPanel(canaries, run.id)}
+    ${
+      picks.length
+        ? html`<section class="panel"><h2>Open-weights picks <span>heal rung 2, text only</span></h2><table><tbody>${picks.map(
+            (p) =>
+              html`<tr class="link" data-href="${base}picks/${p.id}"><td>Step ${p.doc.stepIdx + 1}<div class="muted" style="font-size:12px">${p.doc.chosen ? `now '${p.doc.chosen}'` : (p.doc.reason ?? "")}</div></td><td>${p.doc.ok ? chip("accepted", COLORS.ok) : chip("rejected", COLORS.bad)}</td><td class="num">${ms(p.doc.ms)}<div class="muted">${usd(p.doc.costUsd)}</div></td></tr>`,
+          )}</tbody></table></section>`
+        : ""
+    }
     <section class="panel"><h2>Links</h2><div class="pb"><dl class="kv">
       ${run.skillName && run.skillVersion ? html`<dt>Skill run</dt><dd><a href="${base}skills/${run.skillName}${run.skillVersion ? `?v=${run.skillVersion}` : ""}">${run.skillName} v${run.skillVersion ?? "?"}</a></dd>` : ""}
       ${created ? html`<dt>Created</dt><dd><a href="${base}skills/${created.name}?v=${created.version}">${created.name} v${created.version}</a> <span class="muted">(${created.source})</span></dd>` : ""}
@@ -557,7 +567,7 @@ export function skillView(d: RecorderData, base: string, name: string, v: number
   )}</div>
   <div class="grid"><div style="display:flex;flex-direction:column;gap:20px;min-width:0">
     ${parent ? html`<section class="panel"><h2>What changed: v${parent.version} → v${sel.version} <span>${notes.length ? `${notes.length} step${notes.length === 1 ? "" : "s"} fixed in the run` : ""}</span></h2>${diffLines(parent, sel, notes)}${targetPairs(parent, sel, new Map(notes.map((n) => [n.stepId, n.rung])))}</section>` : ""}
-    <section class="panel"><div class="ph">Compiled program<div class="tabs" data-tabs="prog"><button data-tab="steps" class="on">Steps</button><button data-tab="json">JSON</button><button data-tab="ts">Playwright export</button></div></div>
+    <section class="panel"><div class="ph"><span style="display:flex;gap:12px;align-items:center;color:var(--text)">Compiled program <a class="chip" style="--c:var(--replay)" href="${base}skills/${name}/code?v=${sel.version}">▶ code reveal</a></span><div class="tabs" data-tabs="prog"><button data-tab="steps" class="on">Steps</button><button data-tab="json">JSON</button><button data-tab="ts">Playwright export</button></div></div>
       <div data-pane="prog" data-name="steps">${programTable(sel.skill)}</div>
       <div data-pane="prog" data-name="json" hidden><pre class="code">${highlight(json, "json")}</pre></div>
       <div data-pane="prog" data-name="ts" hidden><pre class="code">${highlight(ts, "ts")}</pre></div>

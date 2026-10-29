@@ -50,7 +50,8 @@ export type ArtifactKind =
   | "skill_export"
   | "chart"
   | "upload_fixture"
-  | "readback"; // the runner's pre-commit read-back of a run (JSON), dry runs and canaries included
+  | "readback" // the runner's pre-commit read-back of a run (JSON), dry runs and canaries included
+  | "heal_pick"; // an open-weights heal: the text list sent, the pick, the harness checks (JSON)
 
 export interface ArtifactRef {
   id: Id;

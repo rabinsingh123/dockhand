@@ -23,6 +23,7 @@ let db: Db;
 let artifacts: ArtifactStore;
 let app: Hono;
 let shotId = "";
+let pickId = "";
 
 const fp = (label: string, testId: string) => ({
   tag: "input",
@@ -169,6 +170,34 @@ beforeAll(async () => {
       { kind: "readback", runId },
     );
   await keep("R2", false);
+  pickId = (
+    await artifacts.put(
+      new TextEncoder().encode(
+        JSON.stringify({
+          runId: "R2",
+          stepIdx: 1,
+          stepId: "s2",
+          intent: "Enter the end customer's company",
+          kind: "text",
+          before: { role: "textbox", name: "End customer company" },
+          list: [
+            { index: 3, role: "textbox", name: "City" },
+            { index: 4, role: "textbox", name: "Customer account name" },
+          ],
+          listedOf: 12,
+          pick: { index: 4, confidence: 0.93, reason: "same field, new label" },
+          checks: [{ check: "confidence 0.93 ≥ 0.5", ok: true }],
+          ok: true,
+          chosen: "Customer account name",
+          model: "meta-models/muse-spark-open",
+          costUsd: 0.0004,
+          ms: 1180,
+        }),
+      ),
+      "application/json",
+      { kind: "heal_pick", runId: "R2" },
+    )
+  ).id;
   await keep("R2-canary-c0", true);
   app = createRecorder({ db, artifacts, cacheDir: join(dir, "frames"), base: "/recorder/" });
 });
@@ -209,6 +238,23 @@ describe("flight recorder", () => {
     expect(page).toContain("testid=account-name");
     expect(page).toContain("Playwright export");
     expect(page).toContain("registerPartnerDeal");
+  });
+
+  it("types the compiled program in, a healed version as a diff, and shows an open-weights pick", async () => {
+    const code = await (await get("/skills/register_partner_deal/code?v=2")).text();
+    expect(code).toContain("register_partner_deal.v2.ts");
+    expect(code).toContain("v1 → v2");
+    expect(code).toContain("const ops = ");
+    expect(code).toContain('class=\\"pp\\">p.company_name'); // params as chips in the typed lines
+    expect(code).toContain('"t":"add"'); // the heal's patched selector, as a diff line
+    const run = await (await get("/runs/R2")).text();
+    expect(run).toContain(`/recorder/picks/${pickId}`);
+    const pick = await (await get(`/picks/${pickId}`)).text();
+    expect(pick).toContain("Muse Spark Open picks the element");
+    expect(pick).toContain("← its pick");
+    expect(pick).toContain("Customer account name");
+    expect(pick).toContain("Harness verification");
+    expect((await get("/picks/NOPE")).status).toBe(404);
   });
 
   it("shows a teach draft with typed params and the values seen in the video", async () => {

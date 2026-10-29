@@ -91,7 +91,14 @@ async function uniqueLocator(
  */
 export function createOpenWeightsRepairer(
   models: ModelGateway,
-  opts: { model: string; ledger?: Ledger; maxElements?: number; minConfidence?: number },
+  opts: {
+    model: string;
+    ledger?: Ledger;
+    maxElements?: number;
+    minConfidence?: number;
+    /** When given, every pick (the list sent, the answer, the harness checks) is kept as a run artifact. */
+    artifacts?: ArtifactStore;
+  },
 ): Repairer {
   const repair: Repairer = async (req, _hooks, ctx): Promise<RepairResult> => {
     const rung = "open_weights" as const;
@@ -120,6 +127,7 @@ export function createOpenWeightsRepairer(
     ].join("\n");
 
     const cost = costTracker(opts.ledger, req.runId);
+    const asked = performance.now();
     let pick: ElementPick;
     try {
       pick = await models.structured(
@@ -137,36 +145,82 @@ export function createOpenWeightsRepairer(
     } catch (err) {
       return { ok: false, rung, reason: `model call failed: ${(err as Error).message}`, costUsd: cost() };
     }
+    const ms = Math.round(performance.now() - asked);
     const costUsd = cost();
-    if (pick.index === null) return { ok: false, rung, reason: `no match: ${pick.reason}`, costUsd };
-    if (pick.confidence < (opts.minConfidence ?? MIN_CONFIDENCE)) {
-      return { ok: false, rung, reason: `low confidence ${pick.confidence}: ${pick.reason}`, costUsd };
-    }
-    const el = pruned.find((e) => e.index === pick.index);
-    if (!el) return { ok: false, rung, reason: `index ${pick.index} is not in the list`, costUsd };
-    const oldRole = target.fingerprint.role;
-    if (oldRole && el.descriptor.role && el.descriptor.role !== oldRole) {
-      return {
-        ok: false,
-        rung,
-        reason: `picked a ${el.descriptor.role}, the step needs a ${oldRole}`,
-        costUsd,
+    const minConfidence = opts.minConfidence ?? MIN_CONFIDENCE;
+    // The harness checks the pick; each check is kept with the result for the flight recorder.
+    const checks: { check: string; ok: boolean }[] = [];
+    let chosen: string | undefined;
+    const result = await (async (): Promise<RepairResult> => {
+      if (pick.index === null) return { ok: false, rung, reason: `no match: ${pick.reason}`, costUsd };
+      checks.push({
+        check: `confidence ${pick.confidence} ≥ ${minConfidence}`,
+        ok: pick.confidence >= minConfidence,
+      });
+      if (pick.confidence < minConfidence) {
+        return { ok: false, rung, reason: `low confidence ${pick.confidence}: ${pick.reason}`, costUsd };
+      }
+      const el = pruned.find((e) => e.index === pick.index);
+      checks.push({ check: `#${pick.index} is in the list it was given`, ok: el !== undefined });
+      if (!el) return { ok: false, rung, reason: `index ${pick.index} is not in the list`, costUsd };
+      const oldRole = target.fingerprint.role;
+      const sameRole = !(oldRole && el.descriptor.role && el.descriptor.role !== oldRole);
+      checks.push({ check: `same role as before (${oldRole || cls})`, ok: sameRole });
+      if (!sameRole) {
+        return {
+          ok: false,
+          rung,
+          reason: `picked a ${el.descriptor.role}, the step needs a ${oldRole}`,
+          costUsd,
+        };
+      }
+      const loc = await uniqueLocator(req.page, el.candidates, cls === "file");
+      checks.push({ check: "a stored-style selector finds exactly that one element", ok: loc !== null });
+      if (!loc) return { ok: false, rung, reason: "the picked element has no unique selector", costUsd };
+      const fresh = await describeLocator(loc);
+      chosen = displayName(fresh.fingerprint);
+      const retargeted: Target = {
+        candidates: mergeCandidates(fresh.candidates, target.candidates),
+        fingerprint: fresh.fingerprint,
       };
+      return {
+        ok: true,
+        rung,
+        steps: [withStepTarget(step, retargeted)],
+        costUsd,
+        note: `now '${chosen}' (${pick.reason})`,
+      };
+    })();
+    if (opts.artifacts) {
+      const kept = {
+        runId: req.runId,
+        stepIdx: req.stepIdx,
+        stepId: step.id,
+        intent: step.intent,
+        ...(prev ? { prevIntent: prev.intent } : {}),
+        ...(next ? { nextIntent: next.intent } : {}),
+        kind: cls,
+        before: brief(target.fingerprint),
+        list: pruned.map((e) => ({ index: e.index, ...brief(e.descriptor) })),
+        listedOf: all.length,
+        pick,
+        checks,
+        ok: result.ok,
+        ...(result.ok ? {} : { reason: result.reason }),
+        ...(chosen ? { chosen } : {}),
+        model: opts.model,
+        costUsd,
+        ms,
+        at: Date.now(),
+      };
+      await opts.artifacts
+        .put(new TextEncoder().encode(JSON.stringify(kept)), "application/json", {
+          kind: "heal_pick",
+          runId: req.runId,
+        })
+        .catch(() => undefined);
     }
-    const loc = await uniqueLocator(req.page, el.candidates, cls === "file");
-    if (!loc) return { ok: false, rung, reason: "the picked element has no unique selector", costUsd };
-    const fresh = await describeLocator(loc);
-    const retargeted: Target = {
-      candidates: mergeCandidates(fresh.candidates, target.candidates),
-      fingerprint: fresh.fingerprint,
-    };
-    return {
-      ok: true,
-      rung,
-      steps: [withStepTarget(step, retargeted)],
-      costUsd,
-      note: `now '${displayName(fresh.fingerprint)}' (${pick.reason})`,
-    };
+    return result;
   };
   return Object.assign(repair, { rung: "open_weights" as const }); // the rung, for the demo HUD
 }

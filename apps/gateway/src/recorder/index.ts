@@ -14,6 +14,7 @@ import { promisify } from "node:util";
 import type { ArtifactStore, Db, Trace } from "@dockhand/core";
 import { Hono } from "hono";
 import { createRecorderData } from "./data.ts";
+import { codeRevealView, type PickDoc, pickView } from "./reveal.ts";
 import { indexView, type ReadBackDoc, runView, skillView, teachView } from "./views.ts";
 
 const run = promisify(execFile);
@@ -46,6 +47,14 @@ export function createRecorder(deps: RecorderDeps): Hono {
       },
     );
 
+  const readJson = async <T>(id: string): Promise<T | null> => {
+    try {
+      return JSON.parse(new TextDecoder().decode(await deps.artifacts.read(id))) as T;
+    } catch {
+      return null;
+    }
+  };
+
   app.get("/", () => new Response(indexView(data, base), { headers: htmlHeaders }));
 
   app.get("/runs/:id", async (c) => {
@@ -68,7 +77,29 @@ export function createRecorder(deps: RecorderDeps): Hono {
         // a missing or unreadable read-back is shown as unknown
       }
     }
-    return new Response(runView(data, base, r, trace, readbacks), { headers: htmlHeaders });
+    const picks: { id: string; doc: PickDoc }[] = [];
+    for (const a of data.picks(r.id)) {
+      const doc = await readJson<PickDoc>(a.id);
+      if (doc) picks.push({ id: a.id, doc });
+    }
+    return new Response(runView(data, base, r, trace, readbacks, picks), { headers: htmlHeaders });
+  });
+
+  app.get("/skills/:name/code", (c) => {
+    const name = c.req.param("name");
+    const v = Number(c.req.query("v") ?? "");
+    const out = ID.test(name)
+      ? codeRevealView(data, base, name, Number.isInteger(v) && v > 0 ? v : null)
+      : null;
+    return out ? new Response(out, { headers: htmlHeaders }) : notFound("Skill");
+  });
+
+  app.get("/picks/:id", async (c) => {
+    const id = c.req.param("id");
+    const doc =
+      ID.test(id) && data.artifact(id)?.mime === "application/json" ? await readJson<PickDoc>(id) : null;
+    if (!doc || !Array.isArray(doc.list) || !Array.isArray(doc.checks)) return notFound("Pick");
+    return new Response(pickView(base, doc), { headers: htmlHeaders });
   });
 
   app.get("/skills/:name", (c) => {
