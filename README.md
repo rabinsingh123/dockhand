@@ -108,6 +108,16 @@ pnpm run preflight          # checks keys, models, ffmpeg, Chromium, ports
 
 Set `META_MODE=live`, `WHATSAPP_MODE=cloud` and `CRM_MODE=hubspot` with the keys in `.env` for the real setup.
 
+```bash
+pnpm demo:check                  # the whole demo through the app with Playwright, fake models, about 2.5 min
+pnpm demo:check --mode cassette  # the same demo replaying recorded real Meta responses, no network, $0
+pnpm tunnel                      # cloud mode: public tunnel to the gateway, re-registers the WhatsApp webhook
+pnpm hubspot:seed                # fictional companies and deals in a HubSpot test account
+DEMO_MODE=1 HEADLESS=false pnpm dev   # headed browser with the on-screen overlay (model, rung, read-back)
+```
+
+The flight recorder is at `http://localhost:8787/recorder` (local requests only). EspoCRM, the real third-party app, runs natively without Docker: `powershell -File apps/oss/espocrm/setup.ps1` once, then `start.ps1`, and set `ESPOCRM_URL=http://127.0.0.1:8090`; UI changes through its own admin are scripted in `scripts/oss/espocrm-drift.ts`.
+
 ## Repository
 
 | Path | What |
