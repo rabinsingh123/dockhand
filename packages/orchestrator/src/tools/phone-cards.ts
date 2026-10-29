@@ -39,7 +39,7 @@ export function createPhoneCards(deps: { artifacts: ArtifactStore; render: Phone
     async render(jobId, html) {
       const png = await deps.render(
         html,
-        { w: PHONE_CARD_WIDTH, h: 600 },
+        { w: PHONE_CARD_WIDTH, h: 320 }, // full page: the image is as tall as the card
         { fullPage: true, scale: PHONE_CARD_SCALE },
       );
       return deps.artifacts.put(png, "image/png", { kind: "receipt", jobId });
@@ -73,7 +73,8 @@ export interface PhoneCardSpec {
   /** Big numbers in a row, at most 3 read well. */
   stats?: { value: string; label: string; tone?: Tone }[];
   /** Sections in order. `html` is trusted markup built with the helpers below (escape any data in it). */
-  sections: { heading: string; html: string }[];
+  /** `fold`: this section starts below the 4:5 top (1080x1350), which must stand on its own in the chat bubble. */
+  sections: { heading: string; html: string; fold?: boolean }[];
   foot?: string;
   credit?: string;
 }
@@ -85,22 +86,24 @@ const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#0a0c10}
 body{width:${PHONE_CARD_WIDTH}px;font:17px/1.4 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Arial,sans-serif;color:#e9edf3;-webkit-font-smoothing:antialiased}
-.card{padding:26px 26px 22px;background:radial-gradient(120% 60% at 0% 0%,color-mix(in srgb,var(--c) 16%,transparent) 0,transparent 60%),#0d1016}
+.card{min-height:100vh;padding:26px 26px 22px;background:radial-gradient(120% 60% at 0% 0%,color-mix(in srgb,var(--c) 16%,transparent) 0,transparent 60%),#0d1016}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .brand b{font-size:19px;font-weight:800;letter-spacing:.1px}
 .eyebrow{margin-left:auto;font-size:13px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--c)}
-h1{font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-.3px;color:#fff}
-.sub{margin-top:6px;font-size:17px;color:#aeb7c4}
+h1{font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-.3px;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sub{margin-top:6px;font-size:17px;color:#aeb7c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub b{color:#fff;font-weight:750}
+.fold{margin-top:22px;border-top:1px dashed rgba(255,255,255,.18)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .chip{display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;font-size:15px;font-weight:750;border:1.5px solid color-mix(in srgb,var(--t) 50%,transparent);color:var(--t);background:color-mix(in srgb,var(--t) 13%,transparent)}
 .stats{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:10px;margin-top:18px}
 .stat{padding:12px 14px 11px;border-radius:14px;background:#151922;border:1px solid rgba(255,255,255,.08)}
 .stat b{display:block;font-size:28px;line-height:1.1;font-weight:800;color:var(--t);white-space:nowrap}
 .stat span{display:block;margin-top:3px;font-size:14px;color:#9aa4b2;line-height:1.25}
-h2{margin:22px 0 10px;font-size:13.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#8a94a4}
+h2{margin:18px 0 8px;font-size:13.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#8a94a4}
 .frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.frames figure{position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.14);line-height:0}
-.frames img{width:100%;display:block}
+.frames figure{position:relative;aspect-ratio:16/10;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.14);line-height:0;background:#151922}
+.frames img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
 .frames figcaption{position:absolute;left:6px;top:6px;padding:1px 6px;border-radius:6px;background:rgba(10,12,16,.86);font:700 13px/1.3 Consolas,"Cascadia Mono",monospace;color:#fff}
 ol.steps{list-style:none;counter-reset:s}
 ol.steps li{counter-increment:s;display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;padding:6px 0;font-size:17px;line-height:1.35}
@@ -114,7 +117,7 @@ ol.steps li::before{content:counter(s);width:26px;height:26px;margin-top:1px;bor
 .box{padding:13px 15px;border-radius:14px;background:#151922;border:1px solid rgba(255,255,255,.08);font-size:17px}
 .box+.box{margin-top:8px}
 .box .k{display:block;font-size:13px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:#8a94a4;margin-bottom:3px}
-.change{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:12px 14px;border-radius:14px;background:#151922;border:1px solid rgba(255,255,255,.08)}
+.change{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 13px;border-radius:14px;background:#151922;border:1px solid rgba(255,255,255,.08)}
 .change+.change{margin-top:8px}
 .change .what{font-size:17px;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
 .change .old{color:#fda4af;text-decoration:line-through;text-decoration-thickness:1.5px}
@@ -139,7 +142,7 @@ export function phoneCardHtml(c: PhoneCardSpec): string {
 <h1>${esc(c.title)}</h1>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ""}
 ${chips ? `<div class="chips">${chips}</div>` : ""}
 ${stats.length ? `<div class="stats" style="--n:${stats.length}">${stats.map((s) => `<div class="stat" style="--t:${TONE[s.tone ?? "replay"]}"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join("")}</div>` : ""}
-${c.sections.map((s) => `<h2>${esc(s.heading)}</h2>${s.html}`).join("\n")}
+${c.sections.map((s) => `${s.fold ? '<div class="fold" data-fold></div>' : ""}<h2>${esc(s.heading)}</h2>${s.html}`).join("\n")}
 ${c.foot || c.credit ? `<div class="foot">${c.foot ?? ""}${c.credit ? `<div class="credit">${esc(c.credit)}</div>` : ""}</div>` : ""}
 </div></body></html>`;
 }
@@ -241,11 +244,16 @@ export interface TeachCardOptions {
   durationS?: number;
 }
 
+/** Chips shown in the card's 4:5 top: required values first, at most this many. */
+const TOP_PARAMS = 6;
+
 export function teachPhoneCardHtml(d: SkillDraft, o: TeachCardOptions): string {
   const frames = (o.frames ?? []).slice(0, 3);
   const n = frames.length;
-  const steps = d.steps.slice(0, 4);
-  const required = d.params.filter((p) => p.required).length;
+  const steps = d.steps.slice(0, 8);
+  const required = d.params.filter((p) => p.required);
+  const ordered = [...required, ...d.params.filter((p) => !p.required)];
+  const shown = ordered.slice(0, TOP_PARAMS);
   const sections: PhoneCardSpec["sections"] = [];
   if (n > 0) {
     sections.push({
@@ -259,32 +267,34 @@ export function teachPhoneCardHtml(d: SkillDraft, o: TeachCardOptions): string {
     });
   }
   sections.push({
+    heading: `Typed values it will ask for (${d.params.length} · ${required.length} required)`,
+    html: `<div class="params">${shown
+      .map(
+        (p) =>
+          `<span class="param">${esc(p.name)}${p.required ? '<span class="req">*</span>' : ""}<i>${esc(p.type)}</i></span>`,
+      )
+      .join(
+        "",
+      )}${ordered.length > shown.length ? `<span class="param"><i>+${ordered.length - shown.length} more</i></span>` : ""}</div>`,
+  });
+  // Below the 4:5 top: what you see when the image is opened.
+  sections.push({
+    fold: true,
     heading: `The steps it wrote (${d.steps.length})`,
-    html: `<ol class="steps">${steps.map((s) => `<li><span>${withParams(s)}</span></li>`).join("")}</ol>${
+    html: `<ol class="steps">${steps.map((st) => `<li><span>${withParams(st)}</span></li>`).join("")}</ol>${
       d.steps.length > steps.length ? `<div class="more">+${d.steps.length - steps.length} more</div>` : ""
     }`,
-  });
-  const optional = d.params.length - required;
-  sections.push({
-    heading: `Typed values it will ask for (${d.params.length})`,
-    html: `<div class="params">${d.params
-      .filter((p) => p.required)
-      .map((p) => `<span class="param">${esc(p.name)}<i>${esc(p.type)}</i></span>`)
-      .join("")}${optional > 0 ? `<span class="param"><i>+${optional} optional</i></span>` : ""}</div>`,
   });
   sections.push({
     heading: "Done when",
     html: `<div class="box">${esc(d.success)}<span class="k" style="margin:8px 0 0">Submits with “${esc(d.commitStep)}”, only after your tap</span></div>`,
   });
+  const from = o.durationS ? ` · from your ${Math.round(o.durationS)} s recording` : ` · ${o.portalName}`;
   return phoneCardHtml({
     eyebrow: "Teach",
     tone: "cu",
     title: d.title,
-    sub: o.durationS ? `From your ${Math.round(o.durationS)} s recording` : `On ${o.portalName}`,
-    stats: [
-      { value: String(d.steps.length), label: "steps, in plain words", tone: "cu" },
-      { value: String(d.params.length), label: `typed values · ${required} required`, tone: "cu" },
-    ],
+    sub: `${d.steps.length} steps · ${d.params.length} typed values${from}`,
     sections,
     foot: "Values seen in the video are never reused. The first real request runs once with computer use, then replays as a program.",
   });
@@ -315,7 +325,7 @@ export interface DiffCardInput {
 /** Ledger cost as shown on a card: "$0.000" when the ledger says nothing was spent (fake, cassette, scripted). */
 export function cardMoney(v: number): string {
   if (!Number.isFinite(v) || v <= 0) return "$0.000";
-  return `${v < 0.01 ? v.toFixed(3) : v.toFixed(2)}`;
+  return `$${v < 0.01 ? v.toFixed(3) : v.toFixed(2)}`;
 }
 
 /** "Built with Muse Spark Open" only when Baseten really served a heal for this job or run. */
@@ -341,6 +351,12 @@ export function diffCardLedger(
   };
 }
 
+const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
+
+/** Rows in "What changed" and new-value chips: past these, a "+N more" line keeps the card within 4:5. */
+const MAX_CHANGES = 3;
+const MAX_NEW_VALUES = 3;
+
 export function diffPhoneCardHtml(v: DiffCardInput): string {
   const rungOf = new Map(v.steps.flatMap((s) => (s.rung ? [[s.stepId, s.rung] as const] : [])));
   const before = new Map(v.parent.steps.map((s) => [s.id, s]));
@@ -361,7 +377,7 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
       rung === "ask_rep" || !old
         ? `<span class="new">New: ${esc(b || s.intent)}</span>`
         : a && a !== b
-          ? `<span class="old">${esc(a)}</span><span class="arrow">→</span><span class="new">${esc(b)}</span>`
+          ? `<span class="old">${esc(clip(a, 26))}</span><span class="arrow">→</span><span class="new">${esc(clip(b, 26))}</span>`
           : `<span class="new">${esc(b || s.intent)}</span>: new selector`;
     named.push(
       `<div class="change"><span class="what">${what}</span><span class="rung" style="--t:${TONE[chip.tone]}">${esc(chip.text)}</span></div>`,
@@ -384,7 +400,7 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
       { value: String(fixed), label: `step${fixed === 1 ? "" : "s"} fixed`, tone: "heal" },
       {
         value: `${v.canary.passed}/${v.canary.total}`,
-        label: "dry runs passed before going live",
+        label: "dry runs passed",
         tone: allPassed ? "ok" : "bad",
       },
       { value: cardMoney(v.costUsd), label: "to repair (ledger)", tone: "replay" },
@@ -392,13 +408,25 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
     sections: [
       {
         heading: "What changed",
-        html: named.slice(0, 5).join("") || `<div class="box">Selectors refreshed</div>`,
+        html:
+          (named.length > MAX_CHANGES
+            ? [
+                ...named.slice(0, MAX_CHANGES - 1),
+                `<div class="change"><span class="what">+${named.length - MAX_CHANGES + 1} more changes</span></div>`,
+              ]
+            : named
+          ).join("") || `<div class="box">Selectors refreshed</div>`,
       },
       ...(added.length
         ? [
             {
               heading: "New values",
-              html: `<div class="params">${added.map((p) => `<span class="param">${esc(p.name)}<i>${esc(p.type)}</i></span>`).join("")}</div>`,
+              html: `<div class="params">${added
+                .slice(0, MAX_NEW_VALUES)
+                .map((p) => `<span class="param">${esc(p.name)}<i>${esc(p.type)}</i></span>`)
+                .join(
+                  "",
+                )}${added.length > MAX_NEW_VALUES ? `<span class="param"><i>+${added.length - MAX_NEW_VALUES} more</i></span>` : ""}</div>`,
             },
           ]
         : []),

@@ -54,7 +54,7 @@ describe("phone cards", () => {
     );
     expect(ref.mime).toBe("image/png");
     expect(calls).toEqual([
-      { size: { w: PHONE_CARD_WIDTH, h: 600 }, opts: { fullPage: true, scale: 2 }, html: "<!doctype html>" },
+      { size: { w: PHONE_CARD_WIDTH, h: 320 }, opts: { fullPage: true, scale: 2 }, html: "<!doctype html>" },
     ]);
   });
 
@@ -62,9 +62,10 @@ describe("phone cards", () => {
     const html = teachPhoneCardHtml(draft, { portalName: "Caravela Partner Hub", frames: [], durationS: 45 });
     expect(html).toContain("Register &#60;b&#62;a&#60;/b&#62; deal");
     expect(html).toContain('<span class="p">company_name</span>');
-    expect(html).toContain("+1 optional");
+    expect(html).toContain("notes<i>string</i>"); // optional values follow the required ones
+    expect(html).toContain("3 steps · 3 typed values");
     expect(html).toContain("Submit registration");
-    expect(html).toContain("From your 45 s recording");
+    expect(html).toContain("from your 45 s recording");
     expect(withParams("{{close_date|date:DD/MM/YYYY}} <x>")).toBe(
       '<span class="p">close_date</span> &#60;x&#62;',
     );
