@@ -4,7 +4,17 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type { ArtifactRef, ArtifactStore, HealRung, Id, Skill, SkillDraft, StepResult } from "@dockhand/core";
+import type {
+  ArtifactRef,
+  ArtifactStore,
+  Db,
+  HealRung,
+  Id,
+  Ledger,
+  Skill,
+  SkillDraft,
+  StepResult,
+} from "@dockhand/core";
 import { displayName, stepTarget } from "@dockhand/skills";
 
 const run = promisify(execFile);
@@ -297,14 +307,38 @@ export interface DiffCardInput {
   /** The run's step results (rung per step id). */
   steps: StepResult[];
   canary: { passed: number; total: number };
-  /** Execution cost of the healing run. */
+  /** The healing run's cost from the ledger (diffCardLedger). */
   costUsd: number;
   usedOpenWeights?: boolean;
 }
 
-function money(v: number): string {
-  if (v <= 0) return "$0";
-  return v < 0.01 ? `$${v.toFixed(3)}` : `$${v.toFixed(2)}`;
+/** Ledger cost as shown on a card: "$0.000" when the ledger says nothing was spent (fake, cassette, scripted). */
+export function cardMoney(v: number): string {
+  if (!Number.isFinite(v) || v <= 0) return "$0.000";
+  return `${v < 0.01 ? v.toFixed(3) : v.toFixed(2)}`;
+}
+
+/** "Built with Muse Spark Open" only when Baseten really served a heal for this job or run. */
+export function basetenHeal(db: Db, jobId: Id, runId: Id): boolean {
+  return (
+    db.raw
+      .prepare(
+        "SELECT 1 FROM model_calls WHERE purpose = 'heal_match' AND provider = 'baseten' AND (job_id = ? OR run_id = ?) LIMIT 1",
+      )
+      .get(jobId, runId) !== undefined
+  );
+}
+
+/** What a repair card may say about money and models: only what the ledger recorded for this run. */
+export function diffCardLedger(
+  env: { db: Db; ledger: Ledger },
+  jobId: Id,
+  runId: Id,
+): { costUsd: number; usedOpenWeights: boolean } {
+  return {
+    costUsd: env.ledger.totals({ runId }).costUsd,
+    usedOpenWeights: basetenHeal(env.db, jobId, runId),
+  };
 }
 
 export function diffPhoneCardHtml(v: DiffCardInput): string {
@@ -353,7 +387,7 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
         label: "dry runs passed before going live",
         tone: allPassed ? "ok" : "bad",
       },
-      { value: money(v.costUsd), label: "to repair", tone: "replay" },
+      { value: cardMoney(v.costUsd), label: "to repair (ledger)", tone: "replay" },
     ],
     sections: [
       {

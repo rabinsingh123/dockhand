@@ -32,7 +32,7 @@ import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
 import { fitSpecsToValues, inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
-import { diffPhoneCardHtml } from "../tools/phone-cards.ts";
+import { basetenHeal, diffCardLedger, diffPhoneCardHtml } from "../tools/phone-cards.ts";
 import { receiptCaption, skillCardHtml } from "../tools/receipts.ts";
 import {
   type FlowEnv,
@@ -65,13 +65,7 @@ export const OPEN_WEIGHTS_RUNG: HealRung = "open_weights";
  * stand-in, scripted models or cassette replays (those record provider fake, scripted or cassette).
  */
 export function realOpenWeights(env: Pick<FlowEnv, "db">, jobId: string, runId: string): boolean {
-  return (
-    env.db.raw
-      .prepare(
-        "SELECT 1 FROM model_calls WHERE purpose = 'heal_match' AND provider = 'baseten' AND (job_id = ? OR run_id = ?) LIMIT 1",
-      )
-      .get(jobId, runId) !== undefined
-  );
+  return basetenHeal(env.db, jobId, runId); // one rule for receipts and cards (tools/phone-cards.ts)
 }
 
 function portalOf(env: FlowEnv, portalId: string): PortalTarget {
@@ -636,8 +630,7 @@ async function promotePatch(
       saved,
       steps: o.result.steps,
       canary: { passed: canary.passed, total: canary.total },
-      costUsd: o.result.execCostUsd,
-      usedOpenWeights: realOpenWeights(env, job.id, o.runId),
+      ...diffCardLedger(env, job.id, o.runId), // cost and credit: only what the ledger recorded
     }),
   );
   await sendImage(
