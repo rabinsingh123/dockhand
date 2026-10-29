@@ -1,5 +1,5 @@
 # Shared paths and versions for the native EspoCRM scripts (dot-sourced by setup.ps1, start.ps1, stop.ps1).
-# Local-only instance on 127.0.0.1 with fictional data; the passwords below guard nothing else.
+# Local-only instance on 127.0.0.1 with fictional data; the database password below guards nothing else.
 
 $PhpVersion = '8.4.27'
 $MariaVersion = '11.4.13'
@@ -25,4 +25,24 @@ $DbPort = if ($env:ESPO_DB_PORT) { [int]$env:ESPO_DB_PORT } else { 3317 }
 $SiteUrl = "http://127.0.0.1:$Port"
 $DbPassword = if ($env:ESPO_DB_PASSWORD) { $env:ESPO_DB_PASSWORD } else { 'espo-local-db' }
 $AdminUser = if ($env:ESPO_ADMIN_USER) { $env:ESPO_ADMIN_USER } else { 'admin' }
-$AdminPassword = if ($env:ESPO_ADMIN_PASSWORD) { $env:ESPO_ADMIN_PASSWORD } else { 'espo-local-admin' }
+# The admin password is random per install, kept in var\oss\espo-admin-password.txt (git-ignored) where the
+# TypeScript side reads it too (packages/orchestrator/src/espocrm.ts). ESPO_ADMIN_PASSWORD overrides it.
+$AdminPasswordFile = Join-Path $Oss 'espo-admin-password.txt'
+if ($env:ESPO_ADMIN_PASSWORD) {
+  $AdminPassword = $env:ESPO_ADMIN_PASSWORD
+} elseif (Test-Path $AdminPasswordFile) {
+  $AdminPassword = (Get-Content -Raw $AdminPasswordFile).Trim()
+} else {
+  if (Test-Path (Join-Path $App 'data\config.php')) {
+    # An instance installed before passwords were generated: its admin still has the old fixed password.
+    # Record it once; delete var\oss\espocrm and re-run setup.ps1 for a random one.
+    $AdminPassword = 'espo-local-admin'
+  } else {
+    $bytes = New-Object byte[] 36
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    # Letters and digits only: the installer takes it inside a form-encoded string.
+    $AdminPassword = ([Convert]::ToBase64String($bytes) -replace '[^A-Za-z0-9]', '').Substring(0, 24)
+  }
+  New-Item -ItemType Directory -Force $Oss | Out-Null
+  Set-Content -NoNewline -Encoding ascii -Path $AdminPasswordFile -Value $AdminPassword
+}

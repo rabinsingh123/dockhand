@@ -4,13 +4,16 @@
 // computer use (taught or zero-shot) or a replay of the compiled skill; both go through the normal plan gate
 // and the submit gate, and the replay climbs the heal ladder when the CRM's admin changed the form.
 
-import type {
-  CallCtx,
-  ModelGateway,
-  ParamSpec,
-  ParamValue,
-  StructuredRequest,
-  Understanding,
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  type CallCtx,
+  type ModelGateway,
+  type ParamSpec,
+  type ParamValue,
+  type StructuredRequest,
+  type Understanding,
+  workspaceRoot,
 } from "@dockhand/core";
 import { z } from "zod";
 import { cardBody } from "./messages.ts";
@@ -311,14 +314,40 @@ export interface EspoConnection {
   password: string;
 }
 
-/** ESPOCRM_URL (plus ESPO_ADMIN_USER / ESPO_ADMIN_PASSWORD, defaults as in apps/oss/espocrm/env.ps1), or null. */
-export function espoFromEnv(env: Record<string, string | undefined> = process.env): EspoConnection | null {
+/** Where apps/oss/espocrm/env.ps1 keeps the local instance's generated admin password (git-ignored). */
+export const ESPO_PASSWORD_FILE = "var/oss/espo-admin-password.txt";
+
+/**
+ * The local EspoCRM admin password: ESPO_ADMIN_PASSWORD, else the one setup generated into var/oss. There is
+ * no built-in default, so a checkout carries no password.
+ */
+export function espoAdminPassword(
+  env: Record<string, string | undefined> = process.env,
+  readFile: () => string | null = () => {
+    const path = join(workspaceRoot(), ...ESPO_PASSWORD_FILE.split("/"));
+    return existsSync(path) ? readFileSync(path, "utf8") : null;
+  },
+): string {
+  const password = env.ESPO_ADMIN_PASSWORD || readFile()?.trim();
+  if (!password) {
+    throw new Error(
+      `No EspoCRM admin password: set ESPO_ADMIN_PASSWORD or run apps/oss/espocrm/setup.ps1 (it writes ${ESPO_PASSWORD_FILE}).`,
+    );
+  }
+  return password;
+}
+
+/** ESPOCRM_URL (plus ESPO_ADMIN_USER and the admin password, see espoAdminPassword), or null. */
+export function espoFromEnv(
+  env: Record<string, string | undefined> = process.env,
+  readFile?: () => string | null,
+): EspoConnection | null {
   const url = env.ESPOCRM_URL?.trim();
   if (!url) return null;
   return {
     url: url.replace(/\/+$/, ""),
     username: env.ESPO_ADMIN_USER || "admin",
-    password: env.ESPO_ADMIN_PASSWORD || "espo-local-admin",
+    password: espoAdminPassword(env, readFile),
   };
 }
 

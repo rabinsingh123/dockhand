@@ -4,6 +4,7 @@ import { createFixedClock, type Skill, type SkillStore, workspaceRoot } from "@d
 import { describe, expect, it } from "vitest";
 import {
   ESPOCRM_DEFAULTS,
+  espoAdminPassword,
   espoFromEnv,
   inputsMentionEspo,
   type LeadUnderstanding,
@@ -116,10 +117,21 @@ describe("EspoCRM requests", () => {
       typeof portalDirectory
     >[0];
     expect(Object.keys(portalDirectory(config, undefined, {}))).toEqual(["caravela", "supplier"]);
-    const dir = portalDirectory(config, undefined, { ESPOCRM_URL: "http://127.0.0.1:8090/" });
+    const dir = portalDirectory(config, undefined, {
+      ESPOCRM_URL: "http://127.0.0.1:8090/",
+      ESPO_ADMIN_PASSWORD: "from-env",
+    });
     expect(dir[ESPOCRM]).toMatchObject({ url: "http://127.0.0.1:8090", commitHints: ["Save"] });
     expect(Object.keys(teachPortals(dir, "how I register a deal"))).toEqual(["caravela", "supplier"]);
     expect(Object.keys(teachPortals(dir, "creating a lead in EspoCRM"))).toContain(ESPOCRM);
     expect(espoFromEnv({})).toBeNull();
+  });
+
+  it("has no built-in admin password: the env, else the one setup generated, else a clear error", () => {
+    const url = { ESPOCRM_URL: "http://127.0.0.1:8090" };
+    expect(espoAdminPassword({ ESPO_ADMIN_PASSWORD: "from-env" }, () => "from-file")).toBe("from-env");
+    expect(espoFromEnv(url, () => "Xy7generated24chars0000  ")?.password).toBe("Xy7generated24chars0000");
+    expect(() => espoFromEnv(url, () => null)).toThrow(/ESPO_ADMIN_PASSWORD.*setup.ps1/);
+    expect(readFileSync(new URL("./espocrm.ts", import.meta.url), "utf8")).not.toContain("espo-local-admin");
   });
 });

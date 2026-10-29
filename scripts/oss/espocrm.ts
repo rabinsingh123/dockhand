@@ -7,12 +7,13 @@ import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
 import type { ParamSpec, ParamValue, WriteGuardConfig } from "../../packages/core/src/index.ts";
+import { espoAdminPassword } from "../../packages/orchestrator/src/espocrm.ts";
 
 export const ESPO_PORTAL_ID = "espocrm";
 export const ESPO_URL = (process.env.ESPO_URL ?? "http://127.0.0.1:8090").replace(/\/+$/, "");
-// Local-only instance with fictional data; same defaults as apps/oss/espocrm/env.ps1.
+// Local-only instance with fictional data. The admin password is the one setup generated (or ESPO_ADMIN_PASSWORD).
 const ADMIN_USER = process.env.ESPO_ADMIN_USER ?? "admin";
-const ADMIN_PASSWORD = process.env.ESPO_ADMIN_PASSWORD ?? "espo-local-admin";
+const adminPassword = () => espoAdminPassword(process.env);
 
 /** The workflow: create a Lead from what a buyer sent, ending at Save (the commit control). */
 export const LEAD_START_URL = `${ESPO_URL}/#Lead/create`;
@@ -164,7 +165,7 @@ export function syntheticLead(i: number, tag: string): Record<string, ParamValue
 // ---------- REST API ----------
 
 function basic(): string {
-  return `Basic ${Buffer.from(`${ADMIN_USER}:${ADMIN_PASSWORD}`).toString("base64")}`;
+  return `Basic ${Buffer.from(`${ADMIN_USER}:${adminPassword()}`).toString("base64")}`;
 }
 
 /** EspoCRM REST call as the admin (the same endpoints its own admin UI calls). */
@@ -173,7 +174,7 @@ export async function espoApi<T = unknown>(method: string, path: string, body?: 
     method,
     headers: {
       Authorization: basic(),
-      "Espo-Authorization": Buffer.from(`${ADMIN_USER}:${ADMIN_PASSWORD}`).toString("base64"),
+      "Espo-Authorization": Buffer.from(`${ADMIN_USER}:${adminPassword()}`).toString("base64"),
       "Content-Type": "application/json",
       Accept: "application/json",
     },
@@ -250,7 +251,7 @@ export async function ensureEspoLogin(storageStateDir: string, o: { fresh?: bool
     const page = await ctx.newPage();
     await page.goto(`${ESPO_URL}/`, { waitUntil: "load" });
     await page.locator("#field-userName").fill(ADMIN_USER, { timeout: 60_000 });
-    await page.locator("#field-password").fill(ADMIN_PASSWORD);
+    await page.locator("#field-password").fill(adminPassword());
     await page.locator("#btn-login").click();
     await page.waitForFunction(
       () => !document.querySelector("#login") && !!document.querySelector("#navbar a"),
