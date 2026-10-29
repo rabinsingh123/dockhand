@@ -230,6 +230,16 @@ describe("dev process in cloud mode behind a tunnel", () => {
     );
     expect(signed.status).toBe(200);
   });
+
+  it("answers /__health through the tunnel with liveness only; modes stay local", async () => {
+    const remote = await get("/__health", TUNNEL);
+    expect(JSON.parse(remote.body)).toEqual({ ok: true });
+    const local = JSON.parse((await get("/__health", { host: "127.0.0.1:8787" })).body) as Record<
+      string,
+      unknown
+    >;
+    expect(local).toMatchObject({ ok: true, modes: { whatsapp: "cloud" }, pending: 0 });
+  });
 });
 
 describe("dev process lifecycle", () => {

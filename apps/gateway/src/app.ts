@@ -10,6 +10,7 @@ import {
 import { parseWebhookEntries, verifySignature } from "@dockhand/whatsapp";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { isLocalRequest } from "./local.ts";
 
 /** Receives newly stored (deduplicated, allow-listed) inbound messages, after the webhook has answered. */
 export type OnMessages = (messages: InboundMessage[]) => Promise<void> | void;
@@ -25,7 +26,7 @@ export interface GatewayDeps {
 }
 
 export interface GatewayApp {
-  /** GET/POST /webhook/whatsapp and GET /__health. */
+  /** GET/POST /webhook/whatsapp and GET /__health (modes and queue only for local requests). */
   app: Hono;
   /** Resolves when every background task started by a webhook (handlers, refusals) has settled. */
   drain(): Promise<void>;
@@ -104,6 +105,8 @@ export function createGatewayApp(deps: GatewayDeps): GatewayApp {
 
   app.get("/__health", (c) => {
     const dbOk = (db.raw.prepare("SELECT 1 AS ok").get() as { ok: number } | undefined)?.ok === 1;
+    // Through a tunnel: liveness only. Modes and the queue are for this machine.
+    if (!isLocalRequest(c.req.raw)) return c.json({ ok: dbOk });
     return c.json({
       ok: dbOk,
       modes: { meta: config.meta.mode, whatsapp: config.whatsapp.mode, crm: config.crm.mode },

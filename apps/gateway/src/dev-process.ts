@@ -33,6 +33,7 @@ import { createEmulator, createWhatsAppClient, type Emulator } from "@dockhand/w
 import { type ServerType, serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { createGatewayApp, type OnMessages } from "./app.ts";
+import { isLocalRequest } from "./local.ts";
 import { createRecorder } from "./recorder/index.ts";
 
 export const GRAPH_BASE_URL = "https://graph.facebook.com";
@@ -40,23 +41,6 @@ const DRAIN_ON_CLOSE_MS = 3_000;
 
 /** What a tunnel may reach: Meta's signed webhook and the health check `pnpm tunnel` polls. */
 const PUBLIC_PATHS = new Set(["/webhook/whatsapp", "/__health"]);
-const LOCAL_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
-/** Added by cloudflared (Cloudflare's edge sets the cf-* ones, a client cannot drop them), ngrok and most proxies. */
-const PROXY_HEADERS = ["cf-connecting-ip", "cf-ray", "x-forwarded-for", "x-forwarded-host", "forwarded"];
-
-/**
- * A request from a browser or process on this machine: a loopback Host (a tunnel forwards the public one, a
- * DNS-rebinding page sends its own) and no header a proxy or tunnel adds.
- */
-export function isLocalRequest(headers: Headers): boolean {
-  let hostname: string;
-  try {
-    hostname = new URL(`http://${headers.get("host") ?? ""}`).hostname;
-  } catch {
-    return false;
-  }
-  return LOCAL_HOSTNAMES.has(hostname) && !PROXY_HEADERS.some((h) => headers.has(h));
-}
 
 export interface DevProcessOptions {
   config?: Config; // default: loadConfig()
@@ -141,7 +125,7 @@ export async function startDevProcess(opts: DevProcessOptions = {}): Promise<Dev
     // `pnpm tunnel` makes this port public and cloudflared connects from 127.0.0.1, so the socket address says
     // nothing. Only the signed webhook and the health check answer a request that came through a proxy.
     root.use("*", async (c, next) => {
-      if (PUBLIC_PATHS.has(c.req.path) || isLocalRequest(c.req.raw.headers)) return next();
+      if (PUBLIC_PATHS.has(c.req.path) || isLocalRequest(c.req.raw)) return next();
       return c.text("Not Found", 404);
     });
     root.route("/", gateway.app);
