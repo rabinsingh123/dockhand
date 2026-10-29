@@ -21,6 +21,16 @@ async function main(): Promise<void> {
   const health = await fetch(`${local}/__health`).catch(() => null);
   if (!health?.ok)
     throw new Error(`No gateway at ${local}. Start it first (pnpm dev with WHATSAPP_MODE=cloud).`);
+  // Only a cloud-mode gateway may be published: an emulator-mode one verifies webhooks with a public default
+  // secret and serves the dev chat.
+  const modes = ((await health.json()) as { modes?: { whatsapp?: string } }).modes;
+  if (modes?.whatsapp !== "cloud") {
+    throw new Error(
+      `The gateway at ${local} runs WhatsApp in ${modes?.whatsapp ?? "an unknown"} mode; tunnel only WHATSAPP_MODE=cloud.`,
+    );
+  }
+  if (appSecret === "emulator-app-secret")
+    throw new Error("WHATSAPP_APP_SECRET is the emulator default; set the real one.");
 
   const bundled = join(workspaceRoot(), "var", "bin", "cloudflared.exe");
   const bin = existsSync(bundled) ? bundled : "cloudflared";
