@@ -1,4 +1,4 @@
-// The real-model evals behind the headline chart (docs/internal/PLAN.md §6). Every number comes from live Meta
+// The real-model evals behind the headline chart. Every number comes from live Meta
 // and Baseten calls (provider meta/baseten in the ledger); scripted and cassette runs are refused.
 //
 //   firstruns --k 8 [--goal-only]   fresh Caravela first runs (orchestrator path: buildPlan + runComputerUse)

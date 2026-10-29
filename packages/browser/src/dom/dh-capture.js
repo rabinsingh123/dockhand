@@ -1,4 +1,4 @@
-// biome-ignore-all lint: in-page script; the first part is the capture code tested in docs/reviews/computer-use-review.md 1.4, kept verbatim.
+// biome-ignore-all lint: in-page script; the first part is the trace-capture code of docs/ARCHITECTURE.md 2.2.
 // biome-ignore-all format: kept byte-for-byte with the tested snippet.
 // dh-capture.js. Exposes window.__dh.{describeAt, viewMap, describeActive, fingerprintOf, formState}.
 (() => {

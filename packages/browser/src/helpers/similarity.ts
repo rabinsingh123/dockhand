@@ -1,5 +1,5 @@
 // Fingerprint similarity in the style of Similo: a weighted sum of per-attribute agreement.
-// Thresholds are starting values from docs/reviews/computer-use-review.md 2.6; tune on dev seeds only.
+// Thresholds are starting values (docs/ARCHITECTURE.md 2.5, rung 1); tune on dev seeds only.
 
 import type { ElementDescriptor } from "@dockhand/core";
 

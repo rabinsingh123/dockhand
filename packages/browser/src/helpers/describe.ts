@@ -149,7 +149,7 @@ function targetKind(d: ElementDescriptor): TargetKind {
 
 type Slot = "testid" | "role" | "label" | "anchor" | "placeholder" | "text" | "positional";
 
-// docs/reviews/computer-use-review.md 2.1: rank order per target kind (label collides with popups on comboboxes).
+// Rank order per target kind (label collides with popups on comboboxes); see docs/ARCHITECTURE.md 2.2.
 const RANKS: Record<TargetKind, Slot[]> = {
   text: ["testid", "role", "label", "anchor", "placeholder", "text", "positional"],
   button: ["testid", "role", "anchor", "label", "text", "placeholder", "positional"],

@@ -1,4 +1,4 @@
-// Job state machine (docs/reviews/architect-review.md §3.6). Pure: persistence with compare-and-set
+// Job state machine (docs/ARCHITECTURE.md 3.1). Pure: persistence with compare-and-set
 // lives in repo.ts, which also logs every rejected transition as a job_events row (accepted = 0).
 
 import type { JobEvent, JobStatus } from "@dockhand/core";

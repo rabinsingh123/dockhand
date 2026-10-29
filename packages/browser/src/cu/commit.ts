@@ -1,4 +1,4 @@
-// Commit target test (docs/reviews/architect-review.md 2.1). Harness-enforced; bias to block: a false positive
+// Commit target test (docs/ARCHITECTURE.md 2.2, commit guard). Harness-enforced; bias to block: a false positive
 // costs one extra approval tap, a false negative submits without approval.
 
 import type { ActiveCommit, CommitInfo } from "../dom/script.ts";

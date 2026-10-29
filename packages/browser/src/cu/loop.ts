@@ -1,5 +1,5 @@
 // The computer-use loop: model turns -> guarded actions on a real page -> one screenshot per batch -> trace.
-// Design notes: docs/ARCHITECTURE.md 2.2, docs/reviews/computer-use-review.md 1.2-1.3 and 7, architect-review 2.1.
+// Design notes: docs/ARCHITECTURE.md 2.2.
 
 import {
   type ArtifactRef,

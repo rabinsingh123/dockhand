@@ -1,4 +1,4 @@
-// Typed repositories over the core SQLite schema (docs/reviews/architect-review.md §4, T1-T6).
+// Typed repositories over the core SQLite schema (docs/ARCHITECTURE.md 3 and 4; transactions T1-T6).
 // Every function is synchronous (node:sqlite) so callers can compose them inside db.tx().
 
 import type {
