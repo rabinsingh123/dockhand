@@ -1,7 +1,7 @@
 // The two mock portals as eval targets: ids, start paths, write-guard allow lists and the canonical field
 // catalog each skill is graded against.
 
-import type { ParamSpec, ParamType, WriteGuardConfig } from "@dockhand/core";
+import type { Decision, ParamSpec, ParamType, WriteGuardConfig } from "@dockhand/core";
 import {
   type CanonicalField,
   PARTNER_FIELDS,
@@ -92,6 +92,14 @@ export function isLocalUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * The automatic approval of evals and dev scripts: "approved" only while the page is on a local origin (the
+ * mock portals, a local EspoCRM), "rejected" anywhere else. Checked at the moment of approval, not at start.
+ */
+export function approveIfLocal(page: { url(): string }): Decision {
+  return isLocalUrl(page.url()) ? "approved" : "rejected";
 }
 
 /** camelCase canonical key -> snake_case param name ("primaryContactEmail" -> "primary_contact_email"). */

@@ -38,6 +38,7 @@ import {
   renderChart,
   runCase,
 } from "../../packages/evals/src/index.ts";
+import { approveIfLocal } from "../../packages/evals/src/portals.ts";
 import { inferSpecs, syntheticParamSets, withExamples } from "../../packages/orchestrator/src/params.ts";
 import { type BuildPlanContext, buildPlan, FIRST_RUN_LIMITS } from "../../packages/orchestrator/src/plan.ts";
 import { CARAVELA, PORTAL_DEFAULTS, WRITE_GUARD_ALLOW } from "../../packages/orchestrator/src/portals.ts";
@@ -227,7 +228,10 @@ async function firstRuns(): Promise<void> {
             costSoFar: () => live.ledger.totals({ runId }).costUsd,
             artifacts: live.artifacts,
           },
-          { approveCommit: async () => "approved", approveSafety: async () => "approved" },
+          {
+            approveCommit: async () => approveIfLocal(lease.page),
+            approveSafety: async () => approveIfLocal(lease.page),
+          },
           { purpose: "cu_first_run", jobId: "headline", runId, timeoutMs: 90_000 },
         );
       } finally {

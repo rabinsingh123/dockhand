@@ -24,6 +24,7 @@ import {
   type Understanding,
   ulid,
 } from "../../packages/core/src/index.ts";
+import { approveIfLocal } from "../../packages/evals/src/portals.ts";
 import {
   inferSpecs,
   paramsFromProfile,
@@ -209,9 +210,9 @@ try {
         {
           approveCommit: async (r) => {
             approvals.push(r.summary);
-            return "approved";
+            return approveIfLocal(l.page);
           },
-          approveSafety: async () => "approved",
+          approveSafety: async () => approveIfLocal(l.page),
           progress: (p) => {
             lastProgress = `${p.action}: ${p.note}`;
             if (p.action % 20 === 0 || p.note.startsWith("waiting"))
@@ -339,7 +340,7 @@ async function compileAndReplay(
       rebaseSkill(skill, p.url),
       m.params,
       {
-        approveCommit: async () => "approved",
+        approveCommit: async () => approveIfLocal(l.page),
         approveSafety: async () => "rejected",
         askRep: async () => null,
       },

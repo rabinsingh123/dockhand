@@ -30,6 +30,7 @@ import {
   type Trace,
   ulid,
 } from "../../packages/core/src/index.ts";
+import { approveIfLocal } from "../../packages/evals/src/portals.ts";
 import { withExamples } from "../../packages/orchestrator/src/params.ts";
 import {
   annotateSkillDetailed,
@@ -171,10 +172,10 @@ async function firstRun(
           approvals.push(
             `${r.summary} | readback: ${(r.readback ?? []).map((x) => `${x.label}=${x.value}`).join("; ")}`,
           );
-          // Local sandbox only (127.0.0.1, fictional data): the approval is automatic and logged.
-          return new URL(ESPO_URL).hostname === "127.0.0.1" ? "approved" : "rejected";
+          // Local sandbox only (fictional data): automatic and logged while the page is on a local origin.
+          return approveIfLocal(l.page);
         },
-        approveSafety: async () => "approved",
+        approveSafety: async () => approveIfLocal(l.page),
         progress: (p) => {
           if (p.action % 15 === 0 || p.note.startsWith("waiting"))
             console.log(`  progress ${p.action}: ${p.note}`);
@@ -315,7 +316,7 @@ async function replay(skill: Skill, tag: string, ladder: Repairer[], answer: str
       rebaseSkill(skill, ESPO_URL),
       params,
       {
-        approveCommit: async () => (new URL(ESPO_URL).hostname === "127.0.0.1" ? "approved" : "rejected"),
+        approveCommit: async () => approveIfLocal(l.page),
         approveSafety: async () => "rejected",
         askRep: async (q) => {
           asked.push(`${q.label}${q.options ? ` [${q.options.join(", ")}]` : ""}`);

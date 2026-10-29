@@ -21,6 +21,7 @@ import {
   type Understanding,
   ulid,
 } from "../../packages/core/src/index.ts";
+import { approveIfLocal } from "../../packages/evals/src/portals.ts";
 import { type BuildPlanContext, buildPlan, FIRST_RUN_LIMITS } from "../../packages/orchestrator/src/plan.ts";
 import { CARAVELA, PORTAL_DEFAULTS, WRITE_GUARD_ALLOW } from "../../packages/orchestrator/src/portals.ts";
 import { fixturePath } from "../lib/files.ts";
@@ -221,11 +222,11 @@ try {
             approvals.push(
               `${r.summary} | readback: ${(r.readback ?? []).map((x) => `${x.label}=${x.value}`).join("; ")}`,
             );
-            return values.commit === "rejected" ? "rejected" : "approved";
+            return values.commit === "rejected" ? "rejected" : approveIfLocal(lease.page);
           },
           approveSafety: async (r) => {
             safety.push(r.checks);
-            return "approved";
+            return approveIfLocal(lease.page);
           },
           progress: (p) => console.log(`  progress: action ${p.action}, ${p.note}`),
         },

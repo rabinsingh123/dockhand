@@ -91,7 +91,9 @@ for (const [label, sess] of [
     skill,
     params,
     {
-      approveCommit: async () => "approved",
+      // Debug runs approve only while the page is on the local mock portal.
+      approveCommit: async () =>
+        ["127.0.0.1", "localhost"].includes(new URL(page.url()).hostname) ? "approved" : "rejected",
       approveSafety: async () => "rejected",
       repairers: [createOpenWeightsRepairer(gw, { model: "m" })],
     },
