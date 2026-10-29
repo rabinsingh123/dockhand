@@ -26,9 +26,21 @@ export const espoWriteGuard: WriteGuardConfig = {
   allow: ESPO_WRITE_ALLOW,
 };
 
+export const LEAD_STATUS = ["New", "Assigned", "In Process", "Converted", "Recycled", "Dead"] as const;
+export const LEAD_SOURCE = [
+  "Call",
+  "Email",
+  "Existing Customer",
+  "Partner",
+  "Public Relations",
+  "Web Site",
+  "Campaign",
+  "Other",
+] as const;
+
 /**
- * Param name, the EspoCRM attribute it lands in, and its spec. Status and Source are left out: they are Selectize
- * dropdowns (no ARIA roles, the real <select> is hidden), which the compiler cannot yet turn into a select step.
+ * Param name, the EspoCRM attribute it lands in, and its spec. Status and Source are Selectize dropdowns (no
+ * ARIA roles, a hidden native <select> that keeps only the chosen option).
  */
 export const LEAD_FIELDS: { param: string; attr: string; spec: ParamSpec }[] = [
   {
@@ -81,6 +93,28 @@ export const LEAD_FIELDS: { param: string; attr: string; spec: ParamSpec }[] = [
       description: "Opportunity amount (USD)",
     },
   },
+  {
+    param: "status",
+    attr: "status",
+    spec: {
+      name: "status",
+      type: "enum",
+      required: true,
+      description: "Lead status",
+      enumValues: [...LEAD_STATUS],
+    },
+  },
+  {
+    param: "source",
+    attr: "source",
+    spec: {
+      name: "source",
+      type: "enum",
+      required: true,
+      description: "Lead source",
+      enumValues: [...LEAD_SOURCE],
+    },
+  },
 ];
 
 const FIRST = ["Marisol", "Tiago", "Priya", "Daniel", "Lucía", "Kenji", "Amara", "Rafael", "Ines", "Arjun"];
@@ -121,6 +155,9 @@ export function syntheticLead(i: number, tag: string): Record<string, ParamValue
     city,
     country,
     opportunity_amount: 12000 + ((i * 7919) % 90) * 500,
+    // Never the form's defaults (New, empty): a value equal to the default needs no step and compiles nothing.
+    status: pick(["In Process", "Assigned", "Recycled"], 1),
+    source: pick(["Partner", "Call", "Web Site", "Existing Customer"], 1),
   };
 }
 

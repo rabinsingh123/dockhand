@@ -233,7 +233,8 @@ describe("compile: edge rules", () => {
   const base = partnerTrace();
 
   it("keeps a literal (with a warning) when no param matches", () => {
-    const trace: Trace = { ...base, params: { ...base.params, notes: "something else" } };
+    const { notes: _typed, ...others } = base.params;
+    const trace: Trace = { ...base, params: others };
     const { skill, warnings } = compile(trace, meta);
     expect(skill.steps.find((s) => s.id === "s15")).toMatchObject({
       op: "fill",
@@ -245,6 +246,12 @@ describe("compile: edge rules", () => {
       detail: `will always enter "Pilot for the finance team" in 'Notes'`,
     });
     expect(skill.params.map((p) => p.name)).not.toContain("notes");
+  });
+
+  it("refuses to compile when a value the run was given is written by no step", () => {
+    const trace: Trace = { ...base, params: { ...base.params, notes: "something else" } };
+    expect(() => compile(trace, meta)).toThrow(/no step writes notes \("something else"\)/);
+    expect(() => compile(trace, { ...meta, partial: true })).not.toThrow();
   });
 
   it("flags two params sharing a value and picks the one named like the field", () => {

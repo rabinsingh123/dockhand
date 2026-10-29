@@ -37,6 +37,8 @@ export interface RawFingerprint {
   classes: string[];
   box: RawBox;
   ordinal: number;
+  /** A proxied dropdown's widget or one of its items: the in-page role wins over Playwright's. */
+  proxied?: boolean;
 }
 
 export interface RawState {
@@ -131,6 +133,12 @@ export interface DhApi {
   mainHeading(): string;
   frames(): Promise<void>;
   waitScrollIdle(x: number, y: number, maxMs: number): Promise<string>;
+  /** A custom dropdown driving a hidden native <select>: the options it shows (while open) and the choice. */
+  proxy?(el: Element): { options: string[]; selected: string } | null;
+  /** The shown item of that dropdown whose text is `label`, or null while it is closed. */
+  proxyOption?(el: Element, label: string): Element | null;
+  /** Settledness inputs for replay (helpers/settle.ts). */
+  settle?(): { domQuietMs: number; busy: boolean; ready: boolean };
 }
 
 // Evaluate callbacks reference `window.__dh` directly and stay single expressions: they are serialized into the

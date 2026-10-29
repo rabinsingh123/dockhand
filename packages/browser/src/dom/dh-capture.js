@@ -24,8 +24,37 @@
     }
     return el;
   }
+  // Custom dropdowns that drive a hidden native <select> (Selectize, Chosen, Tom Select; EspoCRM's enums): the
+  // widget is the select's next sibling (a div or span showing the selected text). The widget reads as a
+  // combobox whose value is the select's; an item of its open list (one of several [data-value] siblings)
+  // reads as an option. Selectize keeps only the chosen option in the native select, so the list comes from
+  // the widget, never from the select.
+  const selectedText = s => norm((s.selectedOptions[0] || {}).text || '');
+  function proxyOf(el) {
+    for (let n = el, d = 0; n && n.nodeType === 1 && n !== document.body && d < 6; n = n.parentElement, d++) {
+      const s = n.previousElementSibling;
+      if (s && s.tagName === 'SELECT' && !s.multiple && (n.tagName === 'DIV' || n.tagName === 'SPAN') &&
+          !isVisible(s) && norm(n.innerText).includes(selectedText(s)))
+        return { select: s, root: n };
+    }
+    return null;
+  }
+  const isListItem = n => n.hasAttribute('data-value') || n.hasAttribute('data-option-array-index');
+  function proxyOptionOf(el, px) {
+    for (let n = el; n && n !== px.root; n = n.parentElement) {
+      if (!isListItem(n) || !norm(n.innerText)) continue;
+      const sibs = n.parentElement ? [...n.parentElement.children] : [];
+      if (sibs.some(s => s !== n && isListItem(s))) return n;
+    }
+    return null;
+  }
+  function proxyItems(px) {
+    return [...px.root.querySelectorAll('[data-value], [data-option-array-index]')].filter(n => proxyOptionOf(n, px) === n && isVisible(n));
+  }
   // 2) Climb to the element that owns the interaction.
   function owner(el) {
+    const px = el.closest && proxyOf(el);
+    if (px) return proxyOptionOf(el, px) || px.root;
     for (let n = el, d = 0; n && n !== document.body && d < 10; n = n.parentElement, d++) {
       if (n.tagName === 'LABEL') return n.control || n;          // a label click activates its control
       if (n.matches(INTERACTIVE)) return n;
@@ -39,6 +68,9 @@
   function role(el) {
     const r = el.getAttribute('role');
     if (r) return r.trim().split(/\s+/)[0];
+    const px = proxyOf(el);
+    if (px && px.root === el) return 'combobox';
+    if (px && proxyOptionOf(el, px) === el) return 'option';
     const t = el.tagName.toLowerCase(), type = (el.getAttribute('type') || 'text').toLowerCase();
     if (t === 'a') return el.hasAttribute('href') ? 'link' : '';
     if (t === 'button') return 'button';
@@ -101,14 +133,16 @@
     const nm = el.getAttribute('name');
     if (nm && !generated(nm)) out.push({ kind: 'css', css: `${el.tagName.toLowerCase()}[name="${CSS.escape(nm)}"]`, positional: false });
     if (el.id && !generated(el.id)) out.push({ kind: 'css', css: '#' + CSS.escape(el.id), positional: false });
-    if (!n) { const t = norm(el.innerText).slice(0, 60); if (t) out.push({ kind: 'text', text: t }); }
+    const pxr = proxyOf(el);                                      // a proxied dropdown shows its value, not a name
+    if (!n && !(pxr && pxr.root === el)) { const t = norm(el.innerText).slice(0, 60); if (t) out.push({ kind: 'text', text: t }); }
     out.push({ kind: 'css', ...cssPath(el) });
     const seen = new Set();                                       // name/id anchors and cssPath can coincide
     return { list: out.filter(c => !seen.has(c.css || JSON.stringify(c)) && seen.add(c.css || JSON.stringify(c))),
              scope: sec };                                        // Node adds the scope only when a candidate is ambiguous
   }
   function state(el) {
-    return { value: el.matches('input,select,textarea') ? String(el.value) : null,
+    const px = el.matches('input,select,textarea') ? null : proxyOf(el);
+    return { value: el.matches('input,select,textarea') ? String(el.value) : px && px.root === el ? fieldValue(el) : null,
              checked: typeof el.checked === 'boolean' ? el.checked : el.getAttribute('aria-checked'),
              expanded: el.getAttribute('aria-expanded'), disabled: el.disabled === true || el.getAttribute('aria-disabled') === 'true',
              invalid: el.getAttribute('aria-invalid') === 'true' };
@@ -133,7 +167,8 @@
       text: norm(el.innerText).slice(0, 80), section: section(el)?.name || '', heading: heading(el),
       classes: [...el.classList].filter(c => !generated(c)).slice(0, 6),
       box: { x: Math.round(b.x + scrollX), y: Math.round(b.y + scrollY), w: Math.round(b.width), h: Math.round(b.height) },
-      ordinal: [...(el.form || document).querySelectorAll(INTERACTIVE)].indexOf(el) };
+      ordinal: [...(el.form || document).querySelectorAll(INTERACTIVE)].indexOf(el),
+      proxied: (() => { const px = proxyOf(el); return !!px && (px.root === el || proxyOptionOf(el, px) === el); })() };
   }
   function describe(el, h) {
     window.__dh.last = el;                                        // Node grabs it with evaluateHandle for identity checks
@@ -193,6 +228,8 @@
     const r = role(el);
     if (['checkbox', 'radio', 'switch', 'menuitemcheckbox', 'menuitemradio'].includes(r)) return String(el.getAttribute('aria-checked') === 'true');
     if (r === 'combobox') {
+      const px = proxyOf(el);
+      if (px && px.root === el) return fieldValue(px.select);
       const inner = el.querySelector('input,select,textarea');
       return inner ? fieldValue(inner) : norm(el.getAttribute('aria-valuetext') || el.innerText);
     }
@@ -219,6 +256,7 @@
       const wrapper = el.parentElement && el.parentElement.closest('[role=combobox]');
       if (wrapper && wrapper !== el) continue;                    // reported by its combobox wrapper
       if (!shown(el)) continue;
+      if (proxyOf(el)) continue;                                  // inside a proxied dropdown: reported below
       const r = role(el);
       if (r === 'radio' || (r === 'checkbox' && groupedCheckbox(el))) {
         const container = el.closest('[role=radiogroup],[role=group],fieldset') || el.form || document.body;
@@ -233,6 +271,7 @@
       }
       entries.push({ key: bare(name(el)) || el.getAttribute('name') || el.id || bare(visualLabel(el)) || el.tagName.toLowerCase(), value: fieldValue(el), el });
     }
+    for (const root of proxyRoots()) entries.push({ key: bare(name(root)) || bare(visualLabel(root)) || 'combobox', value: fieldValue(root), el: root });
     const out = {};
     for (const e of entries) {
       let k = e.key || '(unlabelled)';
@@ -245,12 +284,23 @@
     }
     return out;
   }
+  // Visible widget roots of proxied dropdowns, in document order.
+  function proxyRoots() {
+    const out = [];
+    for (const s of document.querySelectorAll('select')) {
+      const root = s.nextElementSibling;
+      if (root && shown(root)) { const px = proxyOf(root); if (px && px.root === root) out.push(root); }
+    }
+    return out;
+  }
   function interactiveList() {
     const list = [], out = [];
-    for (const el of document.querySelectorAll(INTERACTIVE)) {
+    const roots = proxyRoots();
+    for (const el of [...document.querySelectorAll(INTERACTIVE), ...roots]) {
       if (!shown(el)) continue;
       const b = el.getBoundingClientRect();
       if (!isFile(el) && (b.width < 1 || b.height < 1)) continue;
+      if (!roots.includes(el) && proxyOf(el)) continue;            // a proxied dropdown's insides: its root stands for it
       list.push(el);
       out.push({ index: list.length - 1, uid: uid(el), fingerprint: fingerprint(el), state: state(el), formSubmit: formSubmit(el) });
     }
@@ -372,6 +422,17 @@
       .observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
   } catch (e) { /* no document yet: settledness falls back to the network alone */ }
   const BUSY = '[aria-busy="true"], [role="progressbar"]:not([aria-valuenow]), .spinner, .spinner-border, .loading-spinner, .loader';
+  // Proxied dropdowns for the runner: the shown options (while open) and the select's choice; the open item
+  // whose text is `label` (case- and accent-insensitive), to click like a person would.
+  const fold = s => norm(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  window.__dh.proxy = el => {
+    const px = proxyOf(el);
+    return px ? { options: proxyItems(px).map(n => norm(n.innerText)), selected: selectedText(px.select) } : null;
+  };
+  window.__dh.proxyOption = (el, label) => {
+    const px = proxyOf(el);
+    return px ? proxyItems(px).find(n => fold(n.innerText) === fold(label)) || null : null;
+  };
   window.__dh.settle = () => ({
     domQuietMs: Math.round(performance.now() - lastMutation),
     busy: [...document.querySelectorAll(BUSY)].some(e => isVisible(e)),

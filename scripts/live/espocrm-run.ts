@@ -109,6 +109,7 @@ const GUIDANCE = taught
       "Type {{title}} into Title and {{website}} into Website.",
       "In Address, type {{city}} into City and {{country}} into Country.",
       "Type {{opportunity_amount}} into Opportunity Amount.",
+      "Status and Source are dropdowns: click the Status box and pick {{status}}, then the Source box and pick {{source}}.",
       `Click ${LEAD_COMMIT}.`,
     ];
 
@@ -246,24 +247,8 @@ async function compileSkill(
       return m?.[1] && m[2] ? [[m[1], m[2]]] : [];
     }),
   );
+  // compile() itself refuses a skill that would not write a value the first run wrote.
   const skill: Skill = { ...report.body, version: 1, parentVersion: null };
-  // A skill that would not write a value the first run wrote replays as a silent wrong write: refuse it.
-  const written = new Set(
-    JSON.stringify(skill.steps)
-      .match(/\{\{\s*([a-z][a-z0-9_]*)/g)
-      ?.map((m) => m.replace(/\{\{\s*/, "")),
-  );
-  const unwritten = Object.keys(params)
-    .map((k) => renames[k] ?? k)
-    .filter((k) => !written.has(k));
-  if (unwritten.length > 0) {
-    console.log(`compile refused: no step writes ${unwritten.join(", ")}`);
-    writeFileSync(
-      join(outDir, `${LEAD_SKILL}-refused-${runId}.json`),
-      JSON.stringify({ skill, warnings, unwritten }, null, 1),
-    );
-    return null;
-  }
   const rename = (p: Record<string, ParamValue>) =>
     Object.fromEntries(Object.entries(p).map(([k, v]) => [renames[k] ?? k, v]));
   const sets = [rename(params), rename(syntheticLead(97, `c${runId.slice(-3).toLowerCase()}`))];

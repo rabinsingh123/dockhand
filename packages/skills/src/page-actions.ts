@@ -32,6 +32,8 @@ export async function selectOption(
     await trigger.selectOption({ label: hits[0] as string }, { timeout: timeoutMs });
     return;
   }
+  const proxied = await trigger.evaluate((el) => window.__dh?.proxy?.(el) ?? null).catch(() => null);
+  if (proxied) return selectProxied(page, trigger, option, proxied, timeoutMs);
   await trigger.click({ timeout: timeoutMs });
   if (info.editable) await trigger.fill(option, { timeout: timeoutMs });
   const options = await optionLocator(page, trigger);
@@ -56,6 +58,49 @@ export async function selectOption(
     );
   }
   await options.nth(idx[0] as number).click({ timeout: timeoutMs });
+}
+
+/**
+ * A custom dropdown that drives a hidden native <select> (Selectize, Chosen, Tom Select): open it like a person,
+ * click the shown item whose text is the option, then check that the hidden select now holds that option.
+ */
+async function selectProxied(
+  page: Page,
+  trigger: Locator,
+  option: string,
+  proxied: { selected: string },
+  timeoutMs: number,
+): Promise<void> {
+  const want = normalizeText(option);
+  if (normalizeText(proxied.selected) === want) return;
+  await trigger.click({ timeout: timeoutMs });
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const handle = (
+      await trigger.evaluateHandle((el, l) => window.__dh?.proxyOption?.(el, l) ?? null, option)
+    ).asElement();
+    if (handle) {
+      try {
+        await handle.click({ timeout: timeoutMs });
+      } finally {
+        await handle.dispose();
+      }
+      break;
+    }
+    if (Date.now() >= deadline) {
+      const shown = await trigger.evaluate((el) => window.__dh?.proxy?.(el)?.options ?? []).catch(() => []);
+      await page.keyboard.press("Escape").catch(() => {});
+      throw new DockhandError(
+        "ASSERT_FAILED",
+        `option "${option}" is not in the list (${shown.slice(0, 12).join(", ") || "no options appeared"})`,
+      );
+    }
+    await page.waitForTimeout(100);
+  }
+  const now = await trigger.evaluate((el) => window.__dh?.proxy?.(el)?.selected ?? "").catch(() => "");
+  if (normalizeText(now) !== want) {
+    throw new DockhandError("ASSERT_FAILED", `the dropdown shows "${now}" after picking "${option}"`);
+  }
 }
 
 /** Options of the listbox the trigger controls, else of the only visible listbox. */

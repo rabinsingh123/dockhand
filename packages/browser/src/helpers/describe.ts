@@ -201,7 +201,8 @@ export async function describeExact(page: Page, handle: ElementHandle): Promise<
     return { candidates: [], fingerprint: toDescriptor(fp, null, raw.state) };
   const formSubmit = await handle.evaluate((el) => window.__dh?.formSubmitOf(el as Element) ?? false);
   const css = await anchorCss(page, raw, handle);
-  const engine = css ? await engineRoleName(page, css) : null;
+  // Playwright reads a proxied dropdown's widget by its inner search box (a textbox): keep the in-page role.
+  const engine = css && !fp.proxied ? await engineRoleName(page, css) : null;
   const descriptor = toDescriptor(fp, engine, raw.state, formSubmit);
   const file = isFileFingerprint(fp);
   const all = toCandidates(raw.candidates.list, engine);

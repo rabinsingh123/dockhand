@@ -3,16 +3,17 @@
 // value, so typos, select-all retypes, Tab hops and wrong-field detours collapse, and clicks survive only
 // for their effect (navigation, commit, or a button press).
 
-import type {
-  CompileWarning,
-  ParamSpec,
-  ParamValue,
-  Skill,
-  SkillBody,
-  Step,
-  Target,
-  Trace,
-  TraceStep,
+import {
+  type CompileWarning,
+  DockhandError,
+  type ParamSpec,
+  type ParamValue,
+  type Skill,
+  type SkillBody,
+  type Step,
+  type Target,
+  type Trace,
+  type TraceStep,
 } from "@dockhand/core";
 import {
   defaultIntent,
@@ -40,6 +41,11 @@ export interface CompileMeta {
   /** Specs from the draft or the plan. Specs the program never uses are dropped; missing ones are inferred. */
   params: ParamSpec[];
   createdFrom: Skill["createdFrom"];
+  /**
+   * A repair's sub-trace: it re-does one step, and the rest of the skill writes the other params. Without it,
+   * a param the run was given that no step writes is a compile error.
+   */
+  partial?: boolean;
 }
 
 export interface CompileResult {
@@ -616,6 +622,40 @@ export function compile(trace: Trace, meta: CompileMeta): CompileResult {
       for (const name of templateParams(t)) if (!used.includes(name)) used.push(name);
   }
   const fileParams = new Set(drafts.flatMap((d) => (d.op === "upload" ? [d.fileParam] : [])));
+  // A value the first run was given that no step writes would be skipped on every replay, and the record
+  // saved without it: that is a compile error, never a dropped field.
+  // Written values: templated ones, values another param shares (already AMBIGUOUS_PARAM), and literals a
+  // step enters (LITERAL_VALUE): a fill or select value, a ticked option's name. A ticked box is a boolean's.
+  const writtenValues = new Set(
+    used
+      .map((n) => params[n])
+      .filter((v) => isWrittenValue(v) && typeof v !== "object")
+      .map((v) => normalizeText(String(v))),
+  );
+  let ticks = false;
+  for (const d of drafts) {
+    if (d.op === "fill") writtenValues.add(normalizeText(d.value));
+    if (d.op === "select") writtenValues.add(normalizeText(d.option));
+    if (d.op === "check" && d.checked) {
+      ticks = true;
+      for (const n of [d.target.fingerprint.name, d.target.fingerprint.label, d.target.fingerprint.text])
+        if (n) writtenValues.add(normalizeText(n));
+    }
+  }
+  const unwritten = meta.partial
+    ? []
+    : Object.entries(params).filter(([name, v]) => {
+        if (!isWrittenValue(v) || used.includes(name) || fileParams.has(name)) return false;
+        if (v === true) return !ticks;
+        return typeof v === "object" || !writtenValues.has(normalizeText(String(v)));
+      });
+  if (unwritten.length > 0) {
+    throw new DockhandError(
+      "ASSERT_FAILED",
+      `compile: no step writes ${unwritten.map(([n, v]) => `${n} ("${typeof v === "object" ? v.filename : String(v)}")`).join(", ")}; the first run's actions for ${unwritten.length === 1 ? "it" : "them"} could not be mapped to a field`,
+      { unwritten: unwritten.map(([n]) => n), warnings: pending.map((w) => w.detail) },
+    );
+  }
   const specs = meta.params.filter((p) => used.includes(p.name));
   for (const name of used) {
     if (!specs.some((p) => p.name === name)) specs.push(inferSpec(name, params[name], fileParams.has(name)));
@@ -637,6 +677,13 @@ export function compile(trace: Trace, meta: CompileMeta): CompileResult {
     },
     warnings,
   };
+}
+
+/** A param value the run had to enter: anything but empty text and an unticked box. */
+function isWrittenValue(v: ParamValue | undefined): boolean {
+  if (v === undefined || v === null || v === false) return false;
+  if (typeof v === "string") return v.trim() !== "";
+  return true;
 }
 
 /**

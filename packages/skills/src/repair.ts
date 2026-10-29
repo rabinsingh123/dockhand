@@ -323,6 +323,7 @@ export function createCuRepairer(opts: CuRepairerOptions): Repairer {
     if (r.outcome !== "done")
       return { ok: false, rung, reason: r.message ?? `computer use ended: ${r.outcome}`, costUsd };
     const compiled = compile(r.trace, {
+      partial: true,
       name: req.skill.name,
       title: req.skill.title,
       params: req.skill.params,
