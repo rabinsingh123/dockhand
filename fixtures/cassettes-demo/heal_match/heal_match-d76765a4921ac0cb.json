@@ -1,0 +1,51 @@
+{
+  "key": "heal_match-d76765a4921ac0cb",
+  "purpose": "heal_match",
+  "recordedAt": "2026-10-29T21:27:02.359Z",
+  "exchanges": [
+    {
+      "response": {
+        "id": "chatcmpl-633305bba78f4a0a89cd7d1d94d36397",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "content": "{\"index\":18,\"confidence\":0.92,\"reason\":\"Same consent checkbox function with minor rewording ('The end customer agreed...' -> 'The customer has agreed...') and section renamed from 'Register a deal' to 'Register an opportunity'. TestId changed from nw-consent to reg-consent but role, purpose and placement between Notes and Partner tier steps match.\"}",
+              "role": "assistant",
+              "reasoning_content": "We need to pick element that step should use now. Previous: checkbox \"The end customer agreed to be contacted by Caravela\" with testId nw-consent, section Register a deal. Now we have one candidate: index 18, name \"The customer has agreed to be contacted by Caravela\", section Register an opportunity, testId reg-consent.\n\nWording slightly changed: \"The end customer ...\" vs \"The customer has agreed...\". Is this same functional element? Likely yes - reworded but same consent checkbox. Section changed from Register a deal to Register an opportunity - maybe same form renamed. testId changed slightly nw-consent -> reg-consent but similar.\n\nCheck requirement: Never pick an element that only looks similar but does something else. Here it's clearly the consent checkbox, just slight rewording.\n\nPrevious step: Enter additional details in Notes field under Additional information. Next step: Select 'Partner tier'. So this checkbox is in between. The candidate fits.\n\nSo we should pick index 18.\n\nConfidence high ~0.9? Need to consider wording difference \"The end customer\" vs \"The customer has agreed\". It's essentially same. And testId similar.\n\nShould we consider null? No.\n\nProvide JSON.\n\n"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "created": 1793309220,
+        "model": "meta-models/muse-spark-open",
+        "object": "chat.completion",
+        "usage": {
+          "prompt_tokens": 446,
+          "completion_tokens": 339,
+          "total_tokens": 785,
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cached_tokens": 0
+          },
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 251,
+            "audio_tokens": 0,
+            "reasoning_tokens": 252,
+            "rejected_prediction_tokens": 365
+          }
+        }
+      }
+    }
+  ],
+  "material": {
+    "model": "meta-models/muse-spark-open",
+    "schemaName": "element_pick",
+    "instructions": "A web page changed and one step of a recorded browser automation can no longer find its element.\nPick the element on the current page that the step should use now, from the numbered list (all of the same kind).\nAnswer with its index, or null when none of them clearly does what the step needs. Never pick an element that only\nlooks similar but does something else (for example \"Save draft\" instead of \"Submit\", or a different field with a\nsimilar label). confidence is between 0 and 1.",
+    "parts": [
+      {
+        "text": "Step: Check the The end customer agreed to be contacted by Caravela checkbox\nPrevious step: Enter additional details in the Notes field under Additional information\nNext step: Select 'Partner tier'\nElement the step used before the change: {\"role\":\"checkbox\",\"name\":\"The end customer agreed to be contacted by Caravela\",\"section\":\"Register a deal\",\"testId\":\"nw-consent\"}\nElements of the same kind on the page now:\n[{\"index\":18,\"role\":\"checkbox\",\"name\":\"The customer has agreed to be contacted by Caravela\",\"section\":\"Register an opportunity\",\"testId\":\"reg-consent\"}]"
+      }
+    ]
+  }
+}

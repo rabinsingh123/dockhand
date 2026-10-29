@@ -1,0 +1,189 @@
+{
+  "key": "compile_annotate-64f46d4cf7757889",
+  "purpose": "compile_annotate",
+  "recordedAt": "2026-10-29T21:25:55.248Z",
+  "exchanges": [
+    {
+      "response": {
+        "top_logprobs": 0,
+        "temperature": 1,
+        "top_p": 1,
+        "service_tier": "auto",
+        "model": "muse-spark-1.3",
+        "reasoning": {
+          "effort": "low"
+        },
+        "background": false,
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "name": "skill_annotation",
+            "schema": {
+              "additionalProperties": false,
+              "type": "object",
+              "properties": {
+                "params": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "newName": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "string",
+                          "number",
+                          "date",
+                          "enum",
+                          "email",
+                          "phone",
+                          "boolean",
+                          "file"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "newName",
+                      "description",
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "steps": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "intent": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "intent"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "success": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    },
+                    "idName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "idRegex": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "textPattern": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "description",
+                    "textPattern",
+                    "idRegex",
+                    "idName"
+                  ],
+                  "type": "object"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "steps",
+                "params",
+                "success"
+              ]
+            },
+            "strict": false
+          }
+        },
+        "tools": [],
+        "tool_choice": "auto",
+        "truncation": "disabled",
+        "id": "resp_6ae3b9e2589403111c5f4a5a",
+        "object": "response",
+        "status": "completed",
+        "created_at": 1793309154,
+        "completed_at": 1793309154,
+        "error": null,
+        "incomplete_details": null,
+        "output": [
+          {
+            "type": "reasoning",
+            "id": "rs_6ae3b9e2589403111c5f4a5a:rs_81fe7eef-94c9-4f9a-a501-bad3210b0fea",
+            "encrypted_content": "Q-PaDgH6plbvnz8O_OY22YwLhDVH-0gUEavBQ_9Ya2kYCRtLgLf3r7hshBh74Xj-EM-gD3I-B5XF0VyyqnoZgN23FvflcvwehKpdlioCQbqNAnaI1bUtZqT9FCpvd4dbtoSmSi_yg_-c9IfjHGHsu_WLV69zDFco4_KWbmw5UTMCFDqpuqoxILjCLvEj03dDBEaV_cY8QQInqvKWvaMb6eLIPdKNEjhzT1kvXWAPP3t3ahpAmCIvkKMsu5ud6Lcu_f7QIp6V_LkTAeRHqew3azglpySGgrZZ_qXTKwtTW_dgWk31uk9bp7U_Bg57WmOTFIQlJldFX4b92MDMRy70FKMQBeoNwREKiZ0nWVg5Sht4wubsXIDzSST-46PEhwldc4G1i8idYsR6FrbcopSh_XIhb0rTUIeePgFBcEd5JP48H8Y7P19khyRyHKl4Ysn_ljIabeHU8gGv3-3oAlUxfKgazgEkF8WMvk4GG6wM8Hf_FYBlO_kvrI4NyrWHYhDoS0BX2lnkDf3XQQf59gYIwPsxxiAmYSrKyECBneutl8wu5RiNs57UmokysTqXU24-_NZJ4X5fngg4CUqd5pfW4ozP1eJlkTyLj7-O52N8jC_b9BL3ivs-mgtAJON77Ny6cyjyYPdrYxkq_ApaKqD-h4bATJBihOfU64Qe0G5GTc6pGjF-dqYZayviEIgDuC2SOBpEbwd8li3yVWu5BE_AHOKM7zfJ5LXt4-OkhBWdD2CehpkRxwveDNdzzlX77ezmHwD_lX5inK46DbIu-Pt1O3XFLz9wN99UVuWONFXbxOOA-X2zUtmzZ_1HJS9WYrcql2bka5cZRxRL7DAWtsRwTlw6NRVnZIl-nqvB7CeAdDBpSHT_DUlP8OaN-TGHEptlh_ia0_qGueO1z1h8GoAgx2YcX2Yiv9XzYJBYppX4BrfHvRELVe_BbtXDqEIf7tZ-PmC5Fufz7ngUiuTIL9vWHe5fbjVkTKEA0fs9eAYuDc1OpsdezkrTHV0OZ_4qvFORO5QrPrW6LR59qab8FXvyO9vXxHA993Ni5SRXiUK9GcAYY7pXw8BdrJ2vvC8WAo7m1tOa55CU7iW127wJuBw51Fmdoq97ssLz204DsV68jMS0vebnol-LtLN2BwNgIZFVbYzpOYadAfdpTY8e3FnZsFDNKanCtWbyrZXmQFaTeBzGe_9ConxGdR0F4d_0oo55TIrukF0S_R0mYaRihF6tUPe1BsQlyWelbSjJX-Adq8pOrmqQm7ONlUF6zLysRFSVBgEDrzkpZ7E4uXRk1_iYiyzP5TXpabraPlv6izLD7WlpnwDps48SHJ-M2oG6XLlCbkd7Llfl1s-YGWUVbbt14xv9Nvla0WTCt-ApOOX9tweuY3MYkS8q-7IAxxFHe7Voy66F4Jr_uwlNLDs-vlrAzna9IJhUBSM57tS3SPeDgqrsKHrARXulyG2FIthGzSohNP7yQeTHro1IzKvjtQTTtmwYdo08nN9U07mcuQQVlXgFcdYa9ALM99BmkIBeQTaSXWHs-FSdzIkXiE5qKtTM8P5cUN6IIikmTK5WquGD6fjUcw3wMFl2JTrAT6cKAtu8jrUh-2RPNU9bD4YXElUnsoU92WotSFrZdz_yKTJKlU_XpYsVyIrlP7TApZyZcJ5jyWEk-aTWSgtE55QEvpfBUIvQoHO_I-vrWhxrl3eMmyOPqYSZy3_llXCteO-nq4b5qCNKPraJ5QAunRz465mwOaIM49l6_J3UmkDN1o9FeDWoDLWeVhiSLcs9KT1MJVU8RHm8sZhzKLNBKXmMKyyRld5a7BgJW6OQhXcUwjLBizlWbSMLFOka6cD821dJY7ic9pd6Dm2Dj2RDQEvuZ456NKsV_MwEvqirvE6Ksp-lOe5jaf8F9iLZk69vEqbfRLcG6RtyQk-Rvgs_LTVTRgx6nHc0hWJVvxpsFfkN2aPaBs5Cm9rLl5pKpn5uGWi2hvCMneRhUzv860PLvctbyjZ6OL9PXi2YU4rmGc8bSGhBHbCeg5sReSHTs9cx-kwc_8xbE82qELX9hYv1GLrzuz-PDdXfsc6UsVO34d5kEsNFWqAz85o1vFNOB7lbJZayvbtTnbZBI9DC21qIYJel_JXu2QI599TX1wc-ywYI7h2NRaFgHboPYzAARKGaYzodXmWUmojLWnt_b2E4NGbTd_SvMFdb9uQ9fr48yayFgJWf9OS4eAbJYwUXrL2n8oTmTmMQfsP7sQx9vEZXEIpZNCdvCeI8jdEk9p0gFk3v9mAGNos3zwGqOgUHDZ3AnRB6P3-hqP08uf-bNJtN8-PyZsIESsLH5v00rkUE5YmytTAPRitfQHapx2_gK7wtDX8KPHuy44zON6ZY0tJBpUDe4P3urbZPnD1OJtKgEAyZhR4bxovHc1T6OVpHwvDA9FOWL0-dNrNvOf3yc-R6XLemELTsG-OcafJ3MOsejD0bmVEZLEuMWrqxTXb0R4_0dMcN1OCkyd4jYqeidCJx9pM0oyY9764ZFFDSCAZnVGho46S6iESwZrZv9uHA-tNdFO8mrwL0jeL42YRTaMMA23M5Asgs8tk5gvrOZaN2jy55U135fwp68GL-1NyhvlQSjGNpKPYBp0Zk9DjtihwILMkIoZ2ENZ5kj0WE_m-z0zM9q38JXKIFFfiUF-AY9NaYqL5zgQ-6VmpjiB4EXF4QRIoSXYROH0w21zBvvRXwVbxGKD_WUWBM6Pyg3cgG_NeM2QE9uO_mceWaGF2fewzNYr28_IXG-EN3IKRB2gH2dkWIRSM6ACoWrN7MlzqHvtQGRHvKVwTXsQDeU1QUI8RlEGe62mCeRnNHMHKfmCMdNuC3Jblb4ieIOjY0Ca6YlyFdNiq6YrCXGa-RzQ2EdFdc-49i_1ynPqI6IJ8rDBgOAzizlSCl8IY9GsEhmZbcNA6nFcFwFbU4ciS5gnAS7pIV-cHnBeIWPBnaroxnGfClvTbrxYQ_4hedkrot7Wv9xTC0sHrn8tPvGvMQ74GhBZol7TCa6cBNnh_l-eRX6CFl0ll21Jx_PHwKQISYkx852UxUzRIbj4WhBfyqQTt_P1HqF7hM-eLIELi4HZPLwz9W6YKWvHMJK8NXZ5V5bzeVF88unB1AepqfTOgM5ASVRVY0S0sGib-soNwa-pblkSGiZU4WepX-V_XRGMoOboFERXxMi5l3Y5WBa6JGrMOhpxz12WojkMAWuDzXoJqpgHKUoNBC-OPbrkCPMfFj-comVSz_YuoTw5Rl_TIQNu-og6UuSQHOsiZ1X4uHMVnECW272POzu8eGfe1R0kr98tPY_s60QA7DIlqXiAe9sJ78iHUPDDloUFJzFaTNq_XzHMnmrUT7VOuopoUIqL4TPXGTKQ7vJvhbq_R_slkhcdo78wvlGGaLMSso1RZrAqCNLQl_xMF56kx-bPgcdvMl2jUyWLdHYMyKp4TIWTjWAUfPHZtx9XPGfUQOXq5uhNqa4_04Ngf4KwcIt3CvSvrRqQSw2I1hTRsurmljR4GfrRqdlpm2KkStfHwPtBXYwvPgh5EnFLboJn6ptdV2qTlnk50Z04edLnkTapR3aljMkf4eefAPMYSq-MwL1B3Ah5RR5XBH5mbXQA6q-eEGuI2iiEQ4ezD49HP1kOISYYklGnJRV8BT9VBmigkBfDPY1Ty9NyAoqJMI53XjS-U1adAFwfa_-ZyXZvZ-SLlmuu1ETKHBXeCjT5kMjCBh8ZyUE5WwaiUhr9AM0QYYiNTnxRke30HaXqKmf6LZAeBn463JdGMuB3hutzh_erfWXGtfji5773QKznRz3_QpAXGe_a6LmiSUbmHqqODhyC5VWg03ZU0IhzOfO-s5Ar0I1b416IAy1Zs2Adl8hnUk3-dEluJNyyFupUzaA5XsfdUOly6Dq3fXWoGbr5XQjPpT1Mc2ZuaQmoXJRT3ulCmMukaqYHaPrDzMT-v5QPzfGABJ59vhgu9JLH8kacBTK_u8b81mQYRD66lixwa-OjHGf7CgQ11R4voPKb7klqYO5V8O2w2FutYK8015eRyhLNvmgCbgyGFvadQyyi8PqK377A7LzjGjH8zUUFOAcrDtMHXzpsncLISQ03S5nkXAekxlqkzqnHMEiQ8M8VwGTQ4dpgU64kgRMEztmPQ74fasN7EyPRK-bTsEdMbPGJ0lHlPZsft9_bBqJ65-HJwF9HD597_PF4wbMoxczHe7JqTTfjlUIBR1HJWE1n0vZqoOlky1cE3lyCvHXwYQuWR2HgOxiir7OCe9jYxxf7EwhUgxyMc7rXSeYfAb1nUwtShpilRce8QrR94wttfMoHXtPZi0Iyj13PN551kJAeydVQETQT9KVodxRa1Wq-JJdAkGp071WfnQ_BYG6QR_qfj1MPnkzNnb84vYjhTiDYtGpg0oR7RSUkC9RrOahbbimfCF1CBOxc4UMCTNosLcSIkX49xdC-quA-p0uZ5pGWZQewxTYWORU-bCPpSBhgXBV3p_daYuic7JQzIQ9yLuQ114QYaKHgJc-inwKA_CjvmYzwJVGZGo0y3igQ_MHgRVM_kADBNFUYd7c3H-JE_1dZ_bGf5tebd21oh2e156bYC8Vv0nbbMtlh4XbVvYluUDt53PecRSEAfjOqpTo_QitaAOM2gKdQnEJjMmqmpwhBa0dy_vtVmyGvoC9jjql1S3S1PHoSF4r5PGbGDiqTlJ7rz1D9eIgmUL0qbtTBm0XgKfjbnv-XTg175O8DdHY3Cp7NVicxaNx_oWEsYkXHopImaWXLTm3GxkB7kwQ93peKqpQ61CRU8jUA_Mto42ptGGQVn5VPJBBYZGPuZbJxwV-zG-5awTCsm7lZVuY1M65tpU_x6mZbH9sP0mYCk3_NFyz0U_apvCIDAEkNxaVXWV3ZVkPTzDBkkxbE600Rca-RvhqSeEMqxm10OhaFCMd8WZ0Ccwt2Gc52Nmm7pG8SIK6uSXccuuhcokJb6ZKI18zbaEw-L35nrMiBak0cZTUfv9Ky_eqHSUPx7yQoe4RPfjyq7ZEGEKdn_o5PugIuqkJQ2Y19ahJixJMLXh8-alWhVRTlSKo14dJFM18a6ef8l5O2QDTojGnL53FgbTFqe8orTeCUB3gk4lJwgoGMfX1hiyifXVzen7slJ3ulGQV-OPYuNUX5_8FYo8JqBSaLruUuEfOH13qZlUfH-yPgRSrh2yzLK0getDvHupOJGp5bF2T5GpTJJ5G3QTj0HQBd4NM5iH95fU-ZjIian_XOXmmXBpPf4-fDV-MV5j06Dof_lX-vNcz34XiCq9_t3wqi3_sTKeXK74J3Sg1tKc3Oc63B5xGpWG2FftZfhy0sDqvxE-_qkCgq9qqpkosIBn2vFpNIiB7KWzlwctEMwImYtnT2f6_shImnFMfh6PWS_cObGSMN72Nf5d1GV9oitcFB-1mF-yirzvpk02flFKNqIbicr0aRl-WyfLXveNpgBsvn1rdp-lRE8t8gSQ3QqWXs80r_n3LDKTrfVFVQTMmEr2LWBjPxhyD6Am3y5w8QD9C4UMZMq7yPGZnjyWju7ky7L1FcoF4MbCSOsS1s6fmEMQJqaAI4i7CFARcsXXG-TOPR6GcJ6e5SQKLGvoAP70rBITj2Uqu0SCJvatj3kUxOX5uW9EyhtnoAgT16CelyakOfecnVv8UlhE_twLJKsV6A_Xq34x4emOBTUglgJGppDBpXKWYcHLLVUFyY2nzeE97p-DDj75LMorJaNPB1562pQpmmnIQJ9U2TJSuK7NyURhVxxgYdWxVt17y3-uQHgf7XKj4qLazRAKAdzGawdvXnh-j7MWHRq7ykv_6qtomXvlwbnGj_UMdIWzW-5x5-S63dqJGbg9c2Az7jKMSumLIBU1FLBecUCCCjh-Mk8LwAqnYwW991At1PYShX_H1EMZzHE6m_5VEpHay6QdgCThjf2jODDym7ut60tErvwS5zRXy_T96ZA3zAjzwFfNeTK0soxLD5RG8PAO_F66T-7V9QkJdNq3FPCIxOzqfbdZOux-JUTmaLpbQ0vQyYxOkqkWfXCh1fkp-j8FKYG5OLi-Pg2o5g2EsL2zDtOVaX-dU_kivw2Q44jgsSfSuYqoOLzd5ufH_cxG_Km-f8uWsGwxgKL5EBu3YS7txa71gPckDtcoyhUIUtgKUf0Ag9-Y0ofPfnfjBPY2PrrKqEtAd1SKfv2ErqPZGXb4fd_SrhLdEC2FuqUNIsdccaHnGRrHd_0zZAzkE9D3bJfZJzCxEmILmXQX82MMCZtBIfC_SUQK4nwmy7AZg0PqmdPqsfo21xhQKuC_QoTaNjuTB4xwacLWksmjMf3LIyGpvoUd4-n51uwWEkVy2Oqq7yYhBs87MC2cwf56RAg0mSXPOfpeIMt74sk0vUVA1YdY7K7CVc9rPfIgQru_69TBKu4_lF6wlbIoq9JB4bjFvFZZSQKUzze_w_RVJMWXaI7BqRqM0UM2REHZuDJ5zDv7WbRWy-hHMaaaJF8YyIYYKg5gvse8lsQTBUjEiJKBLCX7E48Cr6EmJuBuXRYe5aBm3n_ap-c2bp8uu80x9OyYBJXcHa3FZfmPtWA6L7zeGF74Ch1zWQeUSa_pPSahaCEECEAwQ_XY__4io3jBPlCVitioMK3-QsrtolVC1DdIIdTzKQpCsaqewSLgbgzvxKnHRua9OUvz0MvEmWXeIeEU3MVNk-xdLTAXA2opWipiZZwW83HjVHsZJSHDjxi1XqEoJKR03vADXpuWbsZWATi43MeMk17Ir8I6YPM1kfCosDcEciUqStH-oqAVWD5QbabBUBdPRZwG5Nk40bouF2GKjOmZsV4qi9JiMTUIkKZLrpUfhpC94UtL-UQ0a8x6E-mS80fSXSf8OsBRG4knfwj4ExF9LeCQ_oC3Gqqnc7_J9PGMZ99ctR7VCu6axHu3k8J4F8q7NsResCtMlJy-fveyU7-7Czz04TKS6DMuYRdDMfoipH7-jOAalQSOOGNS9aohK2xq0vgVBHB03ZptIjcuoHnVnsy4Jf9WQrs-MMxoA7BraVlzu2ELJoZdOmkexHkbLPFEY5i9Aj-7GWNuAtdMWjBtyQHF3LfClbyHos52sh4qf6HPUooH6Ro8GJMAb51maUyLhX9evVYknUOk1eJUR0UvIlQj59nnhpU6qXhDCpLhO4QH7H9ZElpdx3-rhv8kSMuCIr28QRcw5phvcNQ6L_9-uCuI5kpT8-k4rzcR8e9HMCJpkIG1AgdasSlbRM_3fX7TMLf7R2naVatuSdacbhqN04R84tlob5llpAE76Kt5w5PpHspD7P2gObwFixZsnD7bzPsqe7HDrNsD5hkJvv6ie0ixtJrk9m91-Sidm8rf5SG0dYwBVijrXq24wgtUMv0e_gyKMnLiOembsHTDPzClyr3X5vrLFqHQjBk3pOsl-oxs7hr8p-_VftvnUUZQBPhkiR5km7HBNtTr62BkzXZo5goTV2uh4qcqt5xrBoyuUVETDcztcTtUZDcy4QtcGnh0nZlkKJIbFhAXLjEK0T1TXQubBfOruEEB_DOIVI4ZgX00rzHwLc7tbUJUzMRGx_qkMclFhRVlGJvFt9IhcD8RCLB2Jzx9pKsb9RQck2gGVOdeef5rmgDDk0Jlh7Cnw-RuUcIGKJy_LIO88RZV0l1tPsDOQlMjLTqc43uuIxapm62IXj_qnO1x7M96uywBzhLvJ72BrrkpyOh7k3RxQXcpDAV3aL7a8z2Imy0EsRi7IqTvynONZ2IJ0kALU5wLQL4ARTWXulMPrb7ty0YxEFV8G71p--IyuZG76-bCnRM8-3-B7rO1IXAMCxL-NQaYmxyeXL03Xw5uFiuomCyS6lfOO9ueeEGDjW-MbfJr1XCZGJ5ajk54jklsMTPUu5ubc91vHf2QCFEPoTIIysbZOa8WOAL7FTVA8ER45jY4Is9_vbjhMnn3qN2l2yHBOWYHW9Ou3ltTMPugg6hIm77Qob6eiJswjdgJq4elZzOUU4Rvpy0wotsFLhviSS3p-QPuA262304t-eH2pchXDWd3qWGG44A2wtw0snOsway2k2k5S3M-ZuTs9g24z_s6NhfvbNBTNh2TgEvmlgnbDntsy5zsqBPhMqOGng1vvpShhp8nO3UKKq2wVzx48pN6OcUATBoprX-5TtavjMAZxS5Yu689Swby_PoulZHbfvQfV1F8CPwjkzWjbqKZ8u_5-TMbYbtswy0qX44R98UdRCAeBAvLOgoxMYFAyZe0l4Qi39CB0VRImvEUAcGtfxIfuIVmfqxEHT_MF34SYcFcMbsnmnRPc2VSpXc2YPA6gjvlbcDu8oaMfwygvG39yvs2VJ6hC5KhxoOyjCHnJKEqZZvdNhenkCIbmEd6Q9a-itCrQMu5DfzwxJUdyvbC9F-0tt0E1MLftZyFJhWG2B-oLEfMld-PnCfdqAPzlDxyjBXLHNoyVeFp2neocD9eKOOLRxywGXwjM94EBlFRn_YgJf4fqcYZSPMDIfSGNxBcF-XRjWIcLwKGfUSJ7CtatOEe_meHYI25OUhMvlQYE3xgaF7VK_GDQjCDUMSAMEcghkyAIQ8sI5lz7VhcGp9PPyfFIr6VuXsU_eJKtBZbraCFMH-_Yw0BII0fQKbbd5iTQOM-ZqTFDVlCIB0Nn0FTs6Ch-nMqQW3M8sZvnL8Nz8TQXLvdiBl3mDXpb99cRwHgcdZFRn0qofaFTn2Qiw8_LscJVke_mMeaQHp_rTeAEkve0CM9enZeF9ZZ5HNq_KFQYLnITruwq_dlBdYvyN1mhxoSXK37AE3-VaIHBsoVoBGbxhIBE1SSJycVewhlopzbKyjVt2x0-pi_H55aMYKaOkrJMMgC_fNK1susMkHxP4Z4tGU4_eXpJpV6YgIPiRqfNDkBEt282xMCIrQfnT6yyDyWB47_WMxvByeBnPoOr5qn1Lz5JExKdJu8DeogZOSaihlwI3GeUlA1Sw16-45Qmftn4CCZqZHTtzbJJ8RHa10Sx7dEOobASGs5wEQdCm3GvwHnmDg4wsYqc7JG9ez-VVbYgWTmh5Qrrew3BSNkQedGviHJ-UpF0ff8hd9Pew4_bANMz3ag-fzscYP6FetaEipeZGAT7JeSnNc7Z8JGDu3YQQN7UxkIdoDoAephKdPkvPJ46HRnCAH9cEs-NKGWrNt775TmV5GzX1ibzWog1SmdK-GdBLvx29SQt34B5w42bRl3b9zhoTBomDa12J5Octw1lIijKbgQXUdDmQsFIdrU6ZpJNKf6r4yjniKwHfXFF-ZcEx45OsA9zaF8j3hL5fnzdPZd3YOFAsgz1ybPLhlFRE5kSzETapeU1cfqw2omtj2UMXo5ZKCuclt5H7tZ915ltrL1D6xyJSeznLmbfqKkGbNsRLOkRdFNtuB7aK1iO88Z-7LGnVRCKuyYaFyQ8qjNZu64YMsYUi6EoY1aN_3B91ViSf3LY1-lUb5m9KiKLtkeI4qpUH098fssvhCduaAIEyPPAbc_WII2_n_ozpFyvUfPi_DEk9xD_jGckJxOU6tIXu7m7_aG-AK1OZbuwWYwq1cgov90jE1KbLcSiO31EYazdzOhLi5dE52zGol9JuAfhIvaI55aobAhBpd69VFcto_EkLwIPo_DNQwtXu-YlSFCm6_MyXMh4doBDQ4_YhmmAcTfcqYwHoO705ZR01p4UhgwfCMXCvA_mMMqd6VPzm4ZYHUL6qGAeAinjnHy1fymzzD1Yqp-XVnuEJSokZmMzJ8-78DkSvneng9D_9IKcUeTifZ2_9naIAdeiuPGzxN_Gcy7TUdCdUhk8OsNwuheOJTW_aJMw203THLGprZuLwkMZ6LtRdOCiZul2uBtRg54fmAgom21z8b0byBQYSHZlZfTc6UU8t4McgIVbfad_EqBZggKeeQnt4wI1iGX9_Zxp6b9M_iSAEEyqhRfAIuRCQ_eXReCG4YPixzCwBUO_DjuaetPpvXL-7zDAUZqotecUx0FoLEoprN84FKXdhBxeSJz-uGCb4YnwcaeonVqGu58ehfUA_H1tgEtaXQhjpdjX_SB4xMjpjfannurYiBFORkMs9U3IKUiGtVBTQL5yXgNQfZm_KH-4s8kbt7GeSrnbJxqBRjpGZ9WuZuwuUqzZdjVhTXfkZcf1U4ehKY4MdXRn6MtWVD7NDGBam0dOxZCXZkHvukcjZi9NznoTYDDdONlUUtIqzYAQAzUZW1MjgRypIKhfEykaXN9xn-P8RIX8Kz5HU5oPdPWkNLo6JmbHv-xHgHbWWSgEeXoy5i9kHDyl086EUeJwHCiNYl-nFhlGX34KjGDIUg9n2VgGgE0_JJNaCsPyV3ZssgZtwNXBx2uWnt8EysNtCVHCq6ndFi_IVB8DYQiuJ4ivodbnF6csZGPdR6Vc7Lf3IJfPOC8DDnk-lPo-tFZbRnopMU1-xirqVjr6UVTpLc1E_HwnVfbl55PxZArRsyXO5h-B3rLGMP9_GV1FPUu5VB-c2BFEkUWa__rZvyTO6-jxlEKv8k3VihaHVL88g_UN4h4zGLb1LFhm9Q_jmHs1zHePQoZVmhyTqYlJD86tL6MMdAxx7X67mRaWDuIE3BX_Pdd8z_LCNwJSkVrhfyXznwpBnyHjDDAn7G3Nx7QkUFeq4vwOC0F7Mp003s4IEyT2um_sft5-VAER4V8O3IFXcW46gIx_j0wsQ4unjofl8fh5m3X-z2OoRQK539IeMk4CQJdf5apway1ie0nISZoZyLfz3aT6sdlr_o_lrVsIo0ztYhJ9NAoSC_yXOdFvyqDSewma5ZVAcjGnCl63EW9lVwGSofl8i88cO7MZs62JYuxEuNSppyjAlaARE85iCLKE6BquAkLWdqp1fqCXX2rvPhoGnvRQ5MXuN7fFD2tK47kQEpP50iWT6IPcql5mzoeojhd2Bl5Rre5cow6gWTA3J1f7eIPQmG1mF_gHTlIEvfeBWwmL_LDI345IAGkk8P_8qHCK6ZNRIjZo-I",
+            "summary": [],
+            "status": "completed"
+          },
+          {
+            "type": "message",
+            "id": "msg_779f6dbc-d4ed-4b5d-8efa-440570592415",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "{\n  \"params\": [\n    {\n      \"description\": \"Legal name of the end customer company buying through Caravela\",\n      \"name\": \"end_customer_company\",\n      \"newName\": \"end_customer_company\",\n      \"type\": \"string\"\n    },\n    {\n      \"description\": \"End customer company website\",\n      \"name\": \"company_website\",\n      \"newName\": \"company_website\",\n      \"type\": \"string\"\n    },\n    {\n      \"description\": \"End customer country\",\n      \"name\": \"country\",\n      \"newName\": \"country\",\n      \"type\": \"enum\"\n    },\n    {\n      \"description\": \"End customer city\",\n      \"name\": \"city\",\n      \"newName\": \"city\",\n      \"type\": \"string\"\n    },\n    {\n      \"description\": \"Full name of the contact at the end customer\",\n      \"name\": \"contact_full_name\",\n      \"newName\": \"contact_full_name\",\n      \"type\": \"string\"\n    },\n    {\n      \"description\": \"Email address of the end customer contact\",\n      \"name\": \"contact_email\",\n      \"newName\": \"contact_email\",\n      \"type\": \"email\"\n    },\n    {\n      \"description\": \"Phone number of the end customer contact\",\n      \"name\": \"contact_phone\",\n      \"newName\": \"contact_phone\",\n      \"type\": \"phone\"\n    },\n    {\n      \"description\": \"Caravela / Tidewater Cloud product for the opportunity\",\n      \"name\": \"product\",\n      \"newName\": \"product\",\n      \"type\": \"enum\"\n    },\n    {\n      \"description\": \"Number of seats for the opportunity\",\n      \"name\": \"seats\",\n      \"newName\": \"seats\",\n      \"type\": \"number\"\n    },\n    {\n      \"description\": \"Expected close date in DD/MM/YYYY format, a date in the future\",\n      \"name\": \"expected_close_date\",\n      \"newName\": \"expected_close_date\",\n      \"type\": \"date\"\n    },\n    {\n      \"description\": \"Referral partner or agent name, if applicable\",\n      \"name\": \"referral_partner\",\n      \"newName\": \"referral_partner\",\n      \"type\": \"string\"\n    },\n    {\n      \"description\": \"Additional notes about the opportunity for Caravela\",\n      \"name\": \"notes\",\n      \"newName\": \"notes\",\n      \"type\": \"string\"\n    }\n  ],\n  \"steps\": [\n    {\n      \"id\": \"s1\",\n      \"intent\": \"Open the Register a deal form in the Caravela Partner Hub\"\n    },\n    {\n      \"id\": \"s2\",\n      \"intent\": \"Enter the end customer company in the End customer company field\"\n    },\n    {\n      \"id\": \"s3\",\n      \"intent\": \"Enter the company website in the Company website field\"\n    },\n    {\n      \"id\": \"s4\",\n      \"intent\": \"Select the country from the Country dropdown\"\n    },\n    {\n      \"id\": \"s5\",\n      \"intent\": \"Enter the city in the City field\"\n    },\n    {\n      \"id\": \"s6\",\n      \"intent\": \"Enter the contact name in the Contact full name field\"\n    },\n    {\n      \"id\": \"s7\",\n      \"intent\": \"Enter the contact email in the Contact email field\"\n    },\n    {\n      \"id\": \"s8\",\n      \"intent\": \"Enter the contact phone in the Contact phone field\"\n    },\n    {\n      \"id\": \"s9\",\n      \"intent\": \"Select the product from the Product dropdown\"\n    },\n    {\n      \"id\": \"s10\",\n      \"intent\": \"Enter the number of seats in the Seats field\"\n    },\n    {\n      \"id\": \"s11\",\n      \"intent\": \"Enter the expected close date in the Expected close date field\"\n    },\n    {\n      \"id\": \"s12\",\n      \"intent\": \"Enter the referral partner name in the Referral partner field\"\n    },\n    {\n      \"id\": \"s13\",\n      \"intent\": \"Enter additional details in the Notes field under Additional information\"\n    },\n    {\n      \"id\": \"s14\",\n      \"intent\": \"Check the The end customer agreed to be contacted by Caravela checkbox\"\n    },\n    {\n      \"id\": \"s15\",\n      \"intent\": \"Click Submit registration to submit the deal registration\"\n    }\n  ],\n  \"success\": {\n    \"description\": \"A Registration received confirmation page is shown with a green checkmark, Status Pending review, Submitted date/time, and a Registration details summary\",\n    \"idName\": \"registration_id\",\n    \"idRegex\": \"NW-REG-\\\\d{5}\",\n    \"textPattern\": \"Registration received\"\n  },\n  \"title\": \"Register a deal\"\n}",
+                "annotations": [],
+                "logprobs": []
+              }
+            ],
+            "status": "completed"
+          }
+        ],
+        "instructions": "You annotate a browser automation that was compiled from one recorded run on a business web portal.\nReturn:\n- title: a short name for the task (at most 8 words).\n- steps: for EVERY step id given, an intent: one plain sentence saying what the step does in the user's terms, e.g. \"Enter the end customer's company name\" or \"Submit the registration\". Repairs use it to find the element if the page changes, so name the field or button as the page shows it.\n- params: for EVERY param given: newName (a clear snake_case name; repeat the current name if it is already clear), a one-line description a sales rep understands, and the type.\n- success: description (what the confirmation screen shows), textPattern (a JavaScript regex that matches text on the confirmation page, or null), idRegex (a JavaScript regex for the identifier of the created record as it appears on the confirmation page, or null), idName (snake_case name for that identifier, or null).\nNever add or remove steps or params. Use null when unsure.",
+        "usage": {
+          "input_tokens": 2649,
+          "input_tokens_details": {
+            "cached_tokens": 369
+          },
+          "output_tokens": 1842,
+          "output_tokens_details": {
+            "reasoning_tokens": 815
+          },
+          "total_tokens": 4491
+        },
+        "parallel_tool_calls": true,
+        "store": false,
+        "max_output_tokens": 16384
+      }
+    }
+  ],
+  "material": {
+    "model": "muse-spark-1.3",
+    "schemaName": "skill_annotation",
+    "instructions": "You annotate a browser automation that was compiled from one recorded run on a business web portal.\nReturn:\n- title: a short name for the task (at most 8 words).\n- steps: for EVERY step id given, an intent: one plain sentence saying what the step does in the user's terms, e.g. \"Enter the end customer's company name\" or \"Submit the registration\". Repairs use it to find the element if the page changes, so name the field or button as the page shows it.\n- params: for EVERY param given: newName (a clear snake_case name; repeat the current name if it is already clear), a one-line description a sales rep understands, and the type.\n- success: description (what the confirmation screen shows), textPattern (a JavaScript regex that matches text on the confirmation page, or null), idRegex (a JavaScript regex for the identifier of the created record as it appears on the confirmation page, or null), idName (snake_case name for that identifier, or null).\nNever add or remove steps or params. Use null when unsure.",
+    "parts": [
+      {
+        "text": "{\n \"portal\": \"caravela\",\n \"title\": \"Register a deal\",\n \"goal\": \"Register a new end-customer opportunity with Caravela to secure protected partner pricing.\",\n \"taughtSteps\": [\n  \"Open the Deal registrations page in Caravela Partner Hub.\",\n  \"Click '+ Register a deal' to open the Register a deal form.\",\n  \"In the End customer company field, enter {{end_customer_company}}.\",\n  \"In the Company website field, enter {{company_website}}.\",\n  \"Open the Country dropdown and select {{country}}.\",\n  \"In the City field, enter {{city}}.\",\n  \"In the Contact full name field, enter {{contact_full_name}}.\",\n  \"In the Contact email field, enter {{contact_email}}.\",\n  \"In the Contact phone field, enter {{contact_phone}}.\",\n  \"Open the Product dropdown and select {{product}}.\",\n  \"In the Seats field, enter {{seats}}.\",\n  \"In the Estimated value (USD) field, enter {{estimated_value_usd}}.\",\n  \"In the Expected close date field, enter {{expected_close_date}}.\",\n  \"In the Referral partner field, enter {{referral_partner}}.\",\n  \"In the Notes field under Additional information, enter {{notes}}.\",\n  \"Check the 'The end customer agreed to be contacted by Caravela' checkbox when {{end_customer_agreed_to_be_contacted}} applies.\",\n  \"Click 'Submit registration'.\"\n ],\n \"commitControl\": \"Submit registration\",\n \"taughtSuccess\": \"A 'Registration received' confirmation page is shown with a green checkmark, a Registration ID matching NW-REG-#####, Status 'Pending review', a Submitted date/time, and a Registration details summary of the values submitted.\",\n \"params\": [\n  {\n   \"name\": \"end_customer_company\",\n   \"type\": \"string\",\n   \"description\": \"Legal name of the end customer company buying through Caravela\",\n   \"valueInThisRun\": \"Café Aurora Ltda.\"\n  },\n  {\n   \"name\": \"company_website\",\n   \"type\": \"string\",\n   \"description\": \"End customer company website\",\n   \"valueInThisRun\": \"cafeaurora.example\"\n  },\n  {\n   \"name\": \"country\",\n   \"type\": \"enum\",\n   \"description\": \"End customer country\",\n   \"valueInThisRun\": \"Brazil\"\n  },\n  {\n   \"name\": \"city\",\n   \"type\": \"string\",\n   \"description\": \"End customer city\",\n   \"valueInThisRun\": \"São Paulo\"\n  },\n  {\n   \"name\": \"contact_full_name\",\n   \"type\": \"string\",\n   \"description\": \"Full name of the contact at the end customer\",\n   \"valueInThisRun\": \"Júlia Prado\"\n  },\n  {\n   \"name\": \"contact_email\",\n   \"type\": \"email\",\n   \"description\": \"Email address of the end customer contact\",\n   \"valueInThisRun\": \"julia@cafeaurora.example\"\n  },\n  {\n   \"name\": \"contact_phone\",\n   \"type\": \"phone\",\n   \"description\": \"Phone number of the end customer contact\",\n   \"valueInThisRun\": \"+55 11 99999-0142\"\n  },\n  {\n   \"name\": \"product\",\n   \"type\": \"enum\",\n   \"description\": \"Caravela / Tidewater Cloud product for the opportunity\",\n   \"valueInThisRun\": \"Tidewater Cloud Business\"\n  },\n  {\n   \"name\": \"seats\",\n   \"type\": \"number\",\n   \"description\": \"Number of seats for the opportunity\",\n   \"valueInThisRun\": \"25\"\n  },\n  {\n   \"name\": \"expected_close_date\",\n   \"type\": \"date\",\n   \"description\": \"Expected close date in DD/MM/YYYY format, a date in the future\",\n   \"valueInThisRun\": \"2027-01-29\"\n  },\n  {\n   \"name\": \"referral_partner\",\n   \"type\": \"string\",\n   \"description\": \"Referral partner or agent name, if applicable\",\n   \"valueInThisRun\": \"Rota Consultoria\"\n  },\n  {\n   \"name\": \"notes\",\n   \"type\": \"string\",\n   \"description\": \"Additional notes about the opportunity for Caravela\",\n   \"valueInThisRun\": \"6 lojas. Decisão dos sócios em janeiro.\"\n  }\n ],\n \"steps\": [\n  {\n   \"id\": \"s1\",\n   \"op\": \"goto\",\n   \"intent\": \"Open /deals/new\",\n   \"url\": \"http://127.0.0.1:5111/deals/new\"\n  },\n  {\n   \"id\": \"s2\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'End customer company'\",\n   \"element\": \"End customer company\",\n   \"role\": \"textbox\",\n   \"section\": \"End customer\",\n   \"value\": \"{{end_customer_company}}\"\n  },\n  {\n   \"id\": \"s3\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Company website'\",\n   \"element\": \"Company website\",\n   \"role\": \"textbox\",\n   \"section\": \"End customer\",\n   \"value\": \"{{company_website}}\"\n  },\n  {\n   \"id\": \"s4\",\n   \"op\": \"select\",\n   \"intent\": \"Select 'Country'\",\n   \"element\": \"Country\",\n   \"role\": \"combobox\",\n   \"section\": \"End customer\",\n   \"option\": \"{{country}}\"\n  },\n  {\n   \"id\": \"s5\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'City'\",\n   \"element\": \"City\",\n   \"role\": \"textbox\",\n   \"section\": \"End customer\",\n   \"value\": \"{{city}}\"\n  },\n  {\n   \"id\": \"s6\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Contact full name'\",\n   \"element\": \"Contact full name\",\n   \"role\": \"textbox\",\n   \"section\": \"Customer contact\",\n   \"value\": \"{{contact_full_name}}\"\n  },\n  {\n   \"id\": \"s7\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Contact email'\",\n   \"element\": \"Contact email\",\n   \"role\": \"textbox\",\n   \"section\": \"Customer contact\",\n   \"value\": \"{{contact_email}}\"\n  },\n  {\n   \"id\": \"s8\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Contact phone'\",\n   \"element\": \"Contact phone\",\n   \"role\": \"textbox\",\n   \"section\": \"Customer contact\",\n   \"value\": \"{{contact_phone}}\"\n  },\n  {\n   \"id\": \"s9\",\n   \"op\": \"select\",\n   \"intent\": \"Select 'Product'\",\n   \"element\": \"Product\",\n   \"role\": \"combobox\",\n   \"section\": \"Opportunity\",\n   \"option\": \"{{product}}\"\n  },\n  {\n   \"id\": \"s10\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Seats'\",\n   \"element\": \"Seats\",\n   \"role\": \"textbox\",\n   \"section\": \"Opportunity\",\n   \"value\": \"{{seats}}\"\n  },\n  {\n   \"id\": \"s11\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Expected close date'\",\n   \"element\": \"Expected close date\",\n   \"role\": \"textbox\",\n   \"section\": \"Opportunity\",\n   \"value\": \"{{expected_close_date|date:DD/MM/YYYY}}\"\n  },\n  {\n   \"id\": \"s12\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Referral partner'\",\n   \"element\": \"Referral partner\",\n   \"role\": \"textbox\",\n   \"section\": \"Opportunity\",\n   \"value\": \"{{referral_partner}}\"\n  },\n  {\n   \"id\": \"s13\",\n   \"op\": \"fill\",\n   \"intent\": \"Fill 'Notes'\",\n   \"element\": \"Notes\",\n   \"role\": \"textbox\",\n   \"section\": \"Additional information\",\n   \"value\": \"{{notes}}\"\n  },\n  {\n   \"id\": \"s14\",\n   \"op\": \"check\",\n   \"intent\": \"Check 'The end customer agreed to be contacted by Caravela'\",\n   \"element\": \"The end customer agreed to be contacted by Caravela\",\n   \"role\": \"checkbox\",\n   \"section\": \"Register a deal\",\n   \"checked\": true\n  },\n  {\n   \"id\": \"s15\",\n   \"op\": \"click\",\n   \"intent\": \"Click 'Submit registration'\",\n   \"element\": \"Submit registration\",\n   \"role\": \"button\",\n   \"section\": \"Register a deal\",\n   \"commit\": true\n  }\n ],\n \"success\": {\n  \"urlIncludes\": \"/deals/NW-REG-\",\n  \"textPattern\": \"NW-REG-\\\\d{5}\",\n  \"extract\": [\n   {\n    \"name\": \"confirmation_id\",\n    \"regex\": \"NW-REG-\\\\d{5}\"\n   }\n  ]\n },\n \"confirmationPage\": {\n  \"path\": \"/deals/NW-REG-48213\",\n  \"text\": \"Caravela\\nPartner Hub\\nDeal registrations\\nTidewater Cloud\\nana.souza\\nAS\\nSign out\\nDeal registrations /\\nNW-REG-48213\\nRegistration received\\n\\nCaravela's partner team reviews new registrations within 2 business days. Protected pricing applies once the registration is approved.\\n\\nREGISTRATION ID\\nNW-REG-48213\\nSTATUS\\nPending review\\nSUBMITTED\\n29 Oct 2026, 18:25\\nRegistration details\\nEnd customer company\\nCafé Aurora Ltda.\\nCompany website\\ncafeaurora.example\\nCountry\\nBrazil\\nCity\\nSão Paulo\\nContact full name\\nJúlia Prado\\nContact email\\njulia@cafeaurora.example\\nContact phone\\n+55 11 99999-0142\\nProduct\\nTidewater Cloud Business\\nSeats\\n25\\nEstimated value (USD)\\nExpected close date\\n29/01/2027\\nReferral partner\\nRota Consultoria\\nNotes\\n6 lojas. Decisão dos sócios em janeiro.\\nThe end customer agreed to be contacted by Caravela\\nYes\\nBack to deals\\nRegister another deal\\nDemo software. Fictional companies and data.\"\n }\n}"
+      }
+    ]
+  }
+}

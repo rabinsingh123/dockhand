@@ -1,0 +1,51 @@
+{
+  "key": "heal_match-9e0a7cec4067d009",
+  "purpose": "heal_match",
+  "recordedAt": "2026-10-29T21:26:58.703Z",
+  "exchanges": [
+    {
+      "response": {
+        "id": "chatcmpl-def9989a10b04d4c8976303ff9a53697",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "content": "{\"index\":10,\"confidence\":0.84,\"reason\":\"Same role (combobox) and placeholder ('Select a country') as before. 'Customer country' is a semantic rename of 'Country' with section 'End customer' -> 'Account', and fits the workflow between Company website and City fields. No other combobox is a country selector.\"}",
+              "role": "assistant",
+              "reasoning_content": "We need to pick element that step should use now from current page.\n\nStep: Select the country from the Country dropdown. Previous step: Enter company website in Company website field. Next step: Enter city in City field.\n\nPrevious element: role combobox name Country placeholder Select a country section End customer testId nw-country\n\nNow candidates:\n10: combobox name Customer country placeholder Select a country section Account testId reg-account-country\n11: Offering\n12: Partner tier\n\nNone matches Country exactly. Customer country is likely same functional element renamed. Section changed from End customer to Account. Could be related? Context: Previous step Company website, Next step City. That suggests address block. Customer country vs Country - likely same field. Confidence? We have to consider rule: Never pick element that only looks similar but does something else. Is Customer country same as Country? Probably yes. The placeholder same \"Select a country\". The workflow is filling customer details. So index 10 is likely correct.\n\nWe need confidence. Might be moderate-high, maybe 0.8-0.9. Section changed but name very close.\n\nShould we pick null? Instruction says pick none clearly does what step needs. But Customer country does do what step needs (select country). It's same semantic.\n\nSo answer index 10.\n\nProvide reason: placeholder identical, role same, name Country vs Customer country synonymous, workflow context fits.\n\nConfidence maybe 0.85.\n\nCheck JSON.\n\n"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "created": 1793309217,
+        "model": "meta-models/muse-spark-open",
+        "object": "chat.completion",
+        "usage": {
+          "prompt_tokens": 496,
+          "completion_tokens": 374,
+          "total_tokens": 870,
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cached_tokens": 256
+          },
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 254,
+            "audio_tokens": 0,
+            "reasoning_tokens": 292,
+            "rejected_prediction_tokens": 586
+          }
+        }
+      }
+    }
+  ],
+  "material": {
+    "model": "meta-models/muse-spark-open",
+    "schemaName": "element_pick",
+    "instructions": "A web page changed and one step of a recorded browser automation can no longer find its element.\nPick the element on the current page that the step should use now, from the numbered list (all of the same kind).\nAnswer with its index, or null when none of them clearly does what the step needs. Never pick an element that only\nlooks similar but does something else (for example \"Save draft\" instead of \"Submit\", or a different field with a\nsimilar label). confidence is between 0 and 1.",
+    "parts": [
+      {
+        "text": "Step: Select the country from the Country dropdown\nPrevious step: Enter the company website in the Company website field\nNext step: Enter the city in the City field\nElement the step used before the change: {\"role\":\"combobox\",\"name\":\"Country\",\"placeholder\":\"Select a country\",\"section\":\"End customer\",\"testId\":\"nw-country\"}\nElements of the same kind on the page now:\n[{\"index\":10,\"role\":\"combobox\",\"name\":\"Customer country\",\"placeholder\":\"Select a country\",\"section\":\"Account\",\"testId\":\"reg-account-country\"},{\"index\":11,\"role\":\"combobox\",\"name\":\"Offering\",\"placeholder\":\"Select a solution\",\"section\":\"Opportunity\",\"testId\":\"reg-solution\"},{\"index\":12,\"role\":\"combobox\",\"name\":\"Partner tier\",\"placeholder\":\"Select your tier\",\"section\":\"Opportunity\",\"testId\":\"reg-partner-tier\"}]"
+      }
+    ]
+  }
+}

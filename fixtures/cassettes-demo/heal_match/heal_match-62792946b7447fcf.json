@@ -1,0 +1,51 @@
+{
+  "key": "heal_match-62792946b7447fcf",
+  "purpose": "heal_match",
+  "recordedAt": "2026-10-29T21:27:05.159Z",
+  "exchanges": [
+    {
+      "response": {
+        "id": "chatcmpl-d0cd074e74494bb0981a552f07138b7a",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "content": "{\"index\":20,\"confidence\":0.88,\"reason\":\"Candidate 20 is the only submission button in the \\\"Register an opportunity\\\" section; its label \\\"Confirm registration\\\" is a semantic match for \\\"Submit registration\\\" / \\\"Register opportunity\\\" as the final submit action, while the only other button in that section is Cancel.\"}",
+              "role": "assistant",
+              "reasoning_content": "We need to pick element that corresponds to Click Submit registration to submit deal registration.\n\nPrevious element used: button Register opportunity section Register an opportunity.\n\nNow we have options. Only buttons/links. The step says Click Submit registration to submit deal registration. The candidates:\n\nindex 19 Cancel\nindex 20 Confirm registration\n\nConfirm registration is very likely the replacement for Submit registration / Register opportunity. Same section \"Register an opportunity\". So it's the submit action in that section.\n\nWe should pick index 20.\n\nNeed to ensure not picking Cancel.\n\nConfidence high maybe 0.85? The name differs but function: Confirm registration vs Submit registration vs Register opportunity - all essentially same submit action for registration. It's in same section.\n\nNo other submit button. So pick 20.\n\nReason: ...\n\nReturn JSON."
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "created": 1793309223,
+        "model": "meta-models/muse-spark-open",
+        "object": "chat.completion",
+        "usage": {
+          "prompt_tokens": 506,
+          "completion_tokens": 237,
+          "total_tokens": 743,
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cached_tokens": 256
+          },
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 155,
+            "audio_tokens": 0,
+            "reasoning_tokens": 159,
+            "rejected_prediction_tokens": 419
+          }
+        }
+      }
+    }
+  ],
+  "material": {
+    "model": "meta-models/muse-spark-open",
+    "schemaName": "element_pick",
+    "instructions": "A web page changed and one step of a recorded browser automation can no longer find its element.\nPick the element on the current page that the step should use now, from the numbered list (all of the same kind).\nAnswer with its index, or null when none of them clearly does what the step needs. Never pick an element that only\nlooks similar but does something else (for example \"Save draft\" instead of \"Submit\", or a different field with a\nsimilar label). confidence is between 0 and 1.",
+    "parts": [
+      {
+        "text": "Step: Click Submit registration to submit the deal registration\nPrevious step: Select 'Partner tier'\nElement the step used before the change: {\"role\":\"button\",\"name\":\"Register opportunity\",\"section\":\"Register an opportunity\"}\nElements of the same kind on the page now:\n[{\"index\":0,\"role\":\"link\",\"name\":\"Caravela Partner Hub\",\"testId\":\"reg-home\"},{\"index\":1,\"role\":\"link\",\"name\":\"Opportunities\",\"testId\":\"reg-nav-opportunities\"},{\"index\":2,\"role\":\"button\",\"name\":\"Sign out\",\"testId\":\"reg-sign-out\"},{\"index\":3,\"role\":\"link\",\"name\":\"Opportunities\",\"testId\":\"reg-crumb-0\"},{\"index\":19,\"role\":\"button\",\"name\":\"Cancel\",\"section\":\"Register an opportunity\",\"testId\":\"reg-cancel\"},{\"index\":20,\"role\":\"button\",\"name\":\"Confirm registration\",\"section\":\"Register an opportunity\"}]"
+      }
+    ]
+  }
+}
