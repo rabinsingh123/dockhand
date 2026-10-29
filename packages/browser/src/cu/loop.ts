@@ -1024,29 +1024,30 @@ class ComputerUseRun {
         "not_needed: nothing on this page submits and nothing is filled in, so no approval is needed here. Continue, and call request_commit right before the final submit.",
       );
     }
+    // The element the card shows is the one the approval is for: bound now, clicked by the harness later. An
+    // approval with nothing bound would release whatever write came next, so the rep is not asked at all.
+    const bound = button ? await this.bindCommit(button) : null;
+    if (!button || !bound) {
+      this.steps.push(step);
+      return this.output(
+        call,
+        "not submitted: no control that submits could be identified on this page, so nothing was approved. Make the submit control visible on screen, then call request_commit again.",
+      );
+    }
     const shot = await this.capture();
     step.screenshot = shot.ref;
-    // The element the card shows is the one the approval is for: bound now, clicked by the harness later.
-    const bound = button ? await this.bindCommit(button) : null;
     const readback = Object.entries(step.formSnapshotBefore).map(([label, value]) => ({ label, value }));
     const decision = await this.human(() =>
       this.hooks.approveCommit({
         summary: parsed.data.summary,
         screenshot: shot.ref,
         readback,
-        ...(button
-          ? { highlight: { x: button.box.x, y: button.box.y, w: button.box.w, h: button.box.h } }
-          : {}),
+        highlight: { x: button.box.x, y: button.box.y, w: button.box.w, h: button.box.h },
       }),
     );
     this.steps.push(step);
-    if (decision === "approved") {
-      this.commitTokens++;
-      this.guard?.grant(1);
-      if (!bound) return this.output(call, `approved: click "${button?.name ?? "the submit control"}" now.`);
-      return this.clickApproved(call, bound);
-    }
-    await bound?.handle.dispose().catch(() => {});
+    if (decision === "approved") return this.clickApproved(call, bound);
+    await bound.handle.dispose().catch(() => {});
     if (decision === "expired") throw new StopRun("expired", "the commit approval expired");
     throw new StopRun(
       "rejected",
@@ -1115,6 +1116,10 @@ class ComputerUseRun {
       return voidApproval(`the control at "${name}" changed after approval`);
     }
     await this.capture(); // fresh element map, so the stale-coordinate check compares against this page
+    // Tokens only now, after the checks and the scroll: a write the page sends meanwhile (an autosave) is
+    // blocked instead of spending the approval meant for this submit.
+    this.commitTokens++;
+    this.guard?.grant(1);
     const before = this.steps.length;
     await this.runAction({ type: "click", button: "left", x, y });
     await handle.dispose().catch(() => {});

