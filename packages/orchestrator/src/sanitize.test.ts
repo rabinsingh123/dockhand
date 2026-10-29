@@ -1,7 +1,11 @@
-import type { Extraction } from "@dockhand/core";
 import { describe, expect, it } from "vitest";
 import { MAX, promptText, promptTextOrNull, quoted } from "./sanitize.ts";
-import { blankUnderstanding, extractionLines, normalizeUnderstanding } from "./understand.ts";
+import {
+  blankUnderstanding,
+  type Extraction,
+  extractionLines,
+  normalizeUnderstanding,
+} from "./understand.ts";
 
 const NL = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
