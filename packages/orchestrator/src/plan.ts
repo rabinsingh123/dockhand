@@ -59,7 +59,7 @@ export const WHAT_I_DO = [
   "• *Partner deal*: a photo of the signed referral form. I register it on Caravela Partner Hub.",
   "• *Supplier onboarding*: the buyer's invitation PDF. I fill their supplier portal and stop before the final submit.",
   "• *Teach me*: a screen recording (mp4) of you doing a portal task once.",
-  "Commands: /skills, /history, /stats, /rollback <skill> <version>",
+  "Commands: /skills, /history, /stats, /watch, /rollback <skill> <version>",
 ].join("\n");
 
 export function buildPlan(u: Understanding, ctx: BuildPlanContext): PlanOutcome {

@@ -68,13 +68,13 @@ export function realOpenWeights(env: Pick<FlowEnv, "db">, jobId: string, runId: 
   return basetenHeal(env.db, jobId, runId); // one rule for receipts and cards (tools/phone-cards.ts)
 }
 
-function portalOf(env: FlowEnv, portalId: string): PortalTarget {
+export function portalOf(env: FlowEnv, portalId: string): PortalTarget {
   const portal = env.portals[portalId];
   if (!portal) throw new DockhandError("TOOL_ERROR", `portal "${portalId}" is not configured`);
   return portal;
 }
 
-async function leaseFor(env: FlowEnv, portal: PortalTarget, runId: string): Promise<Lease> {
+export async function leaseFor(env: FlowEnv, portal: PortalTarget, runId: string): Promise<Lease> {
   const lease = await env.pool.lease({
     portalId: portal.id,
     runId,
@@ -108,7 +108,7 @@ async function screenshotBytes(env: FlowEnv, ref: ArtifactRef | undefined): Prom
 }
 
 /** Dry runs on fresh pages (one lease at a time, released before the next). */
-async function canaryOn(
+export async function canaryOn(
   env: FlowEnv,
   portal: PortalTarget,
   skill: Skill,
@@ -620,7 +620,16 @@ async function promotePatch(
     : o.rungs.some((r) => r === "open_weights" || r === "computer_use")
       ? "repair"
       : "heal";
-  const saved = env.skills.saveVersion(patched, parent.version, true, source, o.runId);
+  // A param the rep just answered keeps the answer as its example (a later drift watch dry-runs with it)
+  const withAnswers = {
+    ...patched,
+    params: patched.params.map((p) => {
+      const answer = o.answers.find((a) => a.label === p.description)?.answer;
+      // ...and its default: the rep answered once, so the next request fills it without asking again.
+      return answer !== undefined && p.example === undefined ? { ...p, example: answer, default: answer } : p;
+    }),
+  };
+  const saved = env.skills.saveVersion(withAnswers, parent.version, true, source, o.runId);
   const how = o.rungs.map((r) => RUNG_WORDS[r]).join(" + ") || "a free heal";
   const card = await env.phoneCards.render(
     job.id,

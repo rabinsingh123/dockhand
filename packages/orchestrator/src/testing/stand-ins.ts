@@ -321,6 +321,12 @@ const SAME_THING: readonly (readonly string[])[] = [
   ["Expected close date", "Target close date", "Anticipated close date", "Forecast close date"],
   ["Referral partner", "Referred by", "Referring partner", "Partner referral"],
   ["Notes", "Comments", "Additional details", "Deal notes"],
+  [
+    "The end customer agreed to be contacted by Caravela",
+    "The customer has agreed to be contacted by Caravela",
+    "End customer consents to contact from Caravela",
+    "Customer agreed to Caravela contacting them",
+  ],
   ["Start registration", "Begin registration", "Get started", "Continue to registration"],
   ["Next", "Continue", "Save and continue", "Next step"],
   ["Submit for approval", "Send for approval", "Finish and submit"],

@@ -704,11 +704,13 @@ function runsRepo(db: Db, clock: Clock) {
       portalId?: string | null;
       portalSession?: unknown;
       params?: unknown;
+      /** Background runs (drift watch) are kept out of /stats like eval runs. */
+      suite?: string;
     }): void {
       db.raw
         .prepare(
-          `INSERT INTO runs (id, job_id, mode, skill_name, skill_version, portal_id, portal_session_json, params_json, started_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO runs (id, job_id, mode, skill_name, skill_version, portal_id, portal_session_json, params_json, started_at, eval_suite)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           r.id,
@@ -720,6 +722,7 @@ function runsRepo(db: Db, clock: Clock) {
           r.portalSession === undefined ? null : JSON.stringify(r.portalSession),
           r.params === undefined ? null : JSON.stringify(r.params),
           clock.now(),
+          r.suite ?? null,
         );
     },
 

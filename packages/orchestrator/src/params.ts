@@ -1,7 +1,15 @@
 // Values for skill params: from an Understanding (deal registration), from the company profile
 // (supplier onboarding), and synthetic variants for canary dry runs. Pure functions.
 
-import type { ArtifactRef, CompanyProfile, ParamSpec, ParamValue, Step, Understanding } from "@dockhand/core";
+import type {
+  ArtifactRef,
+  CompanyProfile,
+  ParamSpec,
+  ParamValue,
+  SkillParamSpec,
+  Step,
+  Understanding,
+} from "@dockhand/core";
 import { addDaysIso, isIsoDate } from "./time.ts";
 
 export type FileParam = { file: ArtifactRef; filename: string };
@@ -44,7 +52,7 @@ export const UNDERSTANDING_ALIASES: Partial<Record<keyof Understanding, string[]
 
 const TENANT_ALIASES = ["tenant", "tenant_slug", "buyer_tenant", "tenant_id"];
 const INVITE_ALIASES = ["invite_code", "invitation_code", "invite", "code", "invite_id"];
-const FILE_SLOTS: Record<string, string[]> = {
+export const FILE_SLOTS: Record<string, string[]> = {
   w9: ["w9", "w9_file", "w9_form", "w_9", "w_9_form"],
   coi: ["coi", "coi_file", "certificate_of_insurance", "insurance_certificate", "insurance"],
 };
@@ -141,12 +149,13 @@ export interface MapOptions {
   fromDraft?: boolean;
 }
 
-function finish(specs: ParamSpec[], found: Map<string, unknown>, o: MapOptions = {}): Mapped {
+function finish(specs: SkillParamSpec[], found: Map<string, unknown>, o: MapOptions = {}): Mapped {
   const params: Record<string, ParamValue> = {};
   const missing: ParamSpec[] = [];
   const rejected: Mapped["rejected"] = [];
   for (const spec of specs) {
-    const raw = found.get(spec.name);
+    // A param's default (the rep's answer to a drift-watch question) fills in when the request is silent.
+    const raw = found.get(spec.name) ?? spec.default;
     let value = coerce(spec, raw);
     // A draft's types are the model's guess from a video (live Wonder once typed seats as boolean): a value
     // the request gives wins over a type that cannot hold it.
@@ -174,7 +183,11 @@ function finish(specs: ParamSpec[], found: Map<string, unknown>, o: MapOptions =
 }
 
 /** Skill or draft params filled from what the rep sent. */
-export function paramsFromUnderstanding(specs: ParamSpec[], u: Understanding, o: MapOptions = {}): Mapped {
+export function paramsFromUnderstanding(
+  specs: SkillParamSpec[],
+  u: Understanding,
+  o: MapOptions = {},
+): Mapped {
   const found = new Map<string, unknown>();
   for (const spec of specs) {
     for (const [field, aliases] of Object.entries(UNDERSTANDING_ALIASES)) {

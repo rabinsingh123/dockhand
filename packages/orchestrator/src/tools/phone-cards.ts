@@ -320,6 +320,10 @@ export interface DiffCardInput {
   /** The healing run's cost from the ledger (diffCardLedger). */
   costUsd: number;
   usedOpenWeights?: boolean;
+  /** Overrides for the drift watch card ("Drift watch", "… changed overnight", "Nothing to do"). */
+  eyebrow?: string;
+  title?: string;
+  sub?: string;
 }
 
 /** Ledger cost as shown on a card: "$0.000" when the ledger says nothing was spent (fake, cassette, scripted). */
@@ -392,10 +396,10 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
   const fixed = [...rungOf.keys()].length;
   const allPassed = v.canary.passed === v.canary.total;
   return phoneCardHtml({
-    eyebrow: "Skill repaired",
+    eyebrow: v.eyebrow ?? "Skill repaired",
     tone: "heal",
-    title: `${v.portalName} changed`,
-    sub: `${v.saved.name} v${v.parent.version} → v${v.saved.version}`,
+    title: v.title ?? `${v.portalName} changed`,
+    sub: v.sub ?? `${v.saved.name} v${v.parent.version} → v${v.saved.version}`,
     stats: [
       { value: String(fixed), label: `step${fixed === 1 ? "" : "s"} fixed`, tone: "heal" },
       {

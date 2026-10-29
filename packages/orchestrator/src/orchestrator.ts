@@ -28,11 +28,19 @@ import {
 } from "@dockhand/core";
 import type { DockhandApprovalBroker, GateDecision } from "./approvals.ts";
 import { inputsMentionEspo, leadToUnderstanding, planLead, understandLead } from "./espocrm.ts";
-import { runFirstRun, runReplay } from "./flows/browser.ts";
+import { realOpenWeights, runFirstRun, runReplay } from "./flows/browser.ts";
 import { isCommand, runCommand } from "./flows/commands.ts";
 import { type CuModelSource, type FlowEnv, type JobCtx, sendText, trySend } from "./flows/env.ts";
 import { runQuote } from "./flows/quote.ts";
 import { type FlowOutcome, runTeach } from "./flows/teach.ts";
+import {
+  WATCH_BUTTON,
+  WATCH_CANARY_RUNS,
+  type WatchOutcome,
+  type WatchTrigger,
+  watchDetails,
+  watchSkill,
+} from "./flows/watch.ts";
 import {
   analyzeMedia,
   classifyMedia,
@@ -46,7 +54,7 @@ import { buildPlan } from "./plan.ts";
 import { ESPOCRM, type PortalDirectory, type PortalInfo } from "./portals.ts";
 import { type CompanyKit, loadCompanyKit, repProfile } from "./profile.ts";
 import { createRepos, type JobRow, type MessageRow } from "./repo.ts";
-import { createPhoneCards } from "./tools/phone-cards.ts";
+import { createPhoneCards, diffPhoneCardHtml } from "./tools/phone-cards.ts";
 import { createCardRenderer, type RenderHtml } from "./tools/receipts.ts";
 import { type KnownSkill, teachUnderstanding, type UnderstandInput, understand } from "./understand.ts";
 
@@ -76,6 +84,8 @@ export interface OrchestratorDeps {
   stepTimeoutMs?: number;
   /** 0 disables the 30 s expiry sweep (tests call approvals.expireDue() themselves). */
   expirySweepMs?: number;
+  /** Drift watch interval; 0 or unset = only on demand (/watch, the dev route). */
+  watchEveryMs?: number;
 }
 
 export interface Orchestrator {
@@ -85,6 +95,8 @@ export interface Orchestrator {
   recover(): Promise<void>;
   /** Resolves when nothing is computing (jobs parked on an approval do not count). */
   drain(): Promise<void>;
+  /** Drift watch now: dry-run every active skill (or one), repair, canary, tell the rep only what changed. */
+  watch(o?: { skill?: string; trigger?: WatchTrigger; rep?: string }): Promise<WatchOutcome[]>;
   close(): void;
 }
 
@@ -272,12 +284,39 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     void wa.markRead(msg.waId).catch(() => {});
     switch (route.type) {
       case "button": {
+        const watchButton = WATCH_BUTTON.exec(msg.button?.id ?? "");
+        if (watchButton) {
+          await onWatchButton(
+            msg.from,
+            watchButton[1] as string,
+            Number(watchButton[2]),
+            watchButton[3] as string,
+          );
+          return;
+        }
         const status = approvals.resolveFromButton(msg.button?.id ?? "", msg.from, msg.waId);
         if (status === "unknown")
           await wa.sendText(msg.from, "That button is no longer active. Nothing changed.");
         return;
       }
       case "command": {
+        if (/^\/watch\b/i.test(msg.text?.trim() ?? "")) {
+          const name = msg.text?.trim().split(/\s+/)[1];
+          const names = name ? [name] : deps.skills.list().map((r) => r.name);
+          const body =
+            names.length === 0
+              ? "No skills to watch yet."
+              : names.length === 1
+                ? `Checking ${names[0]} with a dry run on its portal. Nothing is submitted.`
+                : `Checking ${names.length} skills with dry runs on their portals. Nothing is submitted.`;
+          const waId = await wa.sendText(msg.from, body);
+          repos.messages.insertOutbound({ waId, to: msg.from, jobId: null, kind: "text", text: body });
+          if (names.length > 0)
+            spawn("drift watch", () =>
+              watchNow({ trigger: "command", rep: msg.from, ...(name ? { skill: name } : {}) }),
+            );
+          return;
+        }
         const rep = repProfile(repos, msg.from);
         const body = runCommand(msg.text ?? "", {
           skills: deps.skills,
@@ -533,6 +572,106 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   // ---- lifecycle ----
 
   let sweep: ReturnType<typeof setInterval> | undefined;
+  let watchTimer: ReturnType<typeof setInterval> | undefined;
+  let watching: Promise<WatchOutcome[]> | undefined;
+
+  /** The rep a background watch reports to: whoever last ran the skill, else the first allow-listed rep. */
+  function watchRep(skill: string): string | undefined {
+    const row = db.raw
+      .prepare(
+        `SELECT j.rep FROM runs r JOIN jobs j ON j.id = r.job_id
+         WHERE r.skill_name = ? AND r.eval_suite IS NULL ORDER BY r.started_at DESC, r.rowid DESC LIMIT 1`,
+      )
+      .get(skill) as { rep: string } | undefined;
+    return row?.rep ?? config.reps.allowlist[0];
+  }
+
+  /** One watch at a time; a second call waits for (and returns) the one in progress. */
+  function watchNow(
+    o: { skill?: string; trigger?: WatchTrigger; rep?: string } = {},
+  ): Promise<WatchOutcome[]> {
+    if (watching) return watching;
+    watching = (async () => {
+      const outcomes: WatchOutcome[] = [];
+      const names = o.skill ? [o.skill] : deps.skills.list().map((r) => r.name);
+      for (const name of names) {
+        const rep = o.rep ?? watchRep(name);
+        if (!rep) continue;
+        try {
+          outcomes.push(await watchSkill(env, { skill: name, trigger: o.trigger ?? "schedule", rep }));
+        } catch (err) {
+          log.error("drift watch failed", { skill: name, err });
+        }
+      }
+      // On demand, the rep asked: say so when every skill still matches (a scheduled watch stays quiet).
+      if (
+        o.trigger === "command" &&
+        o.rep &&
+        outcomes.length > 0 &&
+        outcomes.every((x) => x.outcome === "verified")
+      ) {
+        const body =
+          outcomes.length === 1
+            ? `${outcomes[0]?.skill} still matches its portal: every step resolved and read back in a dry run. Nothing to do.`
+            : `All ${outcomes.length} skills still match their portals: every step resolved and read back in dry runs. Nothing to do.`;
+        const waId = await wa.sendText(o.rep, body);
+        repos.messages.insertOutbound({ waId, to: o.rep, jobId: null, kind: "text", text: body });
+      }
+      const skipped = outcomes.filter((x) => x.outcome === "skipped").map((x) => x.skill);
+      if (o.trigger === "command" && o.rep && skipped.length > 0) {
+        const body = `I couldn't dry-run ${skipped.join(", ")}: a required value has no sample yet. The next real request checks it.`;
+        const waId = await wa.sendText(o.rep, body);
+        repos.messages.insertOutbound({ waId, to: o.rep, jobId: null, kind: "text", text: body });
+      }
+      return outcomes;
+    })().finally(() => {
+      watching = undefined;
+    });
+    return watching;
+  }
+
+  async function onWatchButton(rep: string, name: string, version: number, what: string): Promise<void> {
+    const reply = async (body: string) => {
+      const waId = await wa.sendText(rep, body);
+      repos.messages.insertOutbound({ waId, to: rep, jobId: null, kind: "text", text: body });
+    };
+    const saved = deps.skills.get(name, version);
+    if (!saved) return reply("That skill version is gone. Nothing changed.");
+    const parent = saved.parentVersion;
+    if (what === "rb") {
+      const active = deps.skills.active(name)?.version;
+      if (!parent) return reply(`${name} v${version} has no earlier version. Nothing changed.`);
+      if (active === parent) return reply(`Already rolled back: ${name} v${parent} is active.`);
+      if (active !== version)
+        return reply(
+          `${name} v${active} is active now, so I left it alone. /rollback ${name} <version> picks one.`,
+        );
+      deps.skills.activate(name, parent);
+      return reply(
+        `Rolled back: ${name} v${parent} is active (v${version} kept: /rollback ${name} ${version}).`,
+      );
+    }
+    const d = watchDetails(env, name, version);
+    const before = parent ? deps.skills.get(name, parent) : undefined;
+    const card = await env.phoneCards.render(
+      `watch-${name}-${version}`,
+      diffPhoneCardHtml({
+        portalName: deps.portals[saved.portalId]?.name ?? saved.portalId,
+        parent: before ?? saved,
+        saved,
+        steps: d.steps,
+        canary: { passed: WATCH_CANARY_RUNS, total: WATCH_CANARY_RUNS },
+        costUsd: d.costUsd,
+        usedOpenWeights: d.sourceRunId ? realOpenWeights(env, "", d.sourceRunId) : false,
+      }),
+    );
+    const caption = [
+      `*${name} v${parent ?? "?"} → v${version}*`,
+      d.summary ?? "No step changes recorded.",
+    ].join("\n");
+    const waId = await wa.sendImage(rep, card, caption);
+    repos.messages.insertOutbound({ waId, to: rep, jobId: null, kind: "image", text: caption });
+  }
 
   return {
     handle(msg) {
@@ -562,6 +701,17 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         }, every);
         sweep.unref?.();
       }
+      if ((deps.watchEveryMs ?? 0) > 0 && !watchTimer) {
+        watchTimer = setInterval(
+          () => spawn("drift watch", () => watchNow({ trigger: "schedule" })),
+          deps.watchEveryMs,
+        );
+        watchTimer.unref?.();
+      }
+    },
+
+    watch(o) {
+      return run(() => watchNow(o));
     },
 
     async drain() {
@@ -576,6 +726,8 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     close() {
       if (sweep) clearInterval(sweep);
       sweep = undefined;
+      if (watchTimer) clearInterval(watchTimer);
+      watchTimer = undefined;
     },
   };
 }
