@@ -67,7 +67,8 @@ export async function runStructured<T>(env: GatewayEnv, req: StructuredRequest<T
     );
   }
   const wire = env.wireSchema(req.schema as ZodType);
-  const tape = env.cassettes.tape(ctx.purpose, cassetteKey(ctx.purpose, structuredKeyMaterial(req)));
+  const material = structuredKeyMaterial(req);
+  const tape = env.cassettes.tape(ctx.purpose, cassetteKey(ctx.purpose, material), material);
   const scope = openScope(ctx);
   const target =
     route === "meta" ? metaRoute(env, req, wire, scope, ctx) : basetenRoute(env, req, wire, scope);

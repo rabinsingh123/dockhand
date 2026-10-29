@@ -65,10 +65,8 @@ export async function transcribeWav(
     ...(languageBias.length > 0 ? { languageBias } : {}),
     ...(keywords.length > 0 ? { keywords } : {}),
   };
-  const tape = env.cassettes.tape(
-    ctx.purpose,
-    cassetteKey(ctx.purpose, { model: ASR_MODEL, wav: wav.sha256, languageBias, keywords }),
-  );
+  const material = { model: ASR_MODEL, wav: wav.sha256, languageBias, keywords };
+  const tape = env.cassettes.tape(ctx.purpose, cassetteKey(ctx.purpose, material), material);
   const scope = openScope(ctx);
   try {
     return await recordCall(

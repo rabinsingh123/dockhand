@@ -167,10 +167,10 @@ function openSession(
     }
 
     // Recording is per session, turn by turn: the key comes from what is stable across runs (not pixels).
-    tape ??= env.cassettes.tape(
-      ctx.purpose,
-      cassetteKey(ctx.purpose, { model: opts.model, instructions, functions, first: firstText(reply) }),
-    );
+    if (!tape) {
+      const material = { model: opts.model, instructions, functions, first: firstText(reply) };
+      tape = env.cassettes.tape(ctx.purpose, cassetteKey(ctx.purpose, material), material);
+    }
     const sessionTape = tape;
     const chainFrom = !stateless && !newChain ? previousResponseId : undefined;
     const effort = effortFor(model, opts.effort, ctx.purpose);
