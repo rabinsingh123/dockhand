@@ -66,6 +66,25 @@
 .links{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .flash{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 0 3px rgba(255,255,255,.95),inset 0 0 46px rgba(255,255,255,.28)}
 .pill{position:absolute;left:0;top:0;height:18px;display:inline-flex;align-items:center;padding:0 7px;border-radius:999px;background:var(--c);color:#0b0d12;font-size:10.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.25)}
+.ladder{position:absolute;left:0;top:0;width:312px;padding:10px 10px 8px;border-radius:13px;background:rgba(12,14,19,.95);border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 34px rgba(3,6,12,.48),0 2px 6px rgba(3,6,12,.3);color:#e9edf3;opacity:0}
+.lh{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:#8a94a4;margin:0 4px 6px}
+.lr{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:9px;height:30px;padding:0 6px;border-radius:8px;font-size:12.5px;font-weight:650}
+.lr+.lr::before{content:"";position:absolute;left:15px;top:-6px;width:2px;height:10px;border-radius:1px;background:#353c49}
+.ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ld{font-size:11.5px;font-weight:700;color:#8a94a4;white-space:nowrap}
+.lr.pending{color:#a3acb9}
+.lr.trying{background:rgba(251,191,36,.13);color:#fde68a}.lr.trying .ld{color:#fbbf24}
+.lr.fail .ln{color:#c2cad6}.lr.fail .ld{color:#fda4af}
+.lr.ok{background:rgba(74,222,128,.13);color:#dcfce7}.lr.ok .ld{color:#86efac}
+.lr.off,.lr.na{color:#5d6676}.lr.off .ld,.lr.na .ld{color:#5d6676;font-weight:600}
+.li{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;position:relative;z-index:1;background:#0c0e13}
+.lr.pending .li{border:2px solid #4b5563}
+.lr.fail .li{background:#f43f5e}.lr.ok .li{background:#22c55e}
+.lr.off .li,.lr.na .li{border:2px dashed #353c49}
+.li svg{width:11px;height:11px;color:#fff}
+.lr.trying .li svg{width:18px;height:18px}
+.lf{margin:6px 4px 1px;font-size:11.5px;font-weight:700;color:#fda4af}
+.lf.ok{color:#86efac}
 .hint{position:absolute;left:0;top:0;padding:3px 8px;border-radius:6px;background:rgba(12,14,19,.9);color:#fff;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid rgba(255,255,255,.16)}
 `;
   const ICON = {
@@ -395,10 +414,72 @@
     });
     kick();
   }
+  // ---------- heal ladder ----------
+  const SPIN = '<svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="rgba(251,191,36,.25)" stroke-width="2.4"/><path d="M9 2a7 7 0 0 1 7 7" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  function ladder(key, target, st) {
+    if (!ensure()) return;
+    const prev = items.get('L:' + key);
+    const node = prev ? prev.node : el('div', 'ladder');
+    node.innerHTML = '';
+    const head = el('div', 'lh');
+    head.innerHTML = '<span></span><span></span>';
+    head.firstChild.textContent = st.title || 'Heal ladder';
+    head.lastChild.textContent = st.note || '';
+    node.appendChild(head);
+    let spin = null;
+    for (const r of st.rungs) {
+      const row = el('div', 'lr ' + r.status);
+      const icon = el('i', 'li', r.status === 'ok' ? ICON.check : r.status === 'fail' ? ICON.cross : r.status === 'trying' ? SPIN : '');
+      if (r.status === 'trying') spin = icon.firstChild;
+      const n = el('span', 'ln'); n.textContent = r.name;
+      const d = el('span', 'ld'); d.textContent = r.detail || '';
+      row.append(icon, n, d);
+      node.appendChild(row);
+    }
+    if (st.foot) { const f = el('div', 'lf' + (st.footOk ? ' ok' : '')); f.textContent = st.foot; node.appendChild(f); }
+    if (!node.isConnected) ui.layer.appendChild(node);
+    const it = {
+      node, target, spin, t0: prev ? prev.t0 : now(), collapseAt: prev ? prev.collapseAt : 0, toKey: prev ? prev.toKey : null,
+      update(t) {
+        const r = rectOf(this.target);
+        if (!onScreen(r)) { node.style.display = 'none'; return true; }
+        node.style.display = '';
+        const w = node.offsetWidth, h = node.offsetHeight;
+        let x = r.x + r.w + 18;
+        if (x + w > innerWidth - 8) x = r.x - 18 - w;
+        x = Math.max(8, Math.min(innerWidth - w - 8, x));
+        let y = Math.max(8, Math.min(innerHeight - h - 8, r.y + r.h / 2 - h / 2));
+        if (x + w > innerWidth - 660 && y < 88) y = 88;             // keep clear of the status panel
+        const k = Math.min(1, (t - this.t0) / 240), e = 1 - Math.pow(1 - k, 3);
+        let op = e, sc = 1, dx = (1 - e) * 10, dy = 0;
+        if (this.collapseAt && t >= this.collapseAt) {
+          const c = Math.min(1, (t - this.collapseAt) / 420), ce = c * c * (3 - 2 * c);
+          const to = this.toKey && items.get('x:' + this.toKey);
+          const tr = to && to.label && to.label.isConnected ? to.label.getBoundingClientRect() : null;
+          if (tr && tr.width > 0) { dx = (tr.left - x) * ce; dy = (tr.top - y) * ce; }
+          sc = 1 - .45 * ce; op = 1 - ce;
+          if (c >= 1) return false;
+        }
+        if (this.spin) this.spin.style.transform = `rotate(${((t / 2.6) % 360).toFixed(1)}deg)`;
+        node.style.transformOrigin = 'top left';
+        node.style.transform = `translate(${Math.round(x + dx)}px,${Math.round(y + dy)}px) scale(${sc.toFixed(3)})`;
+        node.style.opacity = String(op);
+        return true;
+      },
+      remove() { node.remove(); },
+    };
+    items.set('L:' + key, it);
+    kick();
+  }
+  function ladderCollapse(key, toKey, delay) {
+    const it = items.get('L:' + key);
+    if (it) { it.collapseAt = now() + (delay || 0); it.toKey = toKey; kick(); }
+  }
   function retire(prefix, ms) {
     const at = now() + (ms || 0);
     for (const [k, it] of items) {
       if ((k.startsWith('x:' + prefix) || k.startsWith('l:' + prefix)) && !it.dieAt) it.dieAt = at;
+      if (k.startsWith('L:' + prefix) && !it.collapseAt) it.collapseAt = at;
     }
     kick();
   }
@@ -471,6 +552,8 @@
     rippleOn(target) { const r = rectOf(target); if (!r || !onScreen(r)) return; const p = aim(r, target); landAndRipple(p.x, p.y); },
     badge, glow, box, dim, link, hint, shutter, clear, pill, retire,
     pillOn(target, key, text, tone) { pill(target, key, text, tone); },
+    ladder, ladderCollapse,
+    ladderOn(target, key, st) { ladder(key, target, st); },
     unbox(key) { drop('x:' + key); },
     // element-first variants (Node passes the element as the first argument)
     boxOn(target, key, o) { box(key, target, o); },

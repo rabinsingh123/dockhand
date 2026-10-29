@@ -113,6 +113,9 @@ interface HudPageApi {
   glideClick(x: number, y: number, ms?: number): Promise<void>;
   hintBottom(text: string, ms?: number): void;
   pillOn(target: Element, key: string, text: string, tone: string): void;
+  ladder(key: string, target: BoxTarget, st: unknown): void;
+  ladderOn(target: Element, key: string, st: unknown): void;
+  ladderCollapse(key: string, toKey: string, delay?: number): void;
   retire(prefix: string, ms?: number): void;
 }
 type Method = keyof HudPageApi;
@@ -275,6 +278,29 @@ function describeCuAction(a: CuAction, target?: Target): string {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+type RungId = "free" | "open_weights" | "computer_use" | "ask_rep";
+interface LadderRung {
+  id: RungId;
+  name: string;
+  status: "pending" | "trying" | "fail" | "ok" | "off" | "na";
+  detail: string;
+}
+/** The heal ladder drawn next to a broken step: every rung, lit as it is tried. */
+interface Ladder {
+  key: string;
+  stepIdx: number;
+  anchor: Box | null;
+  rungs: LadderRung[];
+  done: boolean;
+  foot?: string;
+}
+const RUNG_ROW: Record<RungId, string> = {
+  free: "Free · stored selectors, similarity",
+  open_weights: "Muse Spark Open",
+  computer_use: "Muse computer use",
+  ask_rep: "Ask the rep",
+};
+
 interface RunState {
   mode: "replay" | "dry_run" | "cu";
   purpose: string;
@@ -311,6 +337,10 @@ export class Hud {
   private clockHolds = 0;
   private clockHoldStart = 0;
   private typed = 0;
+  private readonly ladders = new Map<string, Ladder>();
+  private avail = new Set<HealRung>();
+  /** When the current step began (performance.now()): the free rungs' time when a step breaks. */
+  private stepAt = 0;
 
   constructor(
     private readonly page: Page,
@@ -534,6 +564,7 @@ export class Hud {
     this.calls = 0;
     this.verified = null;
     this.fixes.clear();
+    this.ladders.clear();
     this.lastStep = -1;
     this.ticker = `${o.skill.title} · v${o.skill.version}`;
     this.startClock();
@@ -547,6 +578,7 @@ export class Hud {
     if (!run || run.mode === "cu") return;
     const step = steps[idx];
     if (idx !== this.lastStep) {
+      this.stepAt = performance.now();
       if (this.lastStep >= 0) void this.call("retire", "heal:", this.paced() > 0 ? 500 : 900);
       this.lastStep = idx;
     }
@@ -672,6 +704,11 @@ export class Hud {
     };
     this.heal = null;
     this.waiting = null;
+    for (const lad of this.ladders.values()) {
+      if (lad.done) continue;
+      lad.foot = "No rung fixed it: stopped safely, nothing submitted";
+      this.drawLadder(lad);
+    }
     this.freezeClock();
     void this.call("hideCursor");
     this.push();
@@ -824,6 +861,13 @@ export class Hud {
   wrapRunHooks(hooks: RunHooks): RunHooks {
     if ((hooks as unknown as Record<symbol, unknown>)[WRAPPED] === this) return hooks;
     const base = this.wrapCuHooks(hooks);
+    // which paid rungs exist in this run (a ladder shows the others as "not configured")
+    this.avail = new Set(
+      (hooks.repairers ?? []).flatMap((r) => {
+        const g = (r as Repairer & { rung?: HealRung }).rung;
+        return g ? [g] : [];
+      }),
+    );
     const wrapped: RunHooks = {
       ...base,
       ...(hooks.repairers ? { repairers: hooks.repairers.map((r) => this.wrapRepairer(r)) } : {}),
@@ -847,6 +891,24 @@ export class Hud {
                 sub: "Rung 4: asked the rep on WhatsApp",
                 pulse: true,
               });
+              // The ladder for new data: no selector to fix, so the free and model rungs do not apply.
+              const na = "n/a · new field";
+              const askLadder: Ladder = {
+                key: `heal:ladder:ask:${q.label}`,
+                stepIdx: this.run?.idx ?? 0,
+                anchor: null,
+                done: false,
+                rungs: [
+                  { id: "free", name: RUNG_ROW.free, status: "na", detail: na },
+                  { id: "open_weights", name: RUNG_ROW.open_weights, status: "na", detail: na },
+                  { id: "computer_use", name: RUNG_ROW.computer_use, status: "na", detail: na },
+                  { id: "ask_rep", name: RUNG_ROW.ask_rep, status: "trying", detail: "asking on WhatsApp…" },
+                ],
+              };
+              const drawAsk = () =>
+                void this.onElement(field, "ladderOn", askLadder.key, this.ladderView(askLadder));
+              drawAsk();
+              const askedAt = Date.now();
               let answer: string | null = null;
               this.pauseClock();
               try {
@@ -854,6 +916,16 @@ export class Hud {
                 return answer;
               } finally {
                 this.resumeClock();
+                const waited = secs(Date.now() - askedAt);
+                askLadder.rungs[3] = {
+                  id: "ask_rep",
+                  name: RUNG_ROW.ask_rep,
+                  status: answer === null ? "fail" : "ok",
+                  detail: answer === null ? `no answer · ${waited}` : `“${clip(answer, 14)}” · ${waited}`,
+                };
+                askLadder.done = answer !== null;
+                drawAsk();
+                if (answer !== null) void this.call("ladderCollapse", askLadder.key, "ask", 1700);
                 this.waiting = null;
                 this.push();
                 void this.onElement(field, "boxOn", "ask", {
@@ -938,6 +1010,62 @@ export class Hud {
     }
   }
 
+  // ---------- heal ladder ----------
+
+  private ladderFor(stepKey: string, stepIdx: number, anchor: Box | null): Ladder {
+    const known = this.ladders.get(stepKey);
+    if (known) return known;
+    const freeMs = this.stepAt ? performance.now() - this.stepAt - this.pausedSince(this.stepAt) : 0;
+    const has = (r: HealRung) => this.avail.size === 0 || this.avail.has(r);
+    const paid = (id: "open_weights" | "computer_use"): LadderRung => ({
+      id,
+      name: RUNG_ROW[id],
+      status: has(id) ? "pending" : "off",
+      detail: has(id) ? "" : "not configured",
+    });
+    const lad: Ladder = {
+      key: `heal:ladder:${stepKey}`,
+      stepIdx,
+      anchor,
+      done: false,
+      rungs: [
+        { id: "free", name: RUNG_ROW.free, status: "fail", detail: `${secs(freeMs)} · $0` },
+        paid("open_weights"),
+        paid("computer_use"),
+        { id: "ask_rep", name: RUNG_ROW.ask_rep, status: "na", detail: "only for new data" },
+      ],
+    };
+    this.ladders.set(stepKey, lad);
+    return lad;
+  }
+
+  private rungState(lad: Ladder, id: RungId, status: LadderRung["status"], detail: string): void {
+    const r = lad.rungs.find((x) => x.id === id);
+    if (r) {
+      r.status = status;
+      r.detail = detail;
+    }
+  }
+
+  private rungName(lad: Ladder, id: RungId, name: string): void {
+    const r = lad.rungs.find((x) => x.id === id);
+    if (r) r.name = name;
+  }
+
+  private ladderView(lad: Ladder): { title: string; rungs: LadderRung[]; foot?: string; footOk: boolean } {
+    return {
+      title: `Heal ladder · step ${lad.stepIdx + 1}`,
+      rungs: lad.rungs,
+      ...(lad.foot ? { foot: lad.foot } : {}),
+      footOk: lad.done,
+    };
+  }
+
+  private drawLadder(lad: Ladder): void {
+    const anchor = lad.anchor ?? { x: 24, y: 330, w: 1, h: 1, space: "view" as const };
+    void this.call("ladder", lad.key, anchor, this.ladderView(lad));
+  }
+
   private wrapRepairer(inner: Repairer): Repairer {
     const tagged = (inner as Repairer & { rung?: HealRung }).rung;
     const wrapped: Repairer = async (req, hooks, ctx) => {
@@ -965,9 +1093,13 @@ export class Hud {
           dashed: true,
           dark: true,
           label: `Step ${req.stepIdx + 1} · '${name}' ${why}`,
-          sub: `Trying ${rungText}…`,
         });
       }
+      // The ladder: free rungs already failed (that is why we are here); this rung lights up as it runs.
+      const lad = this.ladderFor(step?.id ?? String(req.stepIdx), req.stepIdx, oldBox);
+      if (tagged) this.rungState(lad, tagged, "trying", "trying…");
+      this.drawLadder(lad);
+      void rungText;
       if (this.run) this.run.idx = req.stepIdx;
       this.heal = {
         idx: req.stepIdx,
@@ -1001,6 +1133,19 @@ export class Hud {
         const label = rung
           ? `rung ${RUNG_NO[rung]} · ${rung === "computer_use" ? (this.heal?.model ?? how) : RUNG_HOW[rung]}`
           : how;
+        if (rung) {
+          const spent = `${secs(ms)} · ${money(res?.costUsd ?? 0)}`;
+          const why2 = res && !res.ok ? ` · ${clip(res.reason.replace(/:.*$/, ""), 18)}` : "";
+          this.rungState(lad, rung, res?.ok ? "ok" : "fail", res?.ok ? spent : `${spent}${why2}`);
+          if (rung === "computer_use" && this.heal?.model)
+            this.rungName(lad, rung, `${this.heal.model} · computer use`);
+        }
+        if (res?.ok) lad.done = true;
+        this.drawLadder(lad);
+        if (res?.ok && step) {
+          // collapse into the "Fixed · rung N" label once the viewer has read the ladder
+          void this.call("ladderCollapse", lad.key, `heal:fix:${step.id}`, P > 0 ? P * 1.3 : 1700);
+        }
         this.heal = null;
         if (res?.ok && step) {
           const fixLabel = `Fixed · ${label} · ${secs(ms)} · ${money(res.costUsd)}`;
