@@ -4,7 +4,10 @@
 //   GET  /webhook/whatsapp            Meta's verification handshake (hub.mode / hub.verify_token / hub.challenge)
 //   POST /webhook/whatsapp            signed Cloud API webhooks
 //   GET  /__health                    liveness + modes
-// Emulator mode only (the fake Graph API and the chat page share the port):
+// Local only (404 to anything that came through a tunnel or proxy, see isLocalRequest):
+//   GET  /recorder/...                the flight recorder (runs, params, screenshots, costs, artifacts)
+//   GET  /__dev/...                   dev tools passed in as `routes`
+// Emulator mode only, also local only (the fake Graph API and the chat page share the port):
 //   POST /graph/{ver}/{phone-id}/messages, POST /graph/{ver}/{phone-id}/media, GET /graph/{ver}/{media-id}
 //   GET  /lookaside/{media-id}        short-lived media download URL
 //   GET  /dev/chat                    phone-sized chat UI (+ /dev/chat/events, /send, /tap, /reset, /timeline, /media/{id})
@@ -34,6 +37,26 @@ import { createRecorder } from "./recorder/index.ts";
 
 export const GRAPH_BASE_URL = "https://graph.facebook.com";
 const DRAIN_ON_CLOSE_MS = 3_000;
+
+/** What a tunnel may reach: Meta's signed webhook and the health check `pnpm tunnel` polls. */
+const PUBLIC_PATHS = new Set(["/webhook/whatsapp", "/__health"]);
+const LOCAL_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
+/** Added by cloudflared (Cloudflare's edge sets the cf-* ones, a client cannot drop them), ngrok and most proxies. */
+const PROXY_HEADERS = ["cf-connecting-ip", "cf-ray", "x-forwarded-for", "x-forwarded-host", "forwarded"];
+
+/**
+ * A request from a browser or process on this machine: a loopback Host (a tunnel forwards the public one, a
+ * DNS-rebinding page sends its own) and no header a proxy or tunnel adds.
+ */
+export function isLocalRequest(headers: Headers): boolean {
+  let hostname: string;
+  try {
+    hostname = new URL(`http://${headers.get("host") ?? ""}`).hostname;
+  } catch {
+    return false;
+  }
+  return LOCAL_HOSTNAMES.has(hostname) && !PROXY_HEADERS.some((h) => headers.has(h));
+}
 
 export interface DevProcessOptions {
   config?: Config; // default: loadConfig()
@@ -115,6 +138,12 @@ export async function startDevProcess(opts: DevProcessOptions = {}): Promise<Dev
       sendText: (to, body) => client().sendText(to, body),
     });
     const root = new Hono();
+    // `pnpm tunnel` makes this port public and cloudflared connects from 127.0.0.1, so the socket address says
+    // nothing. Only the signed webhook and the health check answer a request that came through a proxy.
+    root.use("*", async (c, next) => {
+      if (PUBLIC_PATHS.has(c.req.path) || isLocalRequest(c.req.raw.headers)) return next();
+      return c.text("Not Found", 404);
+    });
     root.route("/", gateway.app);
     root.route(
       "/recorder",

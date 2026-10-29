@@ -1,8 +1,10 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createLogger, type InboundMessage, loadConfig } from "@dockhand/core";
 import { signatureHeader } from "@dockhand/whatsapp";
+import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { REFUSAL_TEXT } from "./app.ts";
 import { type DevProcess, startDevProcess } from "./dev-process.ts";
@@ -134,6 +136,99 @@ describe("dev process in emulator mode (real HTTP)", () => {
     const page = await fetch(dev.urls.devChat ?? "");
     expect(page.status).toBe(200);
     expect(await page.text()).toContain("Dockhand chat (emulator)");
+  });
+});
+
+describe("dev process in cloud mode behind a tunnel", () => {
+  // cloudflared connects from 127.0.0.1 and forwards the public Host plus Cloudflare's headers.
+  const TUNNEL = {
+    host: "demo-words.trycloudflare.com",
+    "cf-connecting-ip": "203.0.113.9",
+    "cf-ray": "8f00000000000000-GRU",
+    "x-forwarded-for": "203.0.113.9",
+  };
+  const cloud = loadConfig({
+    WHATSAPP_MODE: "cloud",
+    WHATSAPP_TOKEN: "cloud-test-token",
+    WHATSAPP_PHONE_NUMBER_ID: "109000000000002",
+    WHATSAPP_APP_SECRET: "cloud-test-secret",
+    WHATSAPP_VERIFY_TOKEN: "cloud-test-verify",
+    REP_ALLOWLIST: REP,
+    GATEWAY_PORT: "0",
+    LOG_LEVEL: "silent",
+  });
+  let dir: string;
+  let dev: DevProcess;
+  const get = (path: string, headers: Record<string, string> = {}, method = "GET", body?: string) =>
+    new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const { port } = new URL(dev.urls.gateway);
+      const req = request({ host: "127.0.0.1", port, path, method, headers }, (res) => {
+        let text = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk: string) => {
+          text += chunk;
+        });
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, body: text }));
+      });
+      req.on("error", reject);
+      req.end(body);
+    });
+
+  beforeAll(async () => {
+    dir = mkdtempSync(join(tmpdir(), "dockhand-gateway-cloud-"));
+    const tools = new Hono();
+    tools.get("/__dev/crm", (c) => c.json({ deals: ["synthetic"] }));
+    dev = await startDevProcess({
+      config: cloud,
+      dbPath: join(dir, "dockhand.sqlite"),
+      dataDir: dir,
+      portals: false,
+      routes: tools,
+      log: createLogger({ level: "silent" }),
+      onMessages: () => {},
+    });
+  });
+  afterAll(async () => {
+    await dev?.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("keeps the flight recorder and dev routes off the tunnel", async () => {
+    for (const path of ["/recorder", "/recorder/runs/01ABC", "/recorder/a/01ABC", "/__dev/crm"]) {
+      const res = await get(path, TUNNEL);
+      expect({ path, status: res.status }).toEqual({ path, status: 404 });
+    }
+    // cloudflared --http-host-header 127.0.0.1 rewrites Host but still adds Cloudflare's headers.
+    const rewritten = await get("/recorder", { ...TUNNEL, host: "127.0.0.1" });
+    expect(rewritten.status).toBe(404);
+    // DNS rebinding: a page on another name that resolves to 127.0.0.1.
+    expect((await get("/recorder", { host: "rebind.attacker.example:8787" })).status).toBe(404);
+  });
+
+  it("still serves the recorder and dev routes to a local browser", async () => {
+    expect((await get("/recorder", { host: "localhost:8787" })).status).toBe(200);
+    expect((await get("/__dev/crm", { host: "127.0.0.1:8787" })).body).toContain("synthetic");
+  });
+
+  it("serves the signed webhook, the handshake and health through the tunnel", async () => {
+    const verify = await get(
+      "/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=cloud-test-verify&hub.challenge=42",
+      TUNNEL,
+    );
+    expect(verify).toEqual({ status: 200, body: "42" });
+    expect((await get("/__health", TUNNEL)).status).toBe(200);
+    const payload = JSON.stringify({ object: "whatsapp_business_account", entry: [] });
+    const signed = await get(
+      "/webhook/whatsapp",
+      {
+        ...TUNNEL,
+        "content-type": "application/json",
+        "x-hub-signature-256": signatureHeader(payload, "cloud-test-secret"),
+      },
+      "POST",
+      payload,
+    );
+    expect(signed.status).toBe(200);
   });
 });
 
