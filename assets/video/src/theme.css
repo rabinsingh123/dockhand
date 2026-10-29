@@ -1,0 +1,89 @@
+/* Dockhand motion graphics: the HUD and flight-recorder palette (packages/browser/src/hud,
+   apps/gateway/src/recorder) scaled up for 1080p video watched on a phone. System fonts only, so there is
+   nothing to fetch and nothing that can differ between two renders. */
+:root {
+  --bg: #0a0c10;
+  --panel: #11141a;
+  --panel-2: #161a22;
+  --panel-3: #1c212b;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.16);
+  --text: #f4f6fa;
+  --text-2: #d3d9e3;
+  --muted: #a9b2c0;
+  --faint: #6f7a8a;
+  --cu: #a78bfa;
+  --replay: #22d3ee;
+  --heal: #fbbf24;
+  --dry: #60a5fa;
+  --ok: #4ade80;
+  --bad: #fb7185;
+  --display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+    "Helvetica Neue", Arial, sans-serif;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  font-kerning: normal;
+}
+h1, h2, h3, p { margin: 0; }
+
+/* The 1920x1080 canvas. render.ts screenshots exactly this; the preview scales it to fit the window. */
+.stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--bg);
+  transform-origin: 0 0;
+  isolation: isolate;
+}
+.abs { position: absolute; }
+.bg { position: absolute; inset: 0; z-index: -1; }
+/* Static film grain: dithers the dark gradients so 8-bit H.264 does not band them. */
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+}
+.black { position: absolute; inset: 0; z-index: 60; background: #000; pointer-events: none; }
+
+.eyebrow {
+  font: 700 26px/1 var(--sans);
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  color: var(--c, var(--muted));
+}
+.title { font: 700 66px/1.08 var(--display); letter-spacing: -1.4px; color: #fff; white-space: nowrap; }
+.sub { font: 500 36px/1.3 var(--sans); color: var(--muted); white-space: nowrap; }
+.caption {
+  position: absolute;
+  left: 120px;
+  bottom: 46px;
+  font: 600 29px/1 var(--sans);
+  color: var(--muted);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.grad {
+  background: linear-gradient(100deg, #b49cfc 0%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lockup { display: flex; align-items: center; }
+.lockup .name { font: 700 96px/1 var(--display); letter-spacing: -1.5px; color: #fff; }
+.dmark { display: block; flex: none; overflow: visible; }
