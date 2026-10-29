@@ -358,6 +358,28 @@ describe("/dev/chat", () => {
     expect((await w.emulator.app.request("/dev/chat/send", { method: "POST", body: bad })).status).toBe(400);
   });
 
+  it("refuses chat POSTs from another site's page (CSRF), and takes the chat page's own", async () => {
+    const w = createWorld();
+    const form = () => {
+      const f = new FormData();
+      f.append("from", REP);
+      f.append("text", "oi");
+      return f;
+    };
+    const post = (path: string, headers: Record<string, string>, body: BodyInit) =>
+      w.emulator.app.request(path, { method: "POST", headers: { host: "127.0.0.1:8787", ...headers }, body });
+    const evil = { origin: "https://evil.example" };
+    expect((await post("/dev/chat/send", evil, form())).status).toBe(403);
+    expect((await post("/dev/chat/send", { origin: "null" }, form())).status).toBe(403);
+    expect((await post("/dev/chat/send", { referer: "https://evil.example/x" }, form())).status).toBe(403);
+    const tap = JSON.stringify({ from: REP, waId: "wamid.x", buttonId: "g:G1:a" });
+    expect((await post("/dev/chat/tap", { ...evil, "content-type": "text/plain" }, tap)).status).toBe(403);
+    expect((await post("/dev/chat/reset", evil, "")).status).toBe(403);
+    expect(w.webhooks).toHaveLength(0);
+    expect((await post("/dev/chat/send", { origin: "http://127.0.0.1:8787" }, form())).status).toBe(200);
+    expect(w.webhooks).toHaveLength(1);
+  });
+
   it("serves stored media to the page without auth", async () => {
     const w = createWorld();
     await w.control.send(REP, { file: { path: file("contrato.pdf", PDF), mime: "application/pdf" } });

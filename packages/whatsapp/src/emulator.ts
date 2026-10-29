@@ -421,6 +421,14 @@ export function createEmulator(cfg: EmulatorConfig): Emulator {
   const app = new Hono();
   const VER = ":ver{v[0-9]+[.][0-9]+}";
 
+  // The chat page's POSTs act as the rep (send, tap Approve). Any web page the developer has open could post
+  // here too (multipart and text/plain need no preflight), so a browser's Origin, else its Referer, must be
+  // this server. A request with neither is not from a browser page (scripts, tests).
+  app.use("/dev/chat/*", async (c, next) => {
+    if (c.req.method !== "POST" || sameOriginPost(c.req.raw)) return next();
+    return c.json({ error: "cross-origin request refused" }, 403);
+  });
+
   const graphError = (c: Context, status: 400 | 401 | 404, code: number, message: string, details?: string) =>
     c.json(
       {
@@ -815,4 +823,21 @@ function isChecked(value: FormDataEntryValue | null): boolean {
 
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {
   return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+}
+
+/** The Origin (else Referer) of a browser POST names this server; true when neither header is present. */
+export function sameOriginPost(req: Request): boolean {
+  const host = req.headers.get("host") ?? new URL(req.url).host;
+  const hostOf = (v: string) => {
+    try {
+      return new URL(v).host;
+    } catch {
+      return null;
+    }
+  };
+  const origin = req.headers.get("origin");
+  if (origin !== null) return hostOf(origin) === host; // "null" (sandboxed, privacy) parses to no host
+  const referer = req.headers.get("referer");
+  if (referer !== null) return hostOf(referer) === host;
+  return true;
 }
