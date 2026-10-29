@@ -305,6 +305,8 @@ const RUNG_ROW: Record<RungId, string> = {
 
 interface RunState {
   mode: "replay" | "dry_run" | "cu";
+  /** The caller's name for the phase ("Drift watch · dry run"). */
+  label?: string;
   purpose: string;
   model: string;
   provider: string;
@@ -525,7 +527,7 @@ export class Hud {
       };
     }
     if (run.mode === "dry_run") {
-      return { ...base, tone: "dry", title: "Dry run", detail: "canary, stops before submit" };
+      return { ...base, tone: "dry", title: run.label ?? "Dry run", detail: "canary, stops before submit" };
     }
     return {
       ...base,
@@ -547,9 +549,10 @@ export class Hud {
   // ---------- replay (skills runner) ----------
 
   /** A replay or a dry run starts on this page. */
-  runStart(o: { skill: Skill; dryRun?: boolean }): void {
+  runStart(o: { skill: Skill; dryRun?: boolean; label?: string }): void {
     this.run = {
       mode: o.dryRun ? "dry_run" : "replay",
+      ...(o.label ? { label: o.label } : {}),
       purpose: o.dryRun ? "dry_run" : "replay",
       model: "",
       provider: "",

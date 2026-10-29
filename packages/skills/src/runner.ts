@@ -75,6 +75,8 @@ export interface RunEnv {
   artifacts: ArtifactStore;
   /** Deadline for the post-commit success check. Default 15 s. */
   successTimeoutMs?: number;
+  /** What the demo HUD calls this run (e.g. "Drift watch · dry run"). */
+  hudLabel?: string;
 }
 
 export type RunSkillOptions = RunOptions & RunEnv;
@@ -216,7 +218,11 @@ class SkillRun {
   }
 
   async run(): Promise<RunResult> {
-    this.hud?.runStart({ skill: this.skill, dryRun: this.opts.dryRun === true });
+    this.hud?.runStart({
+      skill: this.skill,
+      dryRun: this.opts.dryRun === true,
+      ...(this.opts.hudLabel ? { label: this.opts.hudLabel } : {}),
+    });
     try {
       if (this.opts.writeGuard) {
         this.guard = await installWriteGuard(
@@ -702,6 +708,12 @@ class SkillRun {
       return this.stop(idx, step, started, "failed", "READBACK_MISMATCH", detail);
     }
     if (this.opts.dryRun) {
+      // The submit control must still be there (and is healed if it moved), but it is never clicked.
+      if (step.op === "click" || step.target) {
+        const res = await this.resolve(idx, step);
+        if (!res.ok) return this.repair(idx, step, started, res);
+        await this.record(idx, this.steps[idx] as Step, started, res.outcome);
+      }
       this.outcome = "dry_run_ok";
       return { stop: true };
     }

@@ -1,8 +1,8 @@
 import type { Page } from "playwright";
 import { z } from "zod";
 import type { ArtifactRef, ErrorCode, Id } from "./base.ts";
-import { Target } from "./browser.ts";
 import type { CuHooks, ParamValue, Trace, WriteGuardConfig } from "./browser.ts";
+import { Target } from "./browser.ts";
 import type { CallCtx } from "./models.ts";
 
 export const ParamType = z.enum(["string", "number", "date", "enum", "email", "phone", "boolean", "file"]);
@@ -17,6 +17,13 @@ export const ParamSpec = z.object({
   enumValues: z.array(z.string()).optional(),
 });
 export type ParamSpec = z.infer<typeof ParamSpec>;
+
+/**
+ * A compiled skill's param (additive): a ParamSpec plus the value used when a request gives none (the rep's
+ * answer to an ask-the-rep question). Never part of a model-facing schema: SkillDraft keeps plain ParamSpec.
+ */
+export const SkillParamSpec = ParamSpec.extend({ default: z.string().optional() });
+export type SkillParamSpec = z.infer<typeof SkillParamSpec>;
 
 /**
  * Templates: "{{name}}", "{{name|date:DD/MM/YYYY}}", "{{name|number:pt-BR}}". Nothing else.
@@ -62,7 +69,7 @@ export const Skill = z.object({
   parentVersion: z.number().int().positive().nullable(),
   title: z.string(),
   portalId: z.string(),
-  params: z.array(ParamSpec),
+  params: z.array(SkillParamSpec),
   steps: z.array(Step),
   success: SkillSuccess,
   createdFrom: z.object({
