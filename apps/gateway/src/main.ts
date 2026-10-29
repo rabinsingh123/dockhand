@@ -26,6 +26,8 @@ async function main(): Promise<void> {
     const crm = config.crm.mode === "fake" ? createFakeCrm() : undefined;
     const tools = new Hono();
     if (crm) tools.get("/__dev/crm", (c) => c.json(crm.state()));
+    // "Skip to 3 AM": run the scheduled drift watch now (the video and demo:check use it).
+    tools.post("/__dev/watch", async (c) => c.json(await wired.orchestrator.watch({ trigger: "schedule" })));
     dev = await startDevProcess({ config, routes: tools });
     const ledger = createLedger(dev.db, dev.clock);
     // META_MODE=fake runs the whole demo for free: teach, first runs, heals and replays all work end to end.
@@ -44,6 +46,8 @@ async function main(): Promise<void> {
     wired = createOrchestratorFromDev(dev, {
       models,
       firstRunModel: process.env.FIRST_RUN_MODEL,
+      // Drift watch every N minutes (DRIFT_WATCH_EVERY_MIN); unset = only /watch and POST /__dev/watch.
+      watchEveryMs: Math.max(0, Number(process.env.DRIFT_WATCH_EVERY_MIN ?? 0)) * 60_000,
       ...(crm ? { crm } : {}),
       ...(fake
         ? {

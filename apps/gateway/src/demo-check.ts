@@ -447,7 +447,7 @@ function latestRun(w: World): {
   try {
     return db
       .prepare(
-        "SELECT id, mode, outcome, model_calls, skill_version FROM runs WHERE id NOT LIKE '%-%' ORDER BY started_at DESC, rowid DESC LIMIT 1",
+        "SELECT id, mode, outcome, model_calls, skill_version FROM runs WHERE id NOT LIKE '%-%' AND eval_suite IS NULL ORDER BY started_at DESC, rowid DESC LIMIT 1",
       )
       .get() as never;
   } finally {
@@ -639,6 +639,59 @@ const STEPS: Step[] = [
       await rep.sendText("/history");
       await rep.textMsg(/Recent requests/);
       await rep.shot("commands");
+    },
+  },
+  {
+    name: "drift watch repairs a changed portal before the rep sees it",
+    async run(w) {
+      const { rep } = w;
+      // Overnight the portal relabels its fields and renames the submit button (the tier field stays).
+      await getJson(`${w.partner}/api/__admin/mutation`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          seed: 1,
+          operators: ["insert_required_field", "label_synonym", "button_rename"],
+        }),
+      });
+      const before = (await submissions(w.partner)).length;
+      await rep.sendText("/watch");
+      await rep.textMsg(
+        /^Checking .+ (with a dry run on its portal|with dry runs on their portals)\. Nothing is submitted\.$/,
+      );
+      const card = await rep.card(/^Caravela Partner Hub changed\. I repaired \d+ steps? \(/, [
+        "Roll back",
+        "Details",
+      ]);
+      check(
+        /checked it with 5 dry runs\. v4 is active, v3 is kept\. Nothing to do\.$/.test(card.text ?? ""),
+        card.text ?? "",
+      );
+      same(
+        (await submissions(w.partner)).length,
+        before,
+        "partner submissions during the watch (it never submits)",
+      );
+      await rep.shot("drift-watch-card");
+      await rep.tap(card, "Details");
+      await rep.image(/steps? repaired:/);
+      await rep.sendFile(fixture("inbound", "referral-vila-nova.jpg"));
+      const plan = await rep.card(`${w.skill} v4`, ["Approve", "Cancel"]);
+      await rep.tap(plan, "Approve");
+      const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
+      await rep.tap(commit, "Approve");
+      const receipt = await rep.image(/Replay · compiled skill/);
+      check(
+        /execution \$0\.00\b/.test(receipt.caption ?? ""),
+        `the replay after the watch must cost $0.00: ${receipt.caption}`,
+      );
+      const run = latestRun(w);
+      same(
+        [run.mode, run.outcome, run.model_calls],
+        ["replay", "success", 0],
+        "replay after the watch (no heals)",
+      );
+      await rep.shot("drift-watch-replay");
     },
   },
   {
