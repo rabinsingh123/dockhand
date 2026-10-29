@@ -75,6 +75,9 @@ All live numbers are real Meta and Baseten calls at Standard list prices, measur
 | First run, supplier onboarding from a procurement PDF (multi-step, about 40 fields, 2 uploads), zero-shot | muse-spark-1.3, low effort | 3 | 3/3 correct, 40/40 fields each; 85–98 actions; 249–310 s; $0.32–$0.49 per run |
 | That compiled skill replayed for a second buyer | none | 1 | 40/40 fields, 0 model calls, 4.8 s |
 | First run guided by the teach video vs goal only (13-field form) | muse-spark-1.3, low effort | 8 and 3 | 8/8 and 3/3 correct; 34.6 vs 32.3 actions; $0.111 vs $0.118. No measurable advantage from the video on a form this size. |
+| **Real software:** first run creating a lead in EspoCRM 10.0.11, unmodified (9 fields; then 11 with two dropdowns) | muse-spark-1.3, low effort | 3 and 1 | 3/3 at 9/9 fields, $0.02–$0.03 and 26–30 s each; 1/1 at 11/11, $0.087 |
+| EspoCRM replay of the compiled skill | none | 1 | 11/11 fields, 0 model calls, 6.2 s |
+| EspoCRM changed through its own admin screens (label renamed, layout reordered, new required field) | free rungs, then Muse Spark Open | 1 per change | Reorder healed free; rename + reorder healed by Muse Spark Open for $0.002; the new required field went to the rep; the healed version then replays the changed app with 0 heals in 8.3 s |
 
 ## What is real and what is simulated
 
@@ -83,6 +86,7 @@ All live numbers are real Meta and Baseten calls at Standard list prices, measur
 | Every Meta model call (Responses API, native computer tool, Voice Transcribe, Muse Spark Open on Baseten) | The two portals: "Caravela Partner Hub" and a multi-tenant supplier portal, built for this project with fictional companies |
 | WhatsApp Cloud API in the demo | All data: companies, people, documents (sample W-9 and insurance certificate in our own layouts) |
 | HubSpot test portal writes | The WhatsApp emulator, used only in development and tests |
+| EspoCRM 10.0.11, unmodified open-source CRM, changed only through its own admin screens | |
 | The compiler, runner, heal ladder and evals | The scripted computer-use model, used only in CI; its runs never appear in reported model numbers |
 
 ## Run it
