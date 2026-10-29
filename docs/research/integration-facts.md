@@ -41,7 +41,7 @@ Sources:
 
 - **Spark Open on Baseten does NOT enforce schemas.** https://docs.baseten.co/inference/model-apis/overview: "All Model APIs support tool calling. All except Muse Spark Open support structured outputs and JSON mode." https://docs.baseten.co/inference/structured-outputs: "Model APIs support structured outputs except for Muse Spark Open, which accepts `json_schema` but doesn't enforce the schema."
 - Spark Open on Fireworks: JSON mode only is documented. https://dev.meta.ai/docs/muse-spark-open/deploy: "Streaming (stream=True) and JSON mode (response_format={"type": "json_object"}) work the same way they do for other Fireworks chat models." `json_schema` for this model: **UNVERIFIED** (Fireworks supports `json_schema` generally per https://docs.fireworks.ai/structured-responses/structured-response-formatting, model-specific support not stated).
-- Spark Open on Groq (not a hackathon partner, access needs approval): https://dev.meta.ai/docs/muse-spark-open/deploy: "On GroqCloud the model has a 131,072-token context window and supports tool calling, structured outputs, and image input."
+- Spark Open on Groq (access needs approval): https://dev.meta.ai/docs/muse-spark-open/deploy: "On GroqCloud the model has a 131,072-token context window and supports tool calling, structured outputs, and image input."
 - Glimmer self-hosted on vLLM: enforced. https://github.com/meta-models/meta-oss-cookbook/tree/main/muse-glimmer/recipes/structured-output: "schema enforced by the server" and "The server constrains decoding. Invalid JSON is not a failure mode you handle". Recipe banner: "Max VRAM observed | ~60 GB (bf16, batch 1)". Note the recipe sets `temperature=0.0`, while the deploy guide says "Don't run this model greedy." (conflicting guidance).
 - Meta's own Spark Open / Glimmer docs have no structured-output section (checked prompting + settings pages).
 - Ours: on Baseten, treat Spark Open output as untrusted text. Ask for JSON in the prompt, validate with zod, retry once on failure.
@@ -50,7 +50,7 @@ Sources:
 
 Facts:
 - Base URL and slug. https://dev.meta.ai/docs/muse-spark-open/deploy (Baseten): model string `meta-models/muse-spark-open`; "The endpoint is OpenAI-compatible. Point any OpenAI client at Baseten" with `base_url="https://inference.baseten.co/v1"`.
-- **Verified 2026-10-28:** Baseten `GET /v1/models` lists `meta-models/muse-spark-open` (text+image input; tools, json_mode, reasoning; no structured_outputs; $1.25/M in, $4.25/M out). The `-1026` tag below is not in the catalog. Historical note: the tag `meta-models/muse-spark-open-1026` appeared only in the participant guide ("The docs list `meta-models/muse-spark-open`. For the hackathon, use `meta-models/muse-spark-open-1026` instead."). Not in Baseten docs or model page. **UNVERIFIED**: check with `curl https://inference.baseten.co/v1/models -H "Authorization: Bearer $BASETEN_API_KEY"` (the catalog needs a key; unauthenticated call returns 401).
+- **Verified 2026-10-28:** Baseten `GET /v1/models` lists `meta-models/muse-spark-open` (text+image input; tools, json_mode, reasoning; no structured_outputs; $1.25/M in, $4.25/M out). A `meta-models/muse-spark-open-1026` tag is not in the catalog, in Baseten docs or on the model page. The catalog needs a key: `curl https://inference.baseten.co/v1/models -H "Authorization: Bearer $BASETEN_API_KEY"` (an unauthenticated call returns 401).
 - Auth. https://docs.baseten.co/organization/api-keys: "Pass your API key in the `Authorization` header using the `Bearer` scheme" ... "Baseten also accepts the legacy `Api-Key` scheme on every endpoint".
 - Limits (Baseten model table, https://docs.baseten.co/inference/model-apis/overview): "Muse Spark Open | meta-models/muse-spark-open | 1048k | 1048k" (context, max output).
 - Media limits for Spark Open (https://docs.baseten.co/inference/model-apis/vision): "Max images per request | ... | 8"; "Max size per image (URL) | ... | 10 MB"; "Max request body (base64) | ... | 100 MiB"; "Max video duration | ... | 300 seconds". "Muse Spark Open doesn't accept PDF files. Extract their text before sending it." Image URLs must be reachable from Baseten: "Baseten retrieves image URLs from the inference service".
@@ -58,7 +58,7 @@ Facts:
 - Reasoning (https://docs.baseten.co/inference/model-apis/reasoning): "Muse Spark Open | `low`, `medium`, `high`, `xhigh` (default) | `none` and `minimal` run at `low`".
 - Quirks (overview): "Muse Spark Open accepts `logprobs` and `top_logprobs` but ignores them ... `n` greater than 1 returns HTTP 400. Neither `seed` nor `temperature: 0` guarantees reproducible output."
 - APIs: Chat Completions `/v1/chat/completions`, Responses `/v1/responses` ("it serves requests statelessly: send the full conversation as `input` on every call"), Anthropic Messages beta.
-- Rate limits (https://docs.baseten.co/inference/model-apis/pricing-and-limits): "Basic (unverified) | 15 | 100,000", "Basic (verified) | 120 | 500,000", "Pro | 120 | 1,000,000" (RPM | TPM). Hackathon form promises "$100 in Baseten Credits + 2M TPM Rate Limit".
+- Rate limits (https://docs.baseten.co/inference/model-apis/pricing-and-limits): "Basic (unverified) | 15 | 100,000", "Basic (verified) | 120 | 500,000", "Pro | 120 | 1,000,000" (RPM | TPM).
 - Price (https://www.baseten.co/library/muse-spark-open, via fetch): input $1.25, cached $0.15, output $4.25 per 1M tokens.
 
 Documented request (Meta docs, verbatim):
@@ -78,7 +78,7 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-Ours: Dockhand replay-verification request assembled from the documented fields above (hackathon tag swapped in, **UNVERIFIED** until the catalog check passes):
+Ours: Dockhand replay-verification request assembled from the documented fields above (the catalog model string, verified 2026-10-28):
 ```bash
 curl https://inference.baseten.co/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -110,7 +110,6 @@ curl https://api.fireworks.ai/inference/v1/chat/completions \
 - "Images. Pass image URLs or base64 data URLs in the message content."
 - "Thinking cannot be turned off, so reasoning_effort="none" is rejected."
 - Model page https://fireworks.ai/models/fireworks/muse-spark-open (via fetch): "Available on serverless on US-only capacity", $1.25 / $0.15 / $4.25 per 1M, context "1040k tokens".
-- Hackathon Fireworks credits ($25) are "reviewed for shortlisted teams" (participant guide).
 
 ### 1.6 Modal (Spark Open)
 
@@ -126,15 +125,15 @@ curl "<your-endpoint-url>/v1/chat/completions" \
   }'
 ```
 - Endpoint URL and model name come from the dashboard ("Once the Endpoint is ready, the dashboard provides its URL, model name, and request examples." https://modal.com/docs/guide/shared-endpoints). Model string likely `meta-models/Muse-Spark-Open-816B-A42B` (appears in Modal library link only): **UNVERIFIED**.
-- Billing catch, https://modal.com/docs/guide/shared-endpoints: "Credits included with your plan cannot be used for Shared Endpoint usage." Whether the hackathon's $100 Modal credits cover Shared Endpoints: **UNVERIFIED** (ask Modal/Discord).
+- Billing catch, https://modal.com/docs/guide/shared-endpoints: "Credits included with your plan cannot be used for Shared Endpoint usage."
 
 ### 1.7 Where Glimmer can run on partner hardware
 
-- Meta lists only one hosted provider for Glimmer: https://dev.meta.ai/docs/muse-glimmer/deploy: "Together AI | meta-models/Muse-Glimmer-30B" ($0.35 in / $1.50 out per 1M; "Long requests end at 32,768 output tokens"). Together is not a hackathon partner.
+- Meta lists only one hosted provider for Glimmer: https://dev.meta.ai/docs/muse-glimmer/deploy: "Together AI | meta-models/Muse-Glimmer-30B" ($0.35 in / $1.50 out per 1M; "Long requests end at 32,768 output tokens").
 - Fireworks: serverless deprecated. https://fireworks.ai/models/fireworks/muse-glimmer-30b: "Is Muse Glimmer 30B being deprecated on Fireworks? Only on serverless, starting on September 25, 2026. On-demand deployment will continue to be available." Page also shows "Serverless | Not Supported", "Supporting image input | Supported".
 - Modal: Dedicated Endpoint only, text only (see 1.2).
 - Baseten: Glimmer is not in the Model APIs table; a dedicated vLLM deploy would be needed. **UNVERIFIED** whether Baseten has a Glimmer library entry.
-- Ours: Spark Open on a partner serverless API is the cheapest path to the open-weights bonus. Glimmer on partner hardware means paying for dedicated GPUs, and on Modal it loses vision.
+- Ours: Spark Open on a hosted serverless API is the cheapest way to run the open weights. Glimmer on partner hardware means paying for dedicated GPUs, and on Modal it loses vision.
 
 ### 1.8 Can Glimmer run on this laptop?
 
@@ -156,11 +155,7 @@ Ours: not realistic for the demo. A 17 to 19 GB model on a 23 GB shared-memory m
 - Glimmer: Apache 2.0, no attribution line required beyond Apache terms.
 - Ours: put "Built with Muse Spark Open" in the README and in the receipt footer. Keep Spark Open out of drafting buyer-facing replies that a rep sends as their own words.
 
-### 1.10 Bonus-prize verification (ours)
-
-Participant guide: "Best project using Muse Glimmer or Muse Spark Open on own/partner hardware. | Verified by infrastructure partner during initial round." Ours: a partner can only verify traffic it served, so "own hardware" (a laptop) is the riskier route. The dedicated `-1026` Baseten tag looks like the verification hook. Confirm in Discord `#office-hours`: **UNVERIFIED**.
-
-### 1.11 Glimmer computer-use note
+### 1.10 Glimmer computer-use note
 
 https://github.com/meta-models/meta-oss-cookbook/tree/main/muse-glimmer/recipes/computer-use-web: "Status: not verified on this checkpoint." and "Coordinates are normalized 0-1000, origin top-left". This differs from Meta Model API's native computer tool (pixel coordinates, see meta-api-notes.md).
 
@@ -620,10 +615,8 @@ Privately distributed apps (service keys use these limits): "(Any Hub) Free and 
 ## Open items to confirm
 
 1. Baseten catalog lists `meta-models/muse-spark-open` (`GET /v1/models` with our key): verified 2026-10-28.
-2. Bonus verification: does a partner-served Model API call (Baseten `-1026`) count, and does laptop-hosted Glimmer count? Ask in Discord.
-3. Hackathon Modal credits vs "Credits included with your plan cannot be used for Shared Endpoint usage."
-4. WhatsApp test-number recipient cap (old docs: 5).
-5. Whether forwarded voice notes and PDFs carry `context.forwarded`.
-6. Whether the Oct 1, 2026 service-message charging applies to the test number.
-7. Service key creation inside a developer test account.
-8. Default deal stage IDs in our portal.
+2. WhatsApp test-number recipient cap (old docs: 5).
+3. Whether forwarded voice notes and PDFs carry `context.forwarded`.
+4. Whether the Oct 1, 2026 service-message charging applies to the test number.
+5. Service key creation inside a developer test account.
+6. Default deal stage IDs in our portal.

@@ -246,7 +246,7 @@ https://www.deloitte.com/content/dam/insights/articles/2024/73699-global-intelli
 
 Not found: a Gartner statistic on bots breaking from UI changes; any primary source for RPA maintenance as a share of program cost.
 
-Counterpoint judges may raise (headline only; gartner.com blocked us): Gartner, 25 Jun 2025, "Gartner Predicts Over 40% of Agentic AI Projects Will Be Canceled by End of 2027".
+Counterpoint (headline only; gartner.com blocked us): Gartner, 25 Jun 2025, "Gartner Predicts Over 40% of Agentic AI Projects Will Be Canceled by End of 2027".
 https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-predicts-over-40-percent-of-agentic-ai-projects-will-be-canceled-by-end-of-2027
 
 ---
@@ -261,9 +261,9 @@ https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-predicts-o
 Abhyankar, Qi, Zhang, "OSWorld-Human: Benchmarking the Efficiency of Computer-Use Agents", arXiv 2506.16042 v1, 19 Jun 2025. v2 (18 May 2026) changes the step figure to "2.7-4.3x more steps than necessary"; cite the version you show.
 https://arxiv.org/abs/2506.16042v1 (latest: https://arxiv.org/abs/2506.16042)
 
-Not found: a credible public benchmark of cost per task for computer-use agents vs scripted replay. Figures in circulation are vendor blog estimates. Our own eval (first agentic run vs compiled replay, 50 runs per skill, promise 5 in `docs/SUBMISSION.md`) is the evidence to show.
+Not found: a credible public benchmark of cost per task for computer-use agents vs scripted replay. Figures in circulation are vendor blog estimates. Dockhand's own eval (first agentic run vs compiled replay, 50 runs per skill) measures this directly; see `evals/results`.
 
-Counterpoint judges may raise (headline only; gartner.com blocked us): Gartner, 18 Nov 2025, "Gartner Predicts By 2028 AI Agents Will Outnumber Sellers by 10X—Yet Fewer Than 40% of Sellers Will Report AI Agents Improved Productivity".
+Counterpoint (headline only; gartner.com blocked us): Gartner, 18 Nov 2025, "Gartner Predicts By 2028 AI Agents Will Outnumber Sellers by 10X—Yet Fewer Than 40% of Sellers Will Report AI Agents Improved Productivity".
 https://www.gartner.com/en/newsroom/press-releases/2025-11-18-gartner-predicts-by-2028-ai-agents-will-outnumber-sellers-by-10x-yet-fewer-than-40-percent-of-sellers-will-report-ai-agents-improved-productivity
 
 ---
