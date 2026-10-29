@@ -294,6 +294,8 @@ interface Ladder {
   done: boolean;
   foot?: string;
 }
+/** The ladder row a heal rung belongs to (both free rungs share the first row). */
+const rungRow = (r: HealRung): RungId => (r === "fallback" || r === "similarity" ? "free" : r);
 const RUNG_ROW: Record<RungId, string> = {
   free: "Free · stored selectors, similarity",
   open_weights: "Muse Spark Open",
@@ -1039,7 +1041,8 @@ export class Hud {
     return lad;
   }
 
-  private rungState(lad: Ladder, id: RungId, status: LadderRung["status"], detail: string): void {
+  private rungState(lad: Ladder, rung: HealRung, status: LadderRung["status"], detail: string): void {
+    const id = rungRow(rung);
     const r = lad.rungs.find((x) => x.id === id);
     if (r) {
       r.status = status;
@@ -1047,7 +1050,8 @@ export class Hud {
     }
   }
 
-  private rungName(lad: Ladder, id: RungId, name: string): void {
+  private rungName(lad: Ladder, rung: HealRung, name: string): void {
+    const id = rungRow(rung);
     const r = lad.rungs.find((x) => x.id === id);
     if (r) r.name = name;
   }
