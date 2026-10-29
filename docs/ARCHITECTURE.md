@@ -39,7 +39,7 @@ flowchart LR
   mg --> db
 ```
 
-The model is used where judgment is needed (reading a photo, understanding a request, doing a workflow the first time, repairing a step) and kept off the path once a workflow is known. A replay makes zero model calls; a step that breaks climbs a ladder that starts with free deterministic fixes and ends with asking the rep.
+The model is used where judgment is needed (reading a photo, understanding a request, doing a workflow the first time, repairing a step) and kept off the path once a workflow is known. A replay makes zero model calls; a step that breaks climbs a ladder that starts with free deterministic fixes and ends with asking the rep. A drift watch runs the same ladder on scheduled dry runs, so most breaks are repaired before a real request meets them (section 2.6).
 
 ## 1. Packages
 
@@ -160,6 +160,17 @@ Every fix is verified by the harness before it is used (role and fingerprint for
 
 Validation errors from bad data are never sent to repair. A healed step is re-verified by continuing the run; a patched skill must pass canary dry-runs before it is activated. Evals never persist heals.
 
+### 2.6 Drift watch (self-maintenance)
+- Trigger: every `DRIFT_WATCH_EVERY_MIN` minutes, on the `/watch` command, or `POST /__dev/watch` (local only).
+- Each active skill replays in dry-run mode on synthetic values (param defaults, first-run examples, company files). Every dry run, including compile verification and canaries, also resolves the submit control and heals it if it moved, without clicking it; the write guard holds every write.
+- Outcomes:
+  - Verified: recorded quietly.
+  - Repaired: the heal ladder, then 5 canary dry runs, then v(n+1) is activated with the old version kept, and the rep gets one card (diff image, Roll back, Details).
+  - New required field: asked once; the answer becomes the parameter's default, so later jobs don't ask again.
+  - Can't heal safely: one line to the rep; the version stays and the next real job uses computer use for that step.
+- Watch runs are tagged `drift_watch`; their model calls are attributed to the watch job in the ledger.
+- WhatsApp only allows free-form messages within 24 hours of the rep's last message; a proactive card outside that window needs an approved template.
+
 ## 3. Orchestration
 - Webhook: verify `X-Hub-Signature-256` over raw bytes, always 200 once verified, dedupe by wamid inside the job-creation transaction, ignore statuses, allow-list reps before any download or model call, download media immediately.
 - Attach rule (no timers): a media message starts a new job; a reply to a Dockhand message attaches to that message's job; a text from a rep with a job awaiting input or a pending plan gate attaches to it.
@@ -258,6 +269,8 @@ Every call goes through `ModelGateway` and lands in the `model_calls` ledger (pr
 | The process restarts mid-job | The boot sweep fails in-flight jobs and expires their gates |
 | A model returns invalid structured output | One retry, then `MODEL_INVALID_OUTPUT`; nothing is written |
 | A step's target is gone | The heal ladder (section 2.5); if no rung fixes it, the run stops before any write |
+| A page tries to send data elsewhere or navigate off the portal | Writes and main-frame navigations to any other origin are aborted and logged |
+| The portal changes while nobody is using it | The drift watch finds it on a dry run, heals and canaries it, and tells the rep (section 2.6) |
 | A field reads back wrong | `READBACK_MISMATCH`: the run stops before submit |
 | The success page doesn't appear after submit | Outcome `unknown`; the submit is never clicked again |
 | A HubSpot write fails | The `tool_calls` row is recorded first; POSTs are never auto-retried |

@@ -1,8 +1,8 @@
 # Dockhand
 
-**Meta's computer use writes its own automation, and repairs it when the app changes.**
+**Automation that maintains itself.** Meta's computer use writes the program, every write is proven before it is submitted, and when the app changes the program repairs itself with the cheapest model that can, often before anyone notices.
 
-Show Dockhand a web workflow once, as a plain screen recording or just a goal. Muse computer use does it the first time and records exactly what it touched. That run compiles into a program that replays in seconds with no model calls. When the app's UI changes, a repair ladder fixes the broken step, verifies it, and saves a new version of the skill. Sales reps trigger, teach and approve everything from WhatsApp.
+Show Dockhand a web workflow once, as a plain screen recording or just a goal. Muse computer use does it the first time and records exactly what it touched. That run compiles into a program that replays in seconds with no model calls. When the app's UI changes, a repair ladder fixes the broken step, verifies it, and saves a new version of the skill; a nightly drift watch does the same with dry runs, so the rep gets "Caravela changed overnight. I repaired 2 steps and checked them with 5 dry runs. Nothing to do." When the app needs information the program doesn't have, Dockhand asks the rep once and remembers the answer. Sales reps trigger, teach and approve everything from WhatsApp.
 
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"). Everything in this repository was built during the event, Oct 27 to Nov 4, 2026.
 
@@ -22,6 +22,8 @@ WhatsApp message ─► understand ─► plan ─► Approve ─► replay (0 m
                                                        │ fixed
                                                        ▼
                           canary dry runs ─► skill v(n+1) with a readable diff (old version kept for rollback)
+
+drift watch (nightly, or /watch): dry run each skill, never submitting ─► broke? heal ladder ─► 5 canary dry runs ─► v(n+1) ─► "Nothing to do."
 ```
 
 - **Teach from a video.** The recording is sent to WhatsApp as a document (no recompression). Muse Wonder turns it into a draft: steps that reference typed parameters by name, the submit control, and what success looks like. Values seen in the video are never typed into a real run.
@@ -29,12 +31,14 @@ WhatsApp message ─► understand ─► plan ─► Approve ─► replay (0 m
 - **Compile.** The trace becomes a parameterized program built from end-state values, not keystrokes. Muse Spark writes step intents, parameter names and the success check; code verifies them, then the program must replay correctly twice in dry-run mode, once with the original values and once with fresh ones, before it is saved.
 - **Replay.** No model calls. Before submitting, every filled value is read back from the page and compared with what the skill meant to write. Any mismatch stops the run.
 - **Heal.** Cheapest rung first: another stored selector, fingerprint similarity (both free), Muse Spark Open picking the element from a pruned accessibility list (text only), Muse computer use with a narrow goal and at most 8 actions. When the page needs information the skill doesn't have, such as a new required field, Dockhand asks the rep once in WhatsApp and adds the parameter. A healed skill must pass canary dry runs before it is activated.
+- **Maintain itself.** The drift watch replays every active skill in dry-run mode on a schedule (or on `/watch`), stopping before the submit control. A break is healed and canaried the same way, and the rep gets one card with the diff, Roll back and Details. A new required field is asked once; the answer becomes the parameter's default. Proactive cards outside WhatsApp's 24-hour window need an approved message template.
 
 ## Safety and approvals
 
-- Nothing is submitted without a tap. The harness enforces this, not the model: a click or Enter on a submit control is blocked until the rep approves, and a network guard holds any POST, PUT, PATCH or DELETE to the portal until an approval exists.
-- Approval cards show the filled form and the values read back from the page.
-- Computer-use safety checks from the API are routed to the rep as approvals.
+- Nothing is submitted without a tap. The harness enforces this, not the model: a click or Enter on a submit control is blocked until the rep approves, and a network guard holds any POST, PUT, PATCH or DELETE to the portal until an approval exists. Writes and navigations to any other site are aborted.
+- An approval releases exactly the control shown on its card: the harness clicks that element itself after checking it is still there, and voids the approval if the page changed. Approval cards show the filled form and the values read back from the page.
+- Meta attaches a routine confirmation check to every computer-use action; the harness acknowledges that one by policy, since the gates above cover it. Any other safety check goes to the rep as an approval.
+- Text taken from documents, photos and voice notes is cut to one line, length-capped and quoted as data before it reaches a model prompt.
 - Only allow-listed reps can use it. Dockhand never messages buyers; it drafts replies for the rep to forward.
 
 ## Meta models, one job each
