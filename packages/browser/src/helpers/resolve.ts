@@ -7,6 +7,7 @@ import { ensureDh } from "../dom/script.ts";
 import { describeExact, describeHandle, isFileFingerprint, ownerHandle } from "./describe.ts";
 import { listDescriptors } from "./forms.ts";
 import { candidateFamily, isStrongCandidate, toLocator } from "./locators.ts";
+import { isSettled, SETTLED_MISS_MS } from "./settle.ts";
 import {
   FINGERPRINT_FLOOR,
   type FingerprintField,
@@ -71,6 +72,41 @@ function fingerprintCheck(
   return score >= FINGERPRINT_FLOOR
     ? { ok: true }
     : { ok: false, why: `fingerprint score ${score.toFixed(2)} below ${FINGERPRINT_FLOOR}` };
+}
+
+/** The page settled and the target still was not there: given up before the deadline. */
+class SettledMiss extends Error {
+  constructor(readonly waitedMs: number) {
+    super(`target missing on a settled page after ${waitedMs} ms`);
+  }
+}
+
+const WAIT_SLICE_MS = 250;
+
+/**
+ * Waits for the union like `waitFor`, but on a settled page (no request in flight, no DOM change, no spinner)
+ * a target that has been missing for SETTLED_MISS_MS is not coming: it throws SettledMiss so the step reaches
+ * the heal ladder in about a second instead of after the whole timeout. Strict-mode violations rethrow at once.
+ */
+async function waitForTarget(
+  page: Page,
+  union: Locator,
+  state: "attached" | "visible",
+  timeoutMs: number,
+): Promise<void> {
+  const started = Date.now();
+  const deadline = started + timeoutMs;
+  for (;;) {
+    const left = deadline - Date.now();
+    try {
+      await union.waitFor({ state, timeout: Math.max(1, Math.min(WAIT_SLICE_MS, left)) });
+      return;
+    } catch (e) {
+      if (isStrictViolation(e) || Date.now() >= deadline) throw e;
+    }
+    const waited = Date.now() - started;
+    if (waited >= SETTLED_MISS_MS && (await isSettled(page))) throw new SettledMiss(waited);
+  }
 }
 
 function isStrictViolation(e: unknown): boolean {
@@ -161,7 +197,7 @@ export async function resolveTarget(
 
   let waitError: unknown = null;
   try {
-    await union.waitFor({ state: upload ? "attached" : "visible", timeout: opts.timeoutMs });
+    await waitForTarget(page, union, upload ? "attached" : "visible", opts.timeoutMs);
   } catch (e) {
     waitError = e;
   }
@@ -178,7 +214,10 @@ export async function resolveTarget(
   }
 
   if (!isStrictViolation(waitError)) {
-    const detail = `no candidate matched within ${opts.timeoutMs} ms`;
+    const detail =
+      waitError instanceof SettledMiss
+        ? `no candidate matched within ${waitError.waitedMs} ms (the page had settled)`
+        : `no candidate matched within ${opts.timeoutMs} ms`;
     return opts.allowSimilarity
       ? similarityOverPage(page, target, detail)
       : { ok: false, code: "STEP_NOT_FOUND", detail };

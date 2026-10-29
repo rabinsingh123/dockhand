@@ -363,4 +363,18 @@
       });
     },
   });
+  // Settledness for replay: ms since the DOM last changed (the Dockhand HUD excluded) and whether a busy
+  // indicator is showing. Node adds in-flight requests (helpers/settle.ts).
+  let lastMutation = performance.now();
+  const hudOnly = rs => rs.every(r => { const n = r.target.nodeType === 1 ? r.target : r.target.parentElement; return !!n && !!n.closest && !!n.closest('dockhand-hud'); });
+  try {
+    new MutationObserver(rs => { if (!hudOnly(rs)) lastMutation = performance.now(); })
+      .observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+  } catch (e) { /* no document yet: settledness falls back to the network alone */ }
+  const BUSY = '[aria-busy="true"], [role="progressbar"]:not([aria-valuenow]), .spinner, .spinner-border, .loading-spinner, .loader';
+  window.__dh.settle = () => ({
+    domQuietMs: Math.round(performance.now() - lastMutation),
+    busy: [...document.querySelectorAll(BUSY)].some(e => isVisible(e)),
+    ready: document.readyState === 'complete',
+  });
 })();

@@ -15,6 +15,7 @@ export {
   toLocator,
 } from "./helpers/locators.ts";
 export { type ResolveOptions, type ResolveResult, resolveTarget } from "./helpers/resolve.ts";
+export { isSettled, SETTLED_MISS_MS, trackNetwork } from "./helpers/settle.ts";
 export {
   FINGERPRINT_FLOOR,
   type InteractionClass,

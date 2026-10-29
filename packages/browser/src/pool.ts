@@ -14,6 +14,7 @@ import {
 } from "@dockhand/core";
 import { type Browser, type BrowserContext, chromium, type LaunchOptions, type Page } from "playwright";
 import { DH_SCRIPT } from "./dom/script.ts";
+import { trackNetwork } from "./helpers/settle.ts";
 import { attachHud, HUD_SCRIPT, type HudOptions, hudOptionsFromEnv } from "./hud/hud.ts";
 import { renderHtmlWith } from "./render.ts";
 
@@ -144,6 +145,7 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
       context = await newContext(o.portalId);
       if (o.cookies?.length) await context.addCookies(o.cookies);
       page = await context.newPage();
+      trackNetwork(page);
       if (hud) attachHud(page, hud);
     } catch (e) {
       releaseSlot();
