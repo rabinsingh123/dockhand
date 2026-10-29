@@ -32,7 +32,8 @@ import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
 import { fitSpecsToValues, inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
-import { diffCardHtml, receiptCaption, skillCardHtml } from "../tools/receipts.ts";
+import { diffPhoneCardHtml } from "../tools/phone-cards.ts";
+import { receiptCaption, skillCardHtml } from "../tools/receipts.ts";
 import {
   type FlowEnv,
   gateHooks,
@@ -318,11 +319,6 @@ export async function runFirstRun(
     );
   }
   return { ok: true };
-}
-
-/** At most `n` lines, the rest counted in the last one. */
-function capLines(lines: string[], n: number): string[] {
-  return lines.length <= n ? lines : [...lines.slice(0, n - 1), `…and ${lines.length - n + 1} more changes`];
 }
 
 function firstMatch(text: string, regex: string | undefined): string | undefined {
@@ -628,23 +624,15 @@ async function promotePatch(
       : "heal";
   const saved = env.skills.saveVersion(patched, parent.version, true, source, o.runId);
   const how = o.rungs.map((r) => RUNG_WORDS[r]).join(" + ") || "a free heal";
-  const card = await env.cards.card(
+  const card = await env.phoneCards.render(
     job.id,
-    diffCardHtml({
-      name: saved.name,
-      title: saved.title,
-      from: parent.version,
-      to: saved.version,
-      // The grouped summary first, then only the changes a person would want to read (not every free heal).
-      lines: capLines(
-        [
-          ...(o.summary ? [o.summary] : []),
-          ...saved.changelog.split("\n").filter((l) => l.trim() !== "" && !/fallback selector/.test(l)),
-        ],
-        5,
-      ),
-      rungs: o.rungs.map((r) => RUNG_WORDS[r]),
+    diffPhoneCardHtml({
+      portalName: o.portal.name,
+      parent,
+      saved,
+      steps: o.result.steps,
       canary: { passed: canary.passed, total: canary.total },
+      costUsd: o.result.execCostUsd,
       usedOpenWeights: realOpenWeights(env, job.id, o.runId),
     }),
   );

@@ -46,6 +46,7 @@ import { buildPlan } from "./plan.ts";
 import { ESPOCRM, type PortalDirectory, type PortalInfo } from "./portals.ts";
 import { type CompanyKit, loadCompanyKit, repProfile } from "./profile.ts";
 import { createRepos, type JobRow, type MessageRow } from "./repo.ts";
+import { createPhoneCards } from "./tools/phone-cards.ts";
 import { createCardRenderer, type RenderHtml } from "./tools/receipts.ts";
 import { type KnownSkill, teachUnderstanding, type UnderstandInput, understand } from "./understand.ts";
 
@@ -167,6 +168,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
     approvals,
     portals: deps.portals,
     cards: createCardRenderer({ artifacts: deps.artifacts, render }),
+    phoneCards: createPhoneCards({ artifacts: deps.artifacts, render }),
     company,
     cu: deps.cu ?? models.computerUse({ model: "muse-spark-1.3" }),
     repairCu: deps.repairCu ?? models.computerUse({ model: "muse-spark-1.3" }),

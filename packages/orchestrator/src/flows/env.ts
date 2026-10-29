@@ -29,6 +29,7 @@ import { cardBody, clipText } from "../messages.ts";
 import type { PortalDirectory } from "../portals.ts";
 import type { CompanyKit } from "../profile.ts";
 import type { Repos } from "../repo.ts";
+import type { PhoneCards } from "../tools/phone-cards.ts";
 import type { CardRenderer } from "../tools/receipts.ts";
 
 /** What a model source learns about the session it serves (scripted stand-ins script from it). */
@@ -61,6 +62,8 @@ export interface FlowEnv {
   approvals: DockhandApprovalBroker;
   portals: PortalDirectory;
   cards: CardRenderer;
+  /** Phone-sized 2x cards (teach, skill diff, drift watch): tools/phone-cards.ts. */
+  phoneCards: PhoneCards;
   company: () => Promise<CompanyKit>;
   cu: CuModelSource;
   repairCu: CuModelSource;

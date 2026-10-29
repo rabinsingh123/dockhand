@@ -14,7 +14,7 @@ import { mentionsEspo } from "../espocrm.ts";
 import { toWav, transcriptionKeywords } from "../intake.ts";
 import { CARAVELA, ESPOCRM, type PortalDirectory, SUPPLIER, startUrlFor } from "../portals.ts";
 import { MAX, promptText } from "../sanitize.ts";
-import { teachCardHtml } from "../tools/receipts.ts";
+import { teachFrames, teachPhoneCardHtml } from "../tools/phone-cards.ts";
 import { type FlowEnv, type JobCtx, sendText, trySend } from "./env.ts";
 
 export const TEACH_MODEL = "muse-wonder-1.0";
@@ -146,8 +146,12 @@ export async function runTeach(
   }
   draft = await reachableStart(normalizeDraft(draft, known), known);
   const draftId = env.skills.saveDraft(draft, job.id, action.video.id);
-  const card = await env.cards.card(job.id, teachCardHtml(draft, narration));
   const portalName = env.portals[draft.portalId]?.name ?? draft.portalId;
+  const frames = await teachFrames(
+    { artifacts: env.artifacts, ffmpegPath: env.config.ffmpegPath },
+    action.video,
+  );
+  const card = await env.phoneCards.render(job.id, teachPhoneCardHtml(draft, { portalName, ...frames }));
 
   const { decision } = await env.approvals.open({
     jobId: job.id,

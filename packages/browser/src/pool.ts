@@ -55,7 +55,7 @@ export interface DockhandBrowserPool extends BrowserPool {
   renderHtml(
     html: string,
     size: { w: number; h: number },
-    opts?: { fullPage?: boolean },
+    opts?: { fullPage?: boolean; scale?: number },
   ): Promise<Uint8Array>;
   /** Writes the lease's cookies and storage to `<storageStateDir>/<portalId>.json`; returns the path. */
   saveStorageState(portalId: string, page: Page): Promise<string>;
