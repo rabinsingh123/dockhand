@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "text": "Can you add this lead to EspoCRM? Rafaela Moreira, Supply Chain Manager at Ipê Logística (ipelogistica.example), rafaela.moreira@ipelogistica.example, Recife, Brazil. Opportunity around US$ 54,000. Status In Process, she came in through a partner.",
+  "lead": {
+    "language": "en",
+    "firstName": "Rafaela",
+    "lastName": "Moreira",
+    "company": "Ipê Logística",
+    "email": "rafaela.moreira@ipelogistica.example",
+    "title": "Supply Chain Manager",
+    "website": "ipelogistica.example",
+    "city": "Recife",
+    "country": "Brazil",
+    "amount": 54000,
+    "status": "In Process",
+    "source": "Partner",
+    "missing": [],
+    "summaryForRep": "Create a lead in EspoCRM for Rafaela Moreira of Ipê Logística."
+  },
+  "taxIdAnswer": "BR-27.481.093/0001-55"
+}

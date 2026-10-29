@@ -7,10 +7,10 @@ import type {
   ErrorCode,
   GateKind,
   InboundMessage,
-  Intent,
   JobEvent,
   JobStatus,
   Plan,
+  PlanIntent,
   StepResult,
   Understanding,
 } from "@dockhand/core";
@@ -23,7 +23,7 @@ export interface JobRow {
   id: string;
   rep: string;
   status: JobStatus;
-  intent: Intent | null;
+  intent: PlanIntent | null;
   understanding: Understanding | null;
   plan: Plan | null;
   language: string | null;
@@ -244,7 +244,7 @@ function jobsRepo(db: Db, clock: Clock) {
     id: String(r.id),
     rep: String(r.rep),
     status: r.status as JobStatus,
-    intent: (str(r.intent) as Intent | null) ?? null,
+    intent: (str(r.intent) as PlanIntent | null) ?? null,
     understanding: json<Understanding>(r.understanding_json),
     plan: json<Plan>(r.plan_json),
     language: str(r.language),
@@ -323,7 +323,7 @@ function jobsRepo(db: Db, clock: Clock) {
     update(
       id: string,
       f: {
-        intent?: Intent | null;
+        intent?: PlanIntent | null;
         understanding?: Understanding | null;
         plan?: Plan | null;
         language?: string | null;
@@ -416,7 +416,7 @@ function jobsRepo(db: Db, clock: Clock) {
     })[] {
       const rows = db.raw
         .prepare(
-          `SELECT * FROM jobs WHERE rep = ? AND intent IN ('quote', 'register_deal', 'supplier_onboarding', 'teach')
+          `SELECT * FROM jobs WHERE rep = ? AND intent IN ('quote', 'register_deal', 'supplier_onboarding', 'teach', 'create_lead')
            ORDER BY created_at DESC, rowid DESC LIMIT ?`,
         )
         .all(rep, limit) as Row[];

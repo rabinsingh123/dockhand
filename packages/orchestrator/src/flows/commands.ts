@@ -128,7 +128,9 @@ function history(deps: CommandDeps): string {
           ? `Supplier registration for ${u?.buyerName ?? u?.company ?? u?.tenant ?? "a buyer"}`
           : j.intent === "quote"
             ? `Quote for ${u?.company ?? "a customer"}`
-            : "Teach a portal task";
+            : j.intent === "create_lead"
+              ? `Lead ${u?.contactName ?? u?.company ?? ""} in EspoCRM`.replace("  ", " ")
+              : "Teach a portal task";
     const id = j.run ? Object.values(j.run.extracted)[0] : undefined;
     const status =
       j.status === "succeeded" && id ? `submitted ${id}` : (STATUS_WORDS[j.status] ?? "in progress");

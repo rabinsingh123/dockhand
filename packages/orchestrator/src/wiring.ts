@@ -17,9 +17,17 @@ import {
 } from "@dockhand/core";
 import { createSkillStore } from "@dockhand/skills";
 import { createApprovalBroker, type DockhandApprovalBroker } from "./approvals.ts";
+import { espoFromEnv, espoPortal } from "./espocrm.ts";
 import type { CuModelSource } from "./flows/env.ts";
 import { createOrchestrator, type Orchestrator, type OrchestratorDeps } from "./orchestrator.ts";
-import { CARAVELA, PORTAL_DEFAULTS, type PortalDirectory, SUPPLIER, WRITE_GUARD_ALLOW } from "./portals.ts";
+import {
+  CARAVELA,
+  ESPOCRM,
+  PORTAL_DEFAULTS,
+  type PortalDirectory,
+  SUPPLIER,
+  WRITE_GUARD_ALLOW,
+} from "./portals.ts";
 import { createFakeCrm } from "./tools/crm-fake.ts";
 import { createHubSpotCrm } from "./tools/hubspot.ts";
 import { createQuoteService } from "./tools/quotes.ts";
@@ -49,8 +57,16 @@ export interface FromDevOptions
   firstRunModel?: string;
 }
 
-/** Portal directory from started portals, or from the configured ports (portals in another process). */
-export function portalDirectory(config: Config, started?: DevLike["portals"]): PortalDirectory {
+/**
+ * Portal directory from started portals, or from the configured ports (portals in another process). EspoCRM
+ * joins when ESPOCRM_URL is set (apps/oss/espocrm).
+ */
+export function portalDirectory(
+  config: Config,
+  started?: DevLike["portals"],
+  env: Record<string, string | undefined> = process.env,
+): PortalDirectory {
+  const espo = espoFromEnv(env);
   const partnerUrl = started?.partner.url ?? `http://127.0.0.1:${config.ports.partnerPortal}`;
   const supplierUrl = started?.supplier.url ?? `http://127.0.0.1:${config.ports.supplierPortal}`;
   const sessionFor = (handle: PortalHandleLike | undefined, url: string) =>
@@ -70,6 +86,7 @@ export function portalDirectory(config: Config, started?: DevLike["portals"]): P
       session: sessionFor(started?.supplier, supplierUrl),
       writeGuardAllow: WRITE_GUARD_ALLOW[SUPPLIER] ?? [],
     },
+    ...(espo ? { [ESPOCRM]: espoPortal(espo) } : {}),
   };
 }
 

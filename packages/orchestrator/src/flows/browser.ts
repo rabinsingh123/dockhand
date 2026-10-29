@@ -80,12 +80,21 @@ function portalOf(env: FlowEnv, portalId: string): PortalTarget {
 }
 
 async function leaseFor(env: FlowEnv, portal: PortalTarget, runId: string): Promise<Lease> {
-  return env.pool.lease({
+  const lease = await env.pool.lease({
     portalId: portal.id,
     runId,
     cookies: await portal.session({ runId }),
     ttlMs: env.gateTtlMs * 2 + 10 * 60_000,
   });
+  if (portal.prepare) {
+    try {
+      await portal.prepare(lease.page);
+    } catch (err) {
+      await lease.release();
+      throw err;
+    }
+  }
+  return lease;
 }
 
 function fileSlots(params: Record<string, ParamValue>): Record<string, ArtifactRef> {
@@ -204,7 +213,7 @@ export async function runFirstRun(
         params: action.params,
         attachments: fileSlots(action.params),
         commitPolicy: "gate",
-        commitHints: draft?.commitStep ? [draft.commitStep] : [],
+        commitHints: draft?.commitStep ? [draft.commitStep] : (portal.commitHints ?? []),
         writeGuard: writeGuardFor(portal),
         limits: {
           maxActions: FIRST_RUN_LIMITS[portal.id as keyof typeof FIRST_RUN_LIMITS] ?? 30,

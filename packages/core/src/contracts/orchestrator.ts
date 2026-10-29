@@ -35,6 +35,12 @@ export const Intent = z.enum([
   "unknown",
 ]);
 export type Intent = z.infer<typeof Intent>;
+/**
+ * Additive: what a plan or a job is for. The Understanding intents, plus create_lead (EspoCRM), which its own
+ * understanding call sets (packages/orchestrator/src/espocrm.ts): the general understanding schema and prompt
+ * stay as they are.
+ */
+export type PlanIntent = Intent | "create_lead";
 
 /**
  * The only model-produced planning object; flat on purpose (no unions, nothing recursive).
@@ -105,7 +111,7 @@ export type PlanAction =
 
 export interface Plan {
   jobId: Id;
-  intent: Intent;
+  intent: PlanIntent;
   actions: PlanAction[];
   writes: boolean;
   approvalText: string;

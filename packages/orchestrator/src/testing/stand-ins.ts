@@ -24,6 +24,7 @@ import {
 import { createFakeModelGateway, type FakeGatewayOptions } from "@dockhand/meta";
 import { SUPPLIER_FIELDS } from "@dockhand/portals";
 import type { Page } from "playwright";
+import { LEAD_SCHEMA, type LeadUnderstanding } from "../espocrm.ts";
 import type { CuModelSource } from "../flows/env.ts";
 import { snakeCase } from "../params.ts";
 import { isoToDmy } from "../time.ts";
@@ -229,6 +230,31 @@ export function fixtureUnderstanding(prompt: string): Understanding {
   return base;
 }
 
+/** EspoCRM lead requests (fixtures/oss/*-request.json) by their text; anything else asks for the name. */
+export function fixtureLead(prompt: string): LeadUnderstanding {
+  const dir = join(FIXTURES(), "oss");
+  for (const file of readdirSync(dir).filter((n) => n.endsWith("-request.json"))) {
+    const fx = JSON.parse(readFileSync(join(dir, file), "utf8")) as { text: string; lead: LeadUnderstanding };
+    if (prompt.includes(fx.text)) return structuredClone(fx.lead);
+  }
+  return {
+    language: "en",
+    firstName: null,
+    lastName: null,
+    company: null,
+    email: null,
+    title: null,
+    website: null,
+    city: null,
+    country: null,
+    amount: null,
+    status: null,
+    source: null,
+    missing: ["lastName", "company"],
+    summaryForRep: "A lead request with no fixture.",
+  };
+}
+
 /** Answers structured calls from fixtures: extraction by file hash, understanding by what the prompt mentions. */
 export function fixtureStructured(req: StructuredRequest<unknown>, ctx: CallCtx): unknown {
   switch (ctx.purpose) {
@@ -247,7 +273,9 @@ export function fixtureStructured(req: StructuredRequest<unknown>, ctx: CallCtx)
       return hit.extraction;
     }
     case "understand":
-      return fixtureUnderstanding(promptOf(req));
+      return req.schemaName === LEAD_SCHEMA
+        ? fixtureLead(promptOf(req))
+        : fixtureUnderstanding(promptOf(req));
     case "teach":
       return teachFixture().draft;
     case "compile_annotate":
@@ -296,6 +324,9 @@ const SAME_THING: readonly (readonly string[])[] = [
   ["Start registration", "Begin registration", "Get started", "Continue to registration"],
   ["Next", "Continue", "Save and continue", "Next step"],
   ["Submit for approval", "Send for approval", "Finish and submit"],
+  // EspoCRM fields renamed in its Entity Manager (scripts/oss/espocrm-drift.ts).
+  ["Account Name", "Company"],
+  ["First Name", "Given Name"],
 ];
 
 const bare = (s: string | undefined) =>

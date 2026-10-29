@@ -21,7 +21,7 @@ import {
   paramsFromUnderstanding,
   profileParams,
 } from "./params.ts";
-import { CARAVELA, type PortalInfo, parseInviteUrl, SUPPLIER, startUrlFor } from "./portals.ts";
+import { CARAVELA, ESPOCRM, type PortalInfo, parseInviteUrl, SUPPLIER, startUrlFor } from "./portals.ts";
 import { addDaysIso, firstOfNextMonth, todayIso } from "./time.ts";
 import {
   defaultPlan,
@@ -50,7 +50,7 @@ export const SUPPLIER_SKILL = "supplier_onboarding";
  * Computer-use action budgets for first runs. §2.8 said 30 and 80, but the loop counts single actions and a
  * field takes click + select-all + type: 13 Caravela fields need ~45, the 40-field supplier wizard ~130.
  */
-export const FIRST_RUN_LIMITS = { [CARAVELA]: 60, [SUPPLIER]: 160 } as const;
+export const FIRST_RUN_LIMITS = { [CARAVELA]: 60, [SUPPLIER]: 160, [ESPOCRM]: 60 } as const;
 
 export const WHAT_I_DO = [
   "I'm Dockhand. Forward me the work and I do it in your sales tools:",

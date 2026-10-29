@@ -27,6 +27,7 @@ import {
   type WhatsAppClient,
 } from "@dockhand/core";
 import type { DockhandApprovalBroker, GateDecision } from "./approvals.ts";
+import { inputsMentionEspo, leadToUnderstanding, planLead, understandLead } from "./espocrm.ts";
 import { runFirstRun, runReplay } from "./flows/browser.ts";
 import { isCommand, runCommand } from "./flows/commands.ts";
 import { type CuModelSource, type FlowEnv, type JobCtx, sendText, trySend } from "./flows/env.ts";
@@ -42,7 +43,7 @@ import {
 } from "./intake.ts";
 import { intakeFailure, isCancelText, isSkipText } from "./messages.ts";
 import { buildPlan } from "./plan.ts";
-import type { PortalDirectory, PortalInfo } from "./portals.ts";
+import { ESPOCRM, type PortalDirectory, type PortalInfo } from "./portals.ts";
 import { type CompanyKit, loadCompanyKit, repProfile } from "./profile.ts";
 import { createRepos, type JobRow, type MessageRow } from "./repo.ts";
 import { createCardRenderer, type RenderHtml } from "./tools/receipts.ts";
@@ -353,6 +354,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   function keywords(): string[] {
     const examples: string[] = [];
     for (const s of deps.skills.list()) {
+      if (deps.skills.active(s.name)?.portalId === ESPOCRM) continue;
       for (const p of deps.skills.active(s.name)?.params ?? []) {
         if (p.example && (p.type === "string" || p.type === "enum")) examples.push(p.example);
         for (const v of p.enumValues ?? []) examples.push(v);
@@ -364,7 +366,7 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
   function knownSkills(): KnownSkill[] {
     return deps.skills.list().flatMap((row) => {
       const s = deps.skills.active(row.name);
-      return s
+      return s && s.portalId !== ESPOCRM
         ? [
             {
               name: s.name,
@@ -402,16 +404,28 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
       const items: IntakeItem[] = [];
       for (const m of repos.messages.inboundForJob(jobId)) items.push(await intakeItem(m, msg, job));
       const video = items.find((i) => i.kind === "video");
+      const inputs = inputsOf(items);
+      // A request that names EspoCRM gets the lead understanding call; everything else is unchanged.
+      const lead =
+        !video && deps.portals[ESPOCRM] && inputsMentionEspo(inputs)
+          ? await understandLead(models, inputs, { jobId, timeoutMs: 45_000 })
+          : null;
       const u: Understanding = video
         ? teachUnderstanding(video.text)
-        : await understand(
-            models,
-            { rep: job.rep, nowMs: clock.now(), inputs: inputsOf(items), skills: knownSkills() },
-            { jobId, timeoutMs: 45_000 },
-          );
-      repos.jobs.update(jobId, { understanding: u, intent: u.intent, language: u.language });
+        : lead
+          ? leadToUnderstanding(lead)
+          : await understand(
+              models,
+              { rep: job.rep, nowMs: clock.now(), inputs, skills: knownSkills() },
+              { jobId, timeoutMs: 45_000 },
+            );
+      repos.jobs.update(jobId, {
+        understanding: u,
+        intent: lead ? "create_lead" : u.intent,
+        language: u.language,
+      });
       const kit = await company();
-      const outcome = buildPlan(u, {
+      const planCtx = {
         jobId,
         skills: deps.skills,
         rep: job.rep,
@@ -420,7 +434,8 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         attachments: items.flatMap((i) => (i.media ? [i.media] : [])),
         clock,
         portals: portalInfos,
-      });
+      };
+      const outcome = lead ? planLead(lead, planCtx) : buildPlan(u, planCtx);
       if (outcome.type === "ask") {
         repos.jobs.apply(jobId, { type: "understood", missing: outcome.missing, writes: false });
         await sendText(env, job, outcome.question);

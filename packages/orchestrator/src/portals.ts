@@ -1,10 +1,12 @@
 // The portals Dockhand works on. The orchestrator never imports @dockhand/portals: the wiring point
 // passes each portal's origin and a function that mints session cookies for one browser context.
 
-import type { CookieSpec, WriteGuardConfig } from "@dockhand/core";
+import type { CookieSpec, Lease, WriteGuardConfig } from "@dockhand/core";
 
 export const CARAVELA = "caravela";
 export const SUPPLIER = "supplier";
+/** EspoCRM, the real third-party app (apps/oss/espocrm). Configured only when ESPOCRM_URL is set. */
+export const ESPOCRM = "espocrm";
 
 /** Plain data about a portal (what buildPlan needs). */
 export interface PortalInfo {
@@ -21,6 +23,10 @@ export interface PortalTarget extends PortalInfo {
   session(o: { runId: string }): Promise<CookieSpec[]>;
   /** URL substrings the write guard always lets through (sign-in, starting an invite). */
   writeGuardAllow: string[];
+  /** Names of the control that submits, for a first run no teach draft names it for (EspoCRM: "Save"). */
+  commitHints?: string[];
+  /** Runs on every leased page before its first navigation (EspoCRM keeps its sign-in in localStorage). */
+  prepare?(page: Lease["page"]): Promise<void>;
 }
 
 export type PortalDirectory = Record<string, PortalTarget>;
