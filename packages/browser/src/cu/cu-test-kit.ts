@@ -26,7 +26,7 @@ export function cuInput(page: Page, overrides: Partial<CuRunInput> = {}): CuRunI
     attachments: {},
     commitPolicy: "gate",
     commitHints: [],
-    writeGuard: { origins: [FIXTURE_ORIGIN], allow: ["/api/__"] },
+    writeGuard: { origins: [FIXTURE_ORIGIN], allow: [] },
     limits: { maxActions: 80, maxWallMs: 120_000, maxCostUsd: 1, rolloverAfterImages: 50 },
     artifacts: createMemoryArtifactStore(),
     ...overrides,

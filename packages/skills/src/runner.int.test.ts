@@ -191,7 +191,7 @@ describe("runSkill on the partner portal", () => {
     try {
       const r = await runSkill(page, fixtureSkill, params, hooks, {
         ...options(id),
-        writeGuard: { origins: [portal.url], allow: ["/api/__"] },
+        writeGuard: { origins: [portal.url], allow: [] },
       });
       expect(r.error).toBeUndefined();
       expect(r.outcome).toBe("success");
@@ -551,7 +551,7 @@ describe("paid rungs on a live page", () => {
               model: cuModel,
               runComputerUse,
               artifacts,
-              writeGuard: { origins: [portal.url], allow: ["/api/__"] },
+              writeGuard: { origins: [portal.url], allow: [] },
             }),
           ],
         },

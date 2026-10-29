@@ -21,7 +21,7 @@ export interface PortalInfo {
 export interface PortalTarget extends PortalInfo {
   /** Cookies for a fresh browser context: signed in, following the portal defaults, tagged with runId. */
   session(o: { runId: string }): Promise<CookieSpec[]>;
-  /** URL substrings the write guard always lets through (sign-in, starting an invite). */
+  /** Paths the write guard always lets through, matched exactly (`*` = one segment): sign-in, starting an invite. */
   writeGuardAllow: string[];
   /**
    * Other origins a run may navigate to and write to, such as a same-site sign-in origin. Empty by default:
@@ -44,7 +44,7 @@ export const PORTAL_DEFAULTS: Record<string, Omit<PortalInfo, "url">> = {
 export const WRITE_GUARD_ALLOW: Record<string, string[]> = {
   [CARAVELA]: ["/api/login", "/api/logout", "/api/__config"],
   // Starting an invite is navigation, not a submission.
-  [SUPPLIER]: ["/api/login", "/api/logout", "/api/__config", "/start"],
+  [SUPPLIER]: ["/api/login", "/api/logout", "/api/__config", "/api/t/*/invite/*/start"],
 };
 
 export function writeGuardFor(

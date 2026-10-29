@@ -36,6 +36,23 @@ function originOf(url: string): string | null {
   }
 }
 
+/**
+ * `pattern` names exactly the URL's path: same segments, where `*` stands for one segment
+ * (the supplier start path is the tenant and invite code segments as stars). The query string is ignored; a
+ * substring or prefix never matches.
+ */
+export function pathMatches(pattern: string, url: string): boolean {
+  let path: string;
+  try {
+    path = new URL(url).pathname;
+  } catch {
+    return false;
+  }
+  const want = pattern.split("/");
+  const got = path.split("/");
+  return want.length === got.length && want.every((seg, i) => (seg === "*" ? got[i] !== "" : seg === got[i]));
+}
+
 function isMainFrameNavigation(req: Request, page: Page): boolean {
   try {
     return req.isNavigationRequest() && req.frame() === page.mainFrame();
@@ -45,7 +62,7 @@ function isMainFrameNavigation(req: Request, page: Page): boolean {
 }
 
 /**
- * Holds POST/PUT/PATCH/DELETE to `cfg.origins` (URLs containing an `cfg.allow` substring pass) until a token is
+ * Holds POST/PUT/PATCH/DELETE to `cfg.origins` (paths matching a `cfg.allow` pattern exactly pass) until a token is
  * granted. A held write is also reported to `onWrite`: "allow" lets it through without a token, "block" aborts
  * it; whichever of grant / onWrite comes first decides.
  *
@@ -85,7 +102,7 @@ export async function installWriteGuard(
     const req = route.request();
     const method = req.method().toUpperCase();
     const url = req.url();
-    if (!WRITE_METHODS.has(method) || cfg.allow.some((s) => url.includes(s))) return route.fallback();
+    if (!WRITE_METHODS.has(method) || cfg.allow.some((p) => pathMatches(p, url))) return route.fallback();
     if (tokens > 0) {
       tokens--;
       released++;

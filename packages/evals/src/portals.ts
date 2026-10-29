@@ -59,7 +59,7 @@ export const PORTALS: Record<EvalPortal, PortalDef> = {
     skillName: "acme_supplier_registration",
     title: "Register Tidewater Cloud as a supplier on the Acme Group portal",
     startPath: "/t/acme/invite/ACME-7731",
-    writeGuardAllow: ["/api/login", "/api/logout", "/api/__config", "/start"],
+    writeGuardAllow: ["/api/login", "/api/logout", "/api/__config", "/api/t/*/invite/*/start"],
     fields: SUPPLIER_FIELDS.filter((f) => !f.tenants || f.tenants.includes("acme")),
     insertable: SUPPLIER_INSERTABLE_FIELDS,
     hasV2: false,

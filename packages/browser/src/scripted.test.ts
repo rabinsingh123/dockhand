@@ -84,7 +84,7 @@ describe("scripted model on Caravela Partner Hub v1", () => {
         goal: "Register the Sabiá Foods deal with Caravela",
         params: { company: "Sabiá Foods Ltda.", country: "Brazil", seats: 25 },
         commitHints: ["Submit registration"],
-        writeGuard: { origins: [portal.url], allow: ["/api/__", "/api/login"] },
+        writeGuard: { origins: [portal.url], allow: ["/api/login"] },
       });
       const r = await runComputerUse(model, input, hooks, CTX);
 

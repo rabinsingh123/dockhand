@@ -60,6 +60,6 @@ describe("createOrchestratorFromDev", () => {
     const dir = portalDirectory(loadConfig({ PARTNER_PORTAL_PORT: "5101", SUPPLIER_PORTAL_PORT: "5102" }));
     expect(dir.caravela?.url).toBe("http://127.0.0.1:5101");
     expect(dir.supplier?.startPath).toBe("/t/{{tenant}}/invite/{{invite_code}}");
-    expect(dir.supplier?.writeGuardAllow).toContain("/start");
+    expect(dir.supplier?.writeGuardAllow).toContain("/api/t/*/invite/*/start");
   });
 });

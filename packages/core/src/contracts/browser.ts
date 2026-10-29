@@ -112,7 +112,7 @@ export interface WriteGuardConfig {
    * to any other origin are aborted.
    */
   origins: string[];
-  /** URL substrings that never need approval (e.g. "/api/__config"). */
+  /** Paths that never need approval, matched exactly; a `*` segment matches any one segment. */
   allow: string[];
   /** Other origins a run may navigate to and write to (a portal's same-site sign-in origin). Default none. */
   allowOrigins?: string[];

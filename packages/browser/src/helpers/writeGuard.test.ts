@@ -1,7 +1,7 @@
 import type { Browser, Page } from "playwright";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { FIXTURE_ORIGIN, type FixtureServer, fixtureContext, launchTestBrowser } from "../test-support.ts";
-import { installWriteGuard } from "./writeGuard.ts";
+import { installWriteGuard, pathMatches } from "./writeGuard.ts";
 
 const PAGE = `<!doctype html><button id=save onclick="send('POST', '/api/deals')">Save</button>
 <button id=draft onclick="send('PUT', '/api/__draft')">Draft</button>
@@ -37,11 +37,15 @@ describe("installWriteGuard", () => {
     const reported = new Promise<void>((r) => {
       resolveSeen = r;
     });
-    const guard = await installWriteGuard(page, { origins: [FIXTURE_ORIGIN], allow: ["/api/__"] }, (req) => {
-      seen.push(`${req.method} ${new URL(req.url).pathname}`);
-      resolveSeen();
-      return new Promise(() => {}); // nobody decides: only a grant can release it
-    });
+    const guard = await installWriteGuard(
+      page,
+      { origins: [FIXTURE_ORIGIN], allow: ["/api/__draft"] },
+      (req) => {
+        seen.push(`${req.method} ${new URL(req.url).pathname}`);
+        resolveSeen();
+        return new Promise(() => {}); // nobody decides: only a grant can release it
+      },
+    );
     await page.click("#save");
     await reported;
     expect(guard.pending()).toBe(1);
@@ -60,7 +64,7 @@ describe("installWriteGuard", () => {
   it("lets reads and allow-listed writes through, and aborts a write the callback blocks", async () => {
     const guard = await installWriteGuard(
       page,
-      { origins: [FIXTURE_ORIGIN], allow: ["/api/__"] },
+      { origins: [FIXTURE_ORIGIN], allow: ["/api/__draft"] },
       async () => "block",
     );
     await page.click("#get");
@@ -143,5 +147,19 @@ describe("installWriteGuard", () => {
     await guard.dispose();
     await page.locator("#out", { hasText: "POST failed;" }).waitFor();
     expect(server.hits.filter((h) => h.method === "POST")).toHaveLength(0);
+  });
+});
+
+describe("pathMatches (write-guard allow list)", () => {
+  it("matches the whole path only: no substring, prefix or extra segment slips through", () => {
+    const start = "/api/t/*/invite/*/start";
+    expect(pathMatches(start, "http://p.test/api/t/acme/invite/ACME-7731/start")).toBe(true);
+    expect(pathMatches(start, "http://p.test/api/t/acme/invite/ACME-7731/start?x=1")).toBe(true);
+    expect(pathMatches(start, "http://p.test/api/t/acme/suppliers?next=/start")).toBe(false);
+    expect(pathMatches(start, "http://p.test/api/t/acme/invite/ACME-7731/start/submit")).toBe(false);
+    expect(pathMatches(start, "http://p.test/api/t//invite/x/start")).toBe(false);
+    expect(pathMatches("/api/login", "http://p.test/api/login")).toBe(true);
+    expect(pathMatches("/api/login", "http://p.test/api/login-and-register")).toBe(false);
+    expect(pathMatches("/api/__", "http://p.test/api/__draft")).toBe(false);
   });
 });

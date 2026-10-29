@@ -116,7 +116,7 @@ describe("attach_file on the supplier portal", () => {
         artifacts,
         attachments: { w9, coi },
         params: { w9_file: { file: w9, filename: "w9-tidewater.pdf" } },
-        writeGuard: { origins: [portal.url], allow: ["/api/__"] },
+        writeGuard: { origins: [portal.url], allow: [] },
       });
       const r = await runComputerUse(model, input, recordingHooks(), CTX);
       expect(r.outcome).toBe("done");
