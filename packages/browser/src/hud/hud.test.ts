@@ -4,13 +4,13 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Lease } from "@dockhand/core";
+import type { Lease, Skill } from "@dockhand/core";
 import { type PortalHandle, startPartnerPortal } from "@dockhand/portals";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { describeAt } from "../helpers/describe.ts";
 import { formSnapshot, listInteractive } from "../helpers/forms.ts";
 import { createBrowserPool, type DockhandBrowserPool } from "../pool.ts";
-import { HUD_TAG, hudOf, hudOptionsFromEnv, modelLabel } from "./hud.ts";
+import { HUD_TAG, Hud, hudOf, hudOptionsFromEnv, modelLabel } from "./hud.ts";
 
 let portal: PortalHandle;
 let withHud: DockhandBrowserPool;
@@ -121,6 +121,33 @@ describe("demo HUD", () => {
     } finally {
       await a.release();
       await b.release();
+    }
+  });
+
+  it("ends a replay with its own time and spend, next to computer use's measured mean where there is one", async () => {
+    const lease = await open(withHud, "hud-end");
+    try {
+      const hud = hudOf(lease.page) as Hud;
+      const view = () => (hud as unknown as { compose(): { ticker: string } }).compose();
+      const skill = (portalId: string) =>
+        ({ title: "Register a deal", version: 1, portalId, steps: [] }) as unknown as Skill;
+      hud.runStart({ skill: skill("caravela") });
+      await hud.end({ outcome: "success" });
+      expect(view().ticker).toMatch(
+        /^This run: \d+\.\d s, \$0 in model calls · computer use, measured mean: 145 s, \$0\.11$/,
+      );
+      hud.runStart({ skill: skill("supplier") });
+      await hud.end({ outcome: "success" });
+      expect(view().ticker).toMatch(/^This run: \d+\.\d s, \$0 in model calls$/);
+      // Filmed: the result stays on screen before the page closes, and that wait is not part of the run's time.
+      const filmed = new Hud(lease.page, { endHoldMs: 300 });
+      filmed.runStart({ skill: skill("caravela") });
+      const t0 = performance.now();
+      await filmed.end({ outcome: "success" });
+      expect(performance.now() - t0).toBeGreaterThanOrEqual(290);
+      expect(filmed.pausedSince(t0)).toBeGreaterThanOrEqual(290);
+    } finally {
+      await lease.release();
     }
   });
 

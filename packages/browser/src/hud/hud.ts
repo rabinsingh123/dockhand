@@ -36,6 +36,11 @@ export interface HudOptions {
   pacingMs?: number;
   /** META_MODE of the process: model phases carry a "Fake models"/"Cassette" tag unless it is live or record. */
   metaMode?: string;
+  /**
+   * Holds a finished replay's last state (submitted, verified, its time and spend) on screen this long before the
+   * page closes, so a filmed run shows its result even at full speed. Excluded from timings like pacing.
+   */
+  endHoldMs?: number;
 }
 
 /** DEMO_MODE=1 turns the HUD on; DEMO_PACING_MS sets pacing. Null when DEMO_MODE is off. */
@@ -303,10 +308,19 @@ const RUNG_ROW: Record<RungId, string> = {
   ask_rep: "Ask the rep",
 };
 
+/**
+ * Pure computer use on the same form, measured live (evals/results/live-headline.md §2: Caravela, 8/8 runs,
+ * $0.1107 and 145.2 s per run): a finished replay shows its own time and spend next to it. Portals without such
+ * a measurement show only their own numbers.
+ */
+const CU_MEASURED: Record<string, { s: number; usd: number }> = { caravela: { s: 145, usd: 0.11 } };
+
 interface RunState {
   mode: "replay" | "dry_run" | "cu";
   /** The caller's name for the phase ("Drift watch · dry run"). */
   label?: string;
+  /** The skill's portal (replays and dry runs). */
+  portalId?: string;
   purpose: string;
   model: string;
   provider: string;
@@ -323,6 +337,7 @@ interface RunState {
  */
 export class Hud {
   private readonly pacing: number;
+  private readonly endHold: number;
   private readonly sim: string | null;
   private run: RunState | null = null;
   private heal: { idx: number; rung?: HealRung; model: string; stepId?: string } | null = null;
@@ -351,6 +366,7 @@ export class Hud {
     opts: HudOptions,
   ) {
     this.pacing = Math.max(0, opts.pacingMs ?? 0);
+    this.endHold = Math.max(0, opts.endHoldMs ?? 0);
     const mode = opts.metaMode ?? "live";
     this.sim = mode === "fake" ? "Fake models" : mode === "cassette" ? "Cassette replay" : null;
   }
@@ -553,6 +569,7 @@ export class Hud {
     this.run = {
       mode: o.dryRun ? "dry_run" : "replay",
       ...(o.label ? { label: o.label } : {}),
+      portalId: o.skill.portalId,
       purpose: o.dryRun ? "dry_run" : "replay",
       model: "",
       provider: "",
@@ -699,13 +716,28 @@ export class Hud {
       failed: { tone: "fail", title: "Stopped safely" },
     };
     const e = ends[r.outcome] ?? { tone: "fail" as Tone, title: r.outcome };
+    let ticker =
+      r.outcome === "success" || r.outcome === "dry_run_ok"
+        ? verified || "Every step matched"
+        : clip(r.error ?? "", 110);
+    if (run.mode === "replay" && r.outcome === "success" && this.clock) {
+      // The on-screen clock's time: pacing holds and the rep's approval waits are left out.
+      const c = this.clock;
+      const ms = Date.now() - c.startedAt - c.pausedMs - (c.pausedAt !== null ? Date.now() - c.pausedAt : 0);
+      const spent = this.baseCost + this.liveCost;
+      const cu = CU_MEASURED[run.portalId ?? ""];
+      ticker = [
+        verified,
+        `This run: ${secs(ms)}, ${spent > 0 ? money(spent) : "$0"} in model calls`,
+        cu ? `computer use, measured mean: ${cu.s} s, $${cu.usd.toFixed(2)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
     run.ended = {
       ...e,
       detail: id ?? (r.errorCode ? r.errorCode.toLowerCase().replace(/_/g, " ") : verified),
-      ticker:
-        r.outcome === "success" || r.outcome === "dry_run_ok"
-          ? verified || "Every step matched"
-          : clip(r.error ?? "", 110),
+      ticker,
     };
     this.heal = null;
     this.waiting = null;
@@ -717,8 +749,8 @@ export class Hud {
     this.freezeClock();
     void this.call("hideCursor");
     this.push();
-    const P = this.paced();
-    if (P > 0) await this.hold(P * 3);
+    const hold = Math.max(this.paced() * 3, run.mode === "replay" ? this.endHold : 0);
+    if (hold > 0) await this.hold(hold);
   }
 
   // ---------- computer use (loop) ----------

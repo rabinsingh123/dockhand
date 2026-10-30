@@ -94,6 +94,8 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
   const clock = cfg.clock ?? systemClock;
   const capture = cfg.capture !== undefined ? cfg.capture : captureOptionsFromEnv();
   const hud = cfg.hud !== undefined ? cfg.hud : cfg.headless && !capture ? null : hudOptionsFromEnv();
+  // A filmed replay keeps its result on screen a moment before the page closes (the clip ends with the page).
+  if (hud && capture && hud.endHoldMs === undefined) hud.endHoldMs = 2500;
   let browserPromise: Promise<Browser> | null = null;
   let open = 0;
   const waiters: Waiter[] = [];
