@@ -1,0 +1,2314 @@
+{
+  "label": "Baseline: an ordinary recorded script, and the runner with its heal ladder off, on the headline's 42 held-out UI-change cases (Caravela mock portal). Baseline arms make no model calls.",
+  "measured": "2026-10-30",
+  "cases": {
+    "count": 42,
+    "seeds": [
+      101,
+      102,
+      103
+    ],
+    "suites": {
+      "mutation": 33,
+      "repair": 9
+    },
+    "caseDate": "2026-10-28",
+    "sameAsHeadline": true
+  },
+  "skill": {
+    "file": "var/agent-live/headline/caravela-skill.json",
+    "sha256": "e50329434657f7f2865246ae7f37db18a283d329b12ca4640554751eb021743c",
+    "name": "register_deal",
+    "version": 1
+  },
+  "portal": {
+    "id": "caravela",
+    "latencyMs": [
+      50,
+      400
+    ],
+    "local": true
+  },
+  "ledger": {
+    "file": "var/agent-baseline/evals.sqlite",
+    "modelCallRows": 0
+  },
+  "arms": {
+    "script": {
+      "label": "Recorded script: the Playwright export of the same compiled v1 skill, run as-is",
+      "method": "the Playwright TypeScript export of the same compiled v1 skill (`exportPlaywright` in packages/skills), run as-is in a fresh browser context per case with Playwright's default 30 s timeouts. Like a recorded script it has no healing, no read-back and no approval gate. It is more forgiving than a one-selector codegen recording: each step tries its stored selectors in rank order (test id, role, label, CSS, placeholder) and takes the first that matches exactly one element. A value a case leaves out (optional field) is passed as an empty string, since the script fills every field it recorded.",
+      "counts": {
+        "cases": 42,
+        "correct": 30,
+        "safeStop": 3,
+        "stopped": 9,
+        "wrongWrite": 0,
+        "handled": 33
+      },
+      "perChange": {
+        "label_synonym": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "testid_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "button_rename": {
+          "cases": 6,
+          "correct": 6,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 6
+        },
+        "reorder_fields": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "wrapper_divs": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "class_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "id_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "placeholder_change": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_optional_field": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_required_field": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 3,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "combobox_to_radio": {
+          "cases": 6,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 6,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "ui v2": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        }
+      },
+      "control": {
+        "cases": 42,
+        "correct": 42,
+        "safeStop": 0,
+        "stopped": 0,
+        "wrongWrite": 0,
+        "handled": 42
+      },
+      "modelCalls": 0
+    },
+    "scriptPrimary": {
+      "label": "Recorded script, one selector per step: the same export from the skill cut to each step's primary selector",
+      "method": "the same export generated from the skill with every step cut to its primary (first-ranked) selector, one locator per action as a codegen recording has (test id for most steps; role and name for the two dropdowns and the consent checkbox), run as-is the same way.",
+      "counts": {
+        "cases": 42,
+        "correct": 18,
+        "safeStop": 3,
+        "stopped": 21,
+        "wrongWrite": 0,
+        "handled": 21
+      },
+      "perChange": {
+        "label_synonym": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "testid_churn": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "button_rename": {
+          "cases": 6,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 6,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "reorder_fields": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "wrapper_divs": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "class_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "id_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "placeholder_change": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_optional_field": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_required_field": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 3,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "combobox_to_radio": {
+          "cases": 6,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 6,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "ui v2": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        }
+      },
+      "control": {
+        "cases": 42,
+        "correct": 42,
+        "safeStop": 0,
+        "stopped": 0,
+        "wrongWrite": 0,
+        "handled": 42
+      },
+      "modelCalls": 0
+    },
+    "noHealNoReadBack": {
+      "label": "Dockhand's runner, heal ladder off, read-back gate off",
+      "method": "the same v1 program in Dockhand's runner with each step's primary selector only, no similarity match, no widget swap, no repair models and no questions to the rep; the read-back still runs but does not block the submit.",
+      "counts": {
+        "cases": 42,
+        "correct": 18,
+        "safeStop": 3,
+        "stopped": 21,
+        "wrongWrite": 0,
+        "handled": 21
+      },
+      "perChange": {
+        "label_synonym": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "testid_churn": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "button_rename": {
+          "cases": 6,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 6,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "reorder_fields": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "wrapper_divs": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "class_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "id_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "placeholder_change": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_optional_field": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_required_field": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 3,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "combobox_to_radio": {
+          "cases": 6,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 6,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "ui v2": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        }
+      },
+      "modelCalls": 0
+    },
+    "noHealReadBack": {
+      "label": "Dockhand's runner, heal ladder off, read-back gate on",
+      "method": "as above, with the read-back gate on: every written value is read back and a mismatch stops the run before the submit.",
+      "counts": {
+        "cases": 42,
+        "correct": 18,
+        "safeStop": 3,
+        "stopped": 21,
+        "wrongWrite": 0,
+        "handled": 21
+      },
+      "perChange": {
+        "label_synonym": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "testid_churn": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "button_rename": {
+          "cases": 6,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 6,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "reorder_fields": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "wrapper_divs": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "class_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "id_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "placeholder_change": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_optional_field": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_required_field": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 3,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "combobox_to_radio": {
+          "cases": 6,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 6,
+          "wrongWrite": 0,
+          "handled": 0
+        },
+        "ui v2": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 0,
+          "stopped": 3,
+          "wrongWrite": 0,
+          "handled": 0
+        }
+      },
+      "control": {
+        "cases": 42,
+        "correct": 42,
+        "safeStop": 0,
+        "stopped": 0,
+        "wrongWrite": 0,
+        "handled": 42
+      },
+      "modelCalls": 0
+    },
+    "dockhand": {
+      "label": "Dockhand: heal ladder and read-back (section 1, live)",
+      "method": "the live heal-ladder rows of section 1 (evals/results/live/, 2026-10-28), not re-run here.",
+      "counts": {
+        "cases": 42,
+        "correct": 39,
+        "safeStop": 3,
+        "stopped": 0,
+        "wrongWrite": 0,
+        "handled": 42
+      },
+      "perChange": {
+        "label_synonym": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "testid_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "button_rename": {
+          "cases": 6,
+          "correct": 6,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 6
+        },
+        "reorder_fields": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "wrapper_divs": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "class_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "id_churn": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "placeholder_change": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_optional_field": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "insert_required_field": {
+          "cases": 3,
+          "correct": 0,
+          "safeStop": 3,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        },
+        "combobox_to_radio": {
+          "cases": 6,
+          "correct": 6,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 6
+        },
+        "ui v2": {
+          "cases": 3,
+          "correct": 3,
+          "safeStop": 0,
+          "stopped": 0,
+          "wrongWrite": 0,
+          "handled": 3
+        }
+      },
+      "modelCalls": 24
+    }
+  },
+  "rows": [
+    {
+      "caseId": "mutation-caravela-s101-label_synonym-000",
+      "change": "label_synonym",
+      "expectedCategory": "heal_deterministic_or_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1000,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "no candidate matched exactly one element",
+          "ms": 330,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "s8 (Select the country from the 'Country' dropdown.): no candidate matched within 1032 ms (the page had settled)",
+          "ms": 1687
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "s8 (Select the country from the 'Country' dropdown.): no candidate matched within 1052 ms (the page had settled)",
+          "ms": 1521
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 4270
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-testid_churn-000",
+      "change": "testid_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 962,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "no candidate matched exactly one element",
+          "ms": 172,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1030 ms (the page had settled)",
+          "ms": 1155
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1046 ms (the page had settled)",
+          "ms": 1164
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 4564
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-button_rename-000",
+      "change": "button_rename",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 829,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "no candidate matched exactly one element",
+          "ms": 221,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1034 ms (the page had settled)",
+          "ms": 1302
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1035 ms (the page had settled)",
+          "ms": 1263
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 21616
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-reorder_fields-000",
+      "change": "reorder_fields",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 769,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 615,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 2610
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1864
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3766
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-wrapper_divs-000",
+      "change": "wrapper_divs",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 597,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 718,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1905
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1603
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3729
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-class_churn-000",
+      "change": "class_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 822,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 695,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1974
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1785
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3516
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-id_churn-000",
+      "change": "id_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 692,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 859,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1655
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1877
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3122
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-placeholder_change-000",
+      "change": "placeholder_change",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 575,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 684,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1516
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1891
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3194
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-insert_optional_field-000",
+      "change": "insert_optional_field",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 817,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 768,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1891
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1856
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3689
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-insert_required_field-000",
+      "change": "insert_required_field",
+      "expectedCategory": "must_fail_safe",
+      "arms": {
+        "script": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "success check after the submit click",
+          "error": "page.waitForURL: Timeout 30000ms exceeded. (waiting for navigation until \"load\")",
+          "ms": 30557,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "success check after the submit click",
+          "error": "page.waitForURL: Timeout 30000ms exceeded. (waiting for navigation until \"load\")",
+          "ms": 30598,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 1475
+        },
+        "noHealReadBack": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 1368
+        },
+        "dockhand": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 3050
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s101-combobox_to_radio-000",
+      "change": "combobox_to_radio",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "locator.click: Timeout 30000ms exceeded. (waiting for getByRole('option', { name: 'Tidewater Cloud Business', exact: true })\u001b[22m)",
+          "ms": 30381,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 732,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1039 ms (the page had settled)",
+          "ms": 1782
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1050 ms (the page had settled)",
+          "ms": 1817
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 3152
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-label_synonym-000",
+      "change": "label_synonym",
+      "expectedCategory": "heal_deterministic_or_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 570,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "no candidate matched exactly one element",
+          "ms": 693,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "s8 (Select the country from the 'Country' dropdown.): no candidate matched within 1057 ms (the page had settled)",
+          "ms": 1569
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "s8 (Select the country from the 'Country' dropdown.): no candidate matched within 1033 ms (the page had settled)",
+          "ms": 1564
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 3647
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-testid_churn-000",
+      "change": "testid_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 658,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "no candidate matched exactly one element",
+          "ms": 326,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1024 ms (the page had settled)",
+          "ms": 1170
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1054 ms (the page had settled)",
+          "ms": 1198
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 4443
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-button_rename-000",
+      "change": "button_rename",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 812,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "no candidate matched exactly one element",
+          "ms": 441,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1054 ms (the page had settled)",
+          "ms": 1302
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1023 ms (the page had settled)",
+          "ms": 1313
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 19086
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-reorder_fields-000",
+      "change": "reorder_fields",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 743,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1322,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1546
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1899
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 3355
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-wrapper_divs-000",
+      "change": "wrapper_divs",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 742,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1118,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1527
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1573
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 3470
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-class_churn-000",
+      "change": "class_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 785,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 997,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1684
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1750
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 3153
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-id_churn-000",
+      "change": "id_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 916,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1072,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1828
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1805
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3393
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-placeholder_change-000",
+      "change": "placeholder_change",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 753,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1035,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1483
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 2017
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3285
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-insert_optional_field-000",
+      "change": "insert_optional_field",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 706,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1055,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1960
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1760
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3469
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-insert_required_field-000",
+      "change": "insert_required_field",
+      "expectedCategory": "must_fail_safe",
+      "arms": {
+        "script": {
+          "outcome": "safe_stop",
+          "fields": "0/12",
+          "stoppedAt": "success check after the submit click",
+          "error": "page.waitForURL: Timeout 30000ms exceeded. (waiting for navigation until \"load\")",
+          "ms": 30608,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "safe_stop",
+          "fields": "0/12",
+          "stoppedAt": "success check after the submit click",
+          "error": "page.waitForURL: Timeout 30000ms exceeded. (waiting for navigation until \"load\")",
+          "ms": 30788,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "safe_stop",
+          "fields": "0/12",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 1570
+        },
+        "noHealReadBack": {
+          "outcome": "safe_stop",
+          "fields": "0/12",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 1504
+        },
+        "dockhand": {
+          "outcome": "safe_stop",
+          "fields": "0/12",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 3236
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s102-combobox_to_radio-000",
+      "change": "combobox_to_radio",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "locator.click: Timeout 30000ms exceeded. (waiting for getByRole('option', { name: 'Tidewater Cloud Business', exact: true })\u001b[22m)",
+          "ms": 30533,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 462,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1028 ms (the page had settled)",
+          "ms": 1919
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1044 ms (the page had settled)",
+          "ms": 2003
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 3046
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-label_synonym-000",
+      "change": "label_synonym",
+      "expectedCategory": "heal_deterministic_or_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 711,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "no candidate matched exactly one element",
+          "ms": 353,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "s8 (Select the country from the 'Country' dropdown.): no candidate matched within 1032 ms (the page had settled)",
+          "ms": 1506
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s8 Country",
+          "error": "s8 (Select the country from the 'Country' dropdown.): no candidate matched within 1053 ms (the page had settled)",
+          "ms": 1653
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 3130
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-testid_churn-000",
+      "change": "testid_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 672,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "no candidate matched exactly one element",
+          "ms": 176,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1047 ms (the page had settled)",
+          "ms": 1149
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1020 ms (the page had settled)",
+          "ms": 1173
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 4301
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-button_rename-000",
+      "change": "button_rename",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 992,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "no candidate matched exactly one element",
+          "ms": 362,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1030 ms (the page had settled)",
+          "ms": 1258
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1040 ms (the page had settled)",
+          "ms": 1337
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 19662
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-reorder_fields-000",
+      "change": "reorder_fields",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 812,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1176,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1793
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 2466
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3970
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-wrapper_divs-000",
+      "change": "wrapper_divs",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 573,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1020,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1881
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 2381
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 4653
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-class_churn-000",
+      "change": "class_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 665,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1005,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1423
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 2586
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 4033
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-id_churn-000",
+      "change": "id_churn",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 871,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 990,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 1814
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 2364
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 4219
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-placeholder_change-000",
+      "change": "placeholder_change",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 876,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1156,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 1760
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 2436
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 3828
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-insert_optional_field-000",
+      "change": "insert_optional_field",
+      "expectedCategory": "heal_deterministic",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 881,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 1054,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "noHealNoReadBack": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 1439
+        },
+        "noHealReadBack": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 2993
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 4545
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-insert_required_field-000",
+      "change": "insert_required_field",
+      "expectedCategory": "must_fail_safe",
+      "arms": {
+        "script": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "success check after the submit click",
+          "error": "page.waitForURL: Timeout 30000ms exceeded. (waiting for navigation until \"load\")",
+          "ms": 30612,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "success check after the submit click",
+          "error": "page.waitForURL: Timeout 30000ms exceeded. (waiting for navigation until \"load\")",
+          "ms": 30714,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 1205
+        },
+        "noHealReadBack": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 2606
+        },
+        "dockhand": {
+          "outcome": "safe_stop",
+          "fields": "0/11",
+          "stoppedAt": "s19 Submit registration",
+          "error": "s19 (Click 'Submit registration' to submit the registration.): the page now requires 'Partner tier'",
+          "ms": 3364
+        }
+      }
+    },
+    {
+      "caseId": "mutation-caravela-s103-combobox_to_radio-000",
+      "change": "combobox_to_radio",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "locator.click: Timeout 30000ms exceeded. (waiting for getByRole('option', { name: 'Tidewater Cloud Business', exact: true })\u001b[22m)",
+          "ms": 30459,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 378,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1042 ms (the page had settled)",
+          "ms": 1788
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1053 ms (the page had settled)",
+          "ms": 2357
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 3106
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s101-v2-000",
+      "change": "ui v2",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 346,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "no candidate matched exactly one element",
+          "ms": 130,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1058 ms (the page had settled)",
+          "ms": 1169
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1043 ms (the page had settled)",
+          "ms": 1149
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 24008
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s101-button_rename-000",
+      "change": "button_rename",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 728,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "no candidate matched exactly one element",
+          "ms": 222,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1046 ms (the page had settled)",
+          "ms": 1255
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1033 ms (the page had settled)",
+          "ms": 1275
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 20885
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s101-combobox_to_radio-000",
+      "change": "combobox_to_radio",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "locator.click: Timeout 30000ms exceeded. (waiting for getByRole('option', { name: 'Tidewater Cloud Enterprise', exact: true })\u001b[22m)",
+          "ms": 30397,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 390,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1041 ms (the page had settled)",
+          "ms": 1745
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1037 ms (the page had settled)",
+          "ms": 1895
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 3939
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s102-v2-000",
+      "change": "ui v2",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 399,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "no candidate matched exactly one element",
+          "ms": 120,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1032 ms (the page had settled)",
+          "ms": 1136
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1016 ms (the page had settled)",
+          "ms": 1146
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 23851
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s102-button_rename-000",
+      "change": "button_rename",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 867,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s4 Register a deal",
+          "error": "no candidate matched exactly one element",
+          "ms": 191,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1047 ms (the page had settled)",
+          "ms": 1276
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1025 ms (the page had settled)",
+          "ms": 1261
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 33843
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s102-combobox_to_radio-000",
+      "change": "combobox_to_radio",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "locator.click: Timeout 30000ms exceeded. (waiting for getByRole('option', { name: 'Tidewater Cloud Enterprise', exact: true })\u001b[22m)",
+          "ms": 30945,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 431,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1036 ms (the page had settled)",
+          "ms": 1796
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/11",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1022 ms (the page had settled)",
+          "ms": 1867
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "11/11",
+          "ms": 4207
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s103-v2-000",
+      "change": "ui v2",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 432,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "no candidate matched exactly one element",
+          "ms": 124,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1052 ms (the page had settled)",
+          "ms": 1169
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s2 Go to deal registrations",
+          "error": "s2 (Click the 'Go to deal registrations' link.): no candidate matched within 1043 ms (the page had settled)",
+          "ms": 1187
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 35277
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s103-button_rename-000",
+      "change": "button_rename",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 744,
+          "requests": [
+            "POST /api/deals"
+          ]
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/13",
+          "stoppedAt": "s4 Register a deal",
+          "error": "no candidate matched exactly one element",
+          "ms": 244,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/13",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1041 ms (the page had settled)",
+          "ms": 1276
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/13",
+          "stoppedAt": "s4 Register a deal",
+          "error": "s4 (Click '+ Register a deal' to open the Register a deal form.): no candidate matched within 1017 ms (the page had settled)",
+          "ms": 1296
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "13/13",
+          "ms": 20760
+        }
+      }
+    },
+    {
+      "caseId": "repair-caravela-s103-combobox_to_radio-000",
+      "change": "combobox_to_radio",
+      "expectedCategory": "heal_model",
+      "arms": {
+        "script": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "locator.click: Timeout 30000ms exceeded. (waiting for getByRole('option', { name: 'Tidewater Cloud Enterprise', exact: true })\u001b[22m)",
+          "ms": 30506,
+          "requests": []
+        },
+        "scriptPrimary": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "no candidate matched exactly one element",
+          "ms": 421,
+          "requests": []
+        },
+        "noHealNoReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1033 ms (the page had settled)",
+          "ms": 1823
+        },
+        "noHealReadBack": {
+          "outcome": "stopped",
+          "fields": "0/12",
+          "stoppedAt": "s13 Product",
+          "error": "s13 (Select the product from the 'Product' dropdown.): no candidate matched within 1033 ms (the page had settled)",
+          "ms": 1824
+        },
+        "dockhand": {
+          "outcome": "correct",
+          "fields": "12/12",
+          "ms": 4193
+        }
+      }
+    }
+  ]
+}

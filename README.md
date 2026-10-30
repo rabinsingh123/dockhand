@@ -61,6 +61,7 @@ All live numbers are real Meta and Baseten calls at Standard list prices, measur
 **The heal ladder on UI changes it never saw.** All 11 seeded mutation operators plus the v2 UI, on 3 held-out seeds (42 cases), against a skill compiled from a live first run:
 
 - 42/42 correct: 39 submitted correctly after healing, 3 stopped safely on a new required field, **0 wrong writes**.
+- Baseline on the same 42 cases (mock portal, no model calls, measured Oct 30): the skill's Playwright export run as a plain recorded script submitted 30 correctly and stopped on the other 12 (3 of them the required stop), and with one selector per step, as a codegen recording has it, it submitted 18 and stopped on 24; neither wrote wrong data ([section 4](evals/results/live-headline.md#4-baseline-an-ordinary-recorded-script-on-the-same-42-cases)).
 
 | Rung | Steps tried | Healed | Cost per attempt | Latency per attempt |
 |---|---|---|---|---|

@@ -77,6 +77,13 @@ export interface RunEnv {
   successTimeoutMs?: number;
   /** What the demo HUD calls this run (e.g. "Drift watch · dry run"). */
   hudLabel?: string;
+  /**
+   * Eval baselines only (scripts/evals/baseline.ts); product code never sets it, and unset the runner is exactly
+   * as described above. `widgetSwap: false` drops the free dropdown-to-radio heal (primary-only targets,
+   * allowFallbackHeal false and no repairers turn off the rest of the ladder). `readBackGate: false` still reads
+   * every written value back into `verification` but lets the commit go ahead on a mismatch.
+   */
+  evalBaseline?: { widgetSwap?: boolean; readBackGate?: boolean };
 }
 
 export type RunSkillOptions = RunOptions & RunEnv;
@@ -560,7 +567,7 @@ class SkillRun {
       );
     }
     // Free: a dropdown that became radio buttons (the option named like the value), before any paid rung.
-    const swapped = await this.widgetSwap(step);
+    const swapped = this.opts.evalBaseline?.widgetSwap === false ? null : await this.widgetSwap(step);
     if (swapped) {
       this.steps[idx] = swapped;
       this.changed = true;
@@ -701,7 +708,7 @@ class SkillRun {
     }
     const v = await this.readBack();
     this.verification = v;
-    if (v.mismatches.length > 0) {
+    if (v.mismatches.length > 0 && this.readBackGates()) {
       const detail = v.mismatches
         .map((m) => `${m.label}: expected "${m.expected}", found "${m.actual}"`)
         .join("; ");
@@ -803,6 +810,11 @@ class SkillRun {
     }
     await this.record(idx, current, started, outcome);
     return { next: idx + 1 };
+  }
+
+  /** False only in an eval baseline that measures replay without the read-back gate. */
+  private readBackGates(): boolean {
+    return this.opts.evalBaseline?.readBackGate !== false;
   }
 
   private async readBack(): Promise<Verification> {
@@ -1003,7 +1015,7 @@ class SkillRun {
   private async finishWithoutCommit(): Promise<void> {
     const v = await this.readBack();
     if (v.checked > 0) this.verification = v;
-    if (v.mismatches.length > 0) {
+    if (v.mismatches.length > 0 && this.readBackGates()) {
       this.outcome = "failed";
       this.errorCode = "READBACK_MISMATCH";
       this.error = v.mismatches

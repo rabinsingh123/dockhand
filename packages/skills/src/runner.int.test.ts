@@ -447,6 +447,83 @@ describe("runSkill on the partner portal", () => {
     }
   });
 
+  // evalBaseline (eval baselines only): unset, the two tests above pin today's behavior. Here a present option that
+  // is not an explicit false keeps that behavior, and only `false` switches the one thing it names off.
+  it("eval baseline: only widgetSwap false turns off the free dropdown-to-radio heal", async () => {
+    const run = async (tag: string, evalBaseline: NonNullable<RunSkillOptions["evalBaseline"]>) => {
+      const id = runId(tag);
+      const { page, close } = await openPage({
+        ui: "v1",
+        mutation: { seed: 5, operators: ["combobox_to_radio"] },
+        runId: id,
+      });
+      try {
+        const r = await runSkill(
+          page,
+          v1,
+          freshParams({ company: "Ipê Branco Ltda." }),
+          recordingHooks().hooks,
+          options(id, { evalBaseline }),
+        );
+        return { r, subs: portal.submissions({ runId: id }) };
+      } finally {
+        await close();
+      }
+    };
+    const kept = await run("radio-swap-kept", { readBackGate: true });
+    expect(kept.r.outcome).toBe("success");
+    expect(kept.r.steps).toContainEqual(expect.objectContaining({ status: "healed", rung: "similarity" }));
+    expect(kept.subs).toHaveLength(1);
+
+    const off = await run("radio-swap-off", { widgetSwap: false });
+    expect(off.r.outcome).toBe("failed");
+    expect(off.r.steps.some((s) => s.rung === "similarity")).toBe(false);
+    expect(off.r.steps.at(-1)?.status).toBe("failed");
+    expect(off.subs).toHaveLength(0);
+  });
+
+  it("eval baseline: only readBackGate false lets a commit past a read-back mismatch, still reported", async () => {
+    const run = async (tag: string, evalBaseline: NonNullable<RunSkillOptions["evalBaseline"]>) => {
+      const id = runId(tag);
+      const { page, close } = await openPage({ ui: "v1", mutation: null, runId: id });
+      try {
+        await page.goto(`${portal.url}/deals/new`);
+        // The same page script as the READBACK_MISMATCH test: City is rewritten after it was filled.
+        await page.evaluate(() => {
+          document.addEventListener("change", (e) => {
+            if ((e.target as Element | null)?.id !== "consent") return;
+            const city = document.getElementById("city") as HTMLInputElement;
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+            setter?.call(city, "Rio de Janeiro");
+            city.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+        });
+        const skill = { ...v1, steps: v1.steps.slice(3) };
+        const r = await runSkill(
+          page,
+          skill,
+          freshParams(),
+          recordingHooks().hooks,
+          options(id, { evalBaseline }),
+        );
+        return { r, subs: portal.submissions({ runId: id }) };
+      } finally {
+        await close();
+      }
+    };
+    const mismatch = [{ stepId: "s7", label: "City", expected: "Valparaíso", actual: "Rio de Janeiro" }];
+    const gated = await run("readback-gated", { widgetSwap: true, readBackGate: true });
+    expect(gated.r.outcome).toBe("failed");
+    expect(gated.r.errorCode).toBe("READBACK_MISMATCH");
+    expect(gated.r.verification?.mismatches).toEqual(mismatch);
+    expect(gated.subs).toHaveLength(0);
+
+    const open = await run("readback-open", { readBackGate: false });
+    expect(open.r.outcome).toBe("success");
+    expect(open.r.verification?.mismatches).toEqual(mismatch);
+    expect(open.subs[0]?.fields.city).toBe("Rio de Janeiro");
+  });
+
   it("stops safely with needs_input when the rep gives no answer", async () => {
     const id = runId("noanswer");
     const { hooks } = recordingHooks({ askRep: async () => null });

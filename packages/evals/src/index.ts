@@ -31,7 +31,15 @@ export {
   type RepairSetup,
   repairSetup,
 } from "./repairers.ts";
-export { type EvalRecord, type Grade, gradeSubmissions, type RunCaseDeps, runCase } from "./run.ts";
+export {
+  type EvalRecord,
+  type Grade,
+  gradeSubmissions,
+  primarySelectorsOnly,
+  type RecordedScript,
+  type RunCaseDeps,
+  runCase,
+} from "./run.ts";
 export {
   BUCKETS,
   type Bucket,

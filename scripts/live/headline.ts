@@ -50,6 +50,7 @@ import {
   rebaseSkill,
   runCanary,
 } from "../../packages/skills/src/index.ts";
+import { baselineMarkdown, readBaselineSummary, upsertBaselineSection } from "../evals/baseline-report.ts";
 import { fixturePath } from "../lib/files.ts";
 import { type Live, openLive } from "./lib.ts";
 
@@ -762,8 +763,11 @@ async function report(): Promise<void> {
     ),
     "",
   ].join("\n");
-  writeFileSync(join(RESULTS, "live-headline.md"), md);
-  console.log(md);
+  // Section 4 comes from scripts/evals/baseline.ts (no model calls); kept when this report is rebuilt.
+  const baseline = readBaselineSummary();
+  const full = baseline ? upsertBaselineSection(md, baselineMarkdown(baseline)) : md;
+  writeFileSync(join(RESULTS, "live-headline.md"), full);
+  console.log(full);
 }
 
 if (command === "firstruns") await firstRuns();

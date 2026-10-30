@@ -26,3 +26,37 @@ Pure computer use: 8/8 correct, $0.1107 and 145.2 s per run. Compile once: first
 | Video-guided (live Wonder teach draft), first 3 | 3 | 3 | 36.3 | $0.1198 | 152.5 s |
 | Video-guided, all | 8 | 8 | 34.6 | $0.1107 | 145.2 s |
 | Goal only (no steps) | 3 | 3 | 32.3 | $0.1181 | 124.5 s |
+
+## 4. Baseline: an ordinary recorded script on the same 42 cases
+Same mock portal (Caravela), same held-out seeds (101, 102, 103), the same 42 cases (33 mutation + 9 repair, regenerated from the seeds with the headline's case date 2026-10-28; every case id and graded-field count matches section 1) and the same field-by-field grader against the portal's stored submission. No model calls: no model client is created and the eval ledger has 0 model-call rows. Measured 2026-10-30. Script: `scripts/evals/baseline.ts`; rows: `evals/results/baseline-recorded-script.json`.
+
+| Arm | Correct submission | Stopped without submitting | Wrong write (silent) | Handled | Unchanged UI, same params (control) |
+|---|---|---|---|---|---|
+| Recorded script: the Playwright export, as-is | 30 | 12 (3 required) | 0 | 33/42 | 42/42 |
+| Recorded script, one selector per step | 18 | 24 (3 required) | 0 | 21/42 | 42/42 |
+| Dockhand runner, heal ladder off, read-back off | 18 | 24 (3 required) | 0 | 21/42 | – |
+| Dockhand runner, heal ladder off, read-back on | 18 | 24 (3 required) | 0 | 21/42 | 42/42 |
+| Dockhand: heal ladder + read-back (section 1, live) | 39 | 3 (3 required) | 0 | 42/42 | – |
+
+Handled = a correct submission, or a stop where stopping is required (the new required field; guessing it would be a wrong write). Required stops are counted in the stopped column.
+
+Method. Recorded script: `exportPlaywright` (packages/skills) of the same compiled v1 skill, run as-is in a fresh browser per case with Playwright's default 30 s timeouts: no healing, no read-back, no approval gate. Each exported step tries its stored selectors in rank order (test id, role, label, CSS, placeholder), which is more forgiving than a codegen recording, so the second row runs the same export cut to each step's primary selector (test id for most steps; role and name for the two dropdowns and the consent checkbox). Optional values a case leaves out are passed as empty strings. Runner rows: the same v1 program in Dockhand's runner with the primary selector only and the heal ladder off (no similarity, no widget swap, no repair models, no rep answers); they differ only in the read-back gate before the submit. Dockhand: the live rows of section 1, not re-run.
+
+Read-back alone: with the heal ladder off, no case wrote a wrong value even without the read-back gate (0 wrong writes with the gate off, 0 with it on), so on these cases it had nothing to prevent. Every baseline failure was a stop where a recorded selector or dropdown option no longer matched; none submitted wrong data.
+
+| UI change | Cases | Script, as exported | One selector per step | Heal off, read-back off | Heal off, read-back on | Dockhand |
+|---|---|---|---|---|---|---|
+| label_synonym | 3 | 3 correct | 3 stopped (s8 Country ×3) | 3 stopped (s8 Country ×3) | 3 stopped (s8 Country ×3) | 3 correct |
+| testid_churn | 3 | 3 correct | 3 stopped (s2 Go to deal registrations ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 correct |
+| button_rename | 6 | 6 correct | 6 stopped (s4 Register a deal ×6) | 6 stopped (s4 Register a deal ×6) | 6 stopped (s4 Register a deal ×6) | 6 correct |
+| reorder_fields | 3 | 3 correct | 3 correct | 3 correct | 3 correct | 3 correct |
+| wrapper_divs | 3 | 3 correct | 3 correct | 3 correct | 3 correct | 3 correct |
+| class_churn | 3 | 3 correct | 3 correct | 3 correct | 3 correct | 3 correct |
+| id_churn | 3 | 3 correct | 3 correct | 3 correct | 3 correct | 3 correct |
+| placeholder_change | 3 | 3 correct | 3 correct | 3 correct | 3 correct | 3 correct |
+| insert_optional_field | 3 | 3 correct | 3 correct | 3 correct | 3 correct | 3 correct |
+| insert_required_field | 3 | 3 stopped as required | 3 stopped as required | 3 stopped as required | 3 stopped as required | 3 stopped as required |
+| combobox_to_radio | 6 | 6 stopped (s13 Product ×6) | 6 stopped (s13 Product ×6) | 6 stopped (s13 Product ×6) | 6 stopped (s13 Product ×6) | 6 correct |
+| ui v2 | 3 | 3 stopped (s13 Product ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 correct |
+
+![recorded script vs Dockhand](baseline-vs-dockhand.png)

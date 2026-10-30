@@ -17,6 +17,8 @@ import {
   type RunHooks,
   type RunResult,
   type Skill,
+  type Step,
+  type Target,
   ulid,
 } from "@dockhand/core";
 import {
@@ -65,6 +67,29 @@ export interface RunCaseDeps {
   successTimeoutMs?: number;
   seed?: number;
   concurrency?: number;
+  /**
+   * Baseline arms (scripts/evals/baseline.ts), never the headline numbers. `script`: a plain function runs on the
+   * page in place of the runner (no heal, no read-back, no approval). `noHeal`: the runner with its heal ladder
+   * off (each step's primary selector only, no similarity, no widget swap, no repairers, no rep answers);
+   * `readBack: false` also lets the commit go ahead past a read-back mismatch.
+   */
+  baseline?: { script: RecordedScript } | { noHeal: { readBack: boolean } };
+}
+
+/** A plain browser script run in place of the runner; it throws when it cannot finish. */
+export type RecordedScript = (page: Page, params: Record<string, ParamValue>) => Promise<void>;
+
+/** The skill with every target cut to its primary (first-ranked) selector, as a one-selector script has it. */
+export function primarySelectorsOnly(skill: Skill): Skill {
+  const cut = (t: Target): Target => ({ ...t, candidates: t.candidates.slice(0, 1) });
+  return {
+    ...skill,
+    steps: skill.steps.map((s): Step => {
+      if (s.op === "select") return { ...s, trigger: cut(s.trigger) };
+      if (s.op === "goto" || s.op === "extract" || !s.target) return s;
+      return { ...s, target: cut(s.target) };
+    }),
+  };
 }
 
 const DEFAULT_STEP_TIMEOUT_MS = 5_000;
@@ -159,7 +184,9 @@ function expectsSafeStop(c: EvalCase, def: PortalDef): boolean {
 /** Runs one case end to end and grades it against the portal's submission log. */
 export async function runCase(c: EvalCase, deps: RunCaseDeps): Promise<EvalRecord> {
   const def = portalOfSkill(deps.skill);
-  const skill = rebaseSkill(deps.skill, deps.portal.url);
+  const script = deps.baseline && "script" in deps.baseline ? deps.baseline.script : undefined;
+  const noHeal = deps.baseline && "noHeal" in deps.baseline ? deps.baseline.noHeal : undefined;
+  const skill = rebaseSkill(noHeal ? primarySelectorsOnly(deps.skill) : deps.skill, deps.portal.url);
   const execId = `${c.id}.${ulid()}`; // ledger rows are per execution, so a re-run never sums an old one
   deps.portal.reset({ runId: c.portal.runId });
   const cookies = await deps.portal.session({
@@ -221,6 +248,17 @@ export async function runCase(c: EvalCase, deps: RunCaseDeps): Promise<EvalRecor
       if (r.outcome === "budget_exceeded") errorCode = "BUDGET_EXCEEDED";
       error = r.message;
       shot = r.trace.final.screenshot;
+    } else if (script) {
+      try {
+        await script(lease.page, params);
+        outcome = "success";
+      } catch (err) {
+        outcome = "failed";
+        error = err instanceof Error ? err.message : String(err);
+        const png = await lease.page.screenshot({ type: "png", timeout: 5000 }).catch(() => null);
+        if (png)
+          shot = await artifacts.put(new Uint8Array(png), "image/png", { kind: "screenshot", runId: execId });
+      }
     } else {
       const r = await runSkill(
         lease.page,
@@ -229,17 +267,18 @@ export async function runCase(c: EvalCase, deps: RunCaseDeps): Promise<EvalRecor
         {
           approveCommit: autoApprove(lease.page),
           approveSafety: async () => "rejected",
-          askRep: repAnswers(answers),
-          repairers: deps.repair?.build({ artifacts, writeGuard }) ?? [],
+          ...(noHeal ? {} : { askRep: repAnswers(answers) }),
+          repairers: noHeal ? [] : (deps.repair?.build({ artifacts, writeGuard }) ?? []),
         },
         {
           runId: execId,
           stepTimeoutMs: deps.stepTimeoutMs ?? DEFAULT_STEP_TIMEOUT_MS,
           successTimeoutMs: deps.successTimeoutMs ?? DEFAULT_SUCCESS_TIMEOUT_MS,
           screenshots: "fail_only",
-          allowFallbackHeal: true,
+          allowFallbackHeal: !noHeal,
           artifacts,
           writeGuard,
+          ...(noHeal ? { evalBaseline: { widgetSwap: false, readBackGate: noHeal.readBack } } : {}),
         },
       );
       outcome = r.outcome;
