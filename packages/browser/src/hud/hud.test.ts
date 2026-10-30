@@ -146,6 +146,12 @@ describe("demo HUD", () => {
       await filmed.end({ outcome: "success" });
       expect(performance.now() - t0).toBeGreaterThanOrEqual(290);
       expect(filmed.pausedSince(t0)).toBeGreaterThanOrEqual(290);
+      // The frozen clock stays as it ended (a pause on it would shrink the time shown during the hold).
+      const clock = (
+        filmed as unknown as { compose(): { clock: { frozenAt?: number; pausedAt: number | null } } }
+      ).compose().clock;
+      expect(clock.frozenAt).toBeDefined();
+      expect(clock.pausedAt).toBeNull();
     } finally {
       await lease.release();
     }

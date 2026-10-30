@@ -397,9 +397,12 @@ export class Hud {
     }
   }
 
-  /** The on-screen clock stands still (pacing holds, the rep deciding); nested pauses share one start. */
+  /**
+   * The on-screen clock stands still (pacing holds, the rep deciding); nested pauses share one start. A frozen
+   * clock (the run ended) is left alone: pausing it would make its final time shrink during the closing hold.
+   */
   private pauseClock(): void {
-    if (this.clockHolds++ === 0 && this.clock) {
+    if (this.clockHolds++ === 0 && this.clock && this.clock.frozenAt === undefined) {
       this.clockHoldStart = Date.now();
       this.clock = { ...this.clock, pausedAt: this.clockHoldStart };
       this.push();
@@ -408,7 +411,7 @@ export class Hud {
 
   private resumeClock(): void {
     if (this.clockHolds === 0) return;
-    if (--this.clockHolds === 0 && this.clock) {
+    if (--this.clockHolds === 0 && this.clock && this.clock.pausedAt !== null) {
       this.clock = {
         ...this.clock,
         pausedMs: this.clock.pausedMs + (Date.now() - this.clockHoldStart),
@@ -726,8 +729,8 @@ export class Hud {
       const ms = Date.now() - c.startedAt - c.pausedMs - (c.pausedAt !== null ? Date.now() - c.pausedAt : 0);
       const spent = this.baseCost + this.liveCost;
       const cu = CU_MEASURED[run.portalId ?? ""];
+      // The verified count is already on the tag beside it; the line keeps to what fits the overlay.
       ticker = [
-        verified,
         `This run: ${secs(ms)}, ${spent > 0 ? money(spent) : "$0"} in model calls`,
         cu ? `computer use, measured mean: ${cu.s} s, $${cu.usd.toFixed(2)}` : "",
       ]
