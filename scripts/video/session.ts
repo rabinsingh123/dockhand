@@ -425,6 +425,29 @@ async function main(): Promise<number> {
     });
   };
 
+  /** The PHP side caches metadata, layouts and translations on first use: ask for them before a run does. */
+  const warmEspo = async () => {
+    for (const path of ["App/user", "Metadata", "I18n", "Settings", "Lead?maxSize=1", "Lead/layout/detail"])
+      await espoApi("GET", path).catch(() => null);
+    await fetch(`${ESPO_URL}/`).catch(() => null);
+  };
+  let espoStarting: Promise<void> | null = null;
+  const ensureEspo = () =>
+    (espoStarting ??= (async () => {
+      if (!(await espoUp())) {
+        log("starting EspoCRM (apps/oss/espocrm/start.ps1)");
+        await promisify(execFile)("powershell", [
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          join(root, "apps", "oss", "espocrm", "start.ps1"),
+        ]);
+        if (!(await espoUp())) throw new Error(`EspoCRM did not come up at ${ESPO_URL}`);
+      }
+      await warmEspo();
+      log("EspoCRM up and warm");
+    })());
+
   const cue = await startCue({ port: a.cuePort, state: cueState, auto: !live });
   log(`cue screen: ${cue.url}`);
 
@@ -438,6 +461,9 @@ async function main(): Promise<number> {
       tunnel = await startTunnel(env, join(sessionDir, "tunnel.log"));
       log("tunnel up: webhook registered");
     }
+    // EspoCRM starts cold in ~40 s and its first form load is slow: bring it up now, long before its take.
+    if (takes.some((t) => t.id === "espocrm"))
+      void ensureEspo().catch((e) => log(`EspoCRM: ${(e as Error).message}`));
 
     // Rehearsal: the emulator page plays Rabin, filmed as the phone's stand-in (labeled simulated in any cut).
     const repOptions: Options = {
@@ -522,16 +548,8 @@ async function main(): Promise<number> {
         }
       },
       async prepareEspo() {
-        if (!(await espoUp())) {
-          log("starting EspoCRM (apps/oss/espocrm/start.ps1)");
-          await promisify(execFile)("powershell", [
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            join(root, "apps", "oss", "espocrm", "start.ps1"),
-          ]);
-          if (!(await espoUp())) throw new Error(`EspoCRM did not come up at ${ESPO_URL}`);
-        }
+        await ensureEspo();
+        await warmEspo();
         // EspoCRM refuses a second lead with the same name and email: remove earlier ones.
         const fx = JSON.parse(
           readFileSync(join(root, "fixtures", "oss", "espocrm-lead-request.json"), "utf8"),

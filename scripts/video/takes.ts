@@ -115,6 +115,9 @@ const ESPO_REQUEST = JSON.parse(readFileSync(fixture("oss", "espocrm-lead-reques
 };
 export const ESPO_TEXT = ESPO_REQUEST.text;
 
+/** Dockhand's ways of saying a run stopped without submitting. */
+const STOPPED = /^Stopped|Nothing was (submitted|sent)|went wrong/;
+
 /** Rehearsal of a take with no demo:check step: answer every card like the rep until the receipt. */
 async function converse(w: World, receipt: RegExp, answer?: string): Promise<ChatEntry> {
   for (;;) {
@@ -122,9 +125,11 @@ async function converse(w: World, receipt: RegExp, answer?: string): Promise<Cha
       `a card or the receipt (${receipt})`,
       (x) =>
         (x.type === "image" && receipt.test(x.caption ?? "")) ||
-        (x.type === "interactive" && (x.buttons?.length ?? 0) > 0),
+        (x.type === "interactive" && (x.buttons?.length ?? 0) > 0) ||
+        (x.type === "text" && STOPPED.test(x.text ?? "")),
       300_000,
     );
+    if (e.type === "text") throw new Error(`the run stopped: ${(e.text ?? "").split("\n")[0]}`);
     if (e.type === "image") return e;
     const titles = e.buttons?.map((b) => b.title) ?? [];
     const pick = titles.includes("Approve")
