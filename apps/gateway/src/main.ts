@@ -28,6 +28,13 @@ async function main(): Promise<void> {
     if (crm) tools.get("/__dev/crm", (c) => c.json(crm.state()));
     // "Skip to 3 AM": run the scheduled drift watch now (the video and demo:check use it).
     tools.post("/__dev/watch", async (c) => c.json(await wired.orchestrator.watch({ trigger: "schedule" })));
+    // The video director's per-take pacing (DEMO_MODE): pages leased from now on use it.
+    tools.post("/__dev/demo", async (c) => {
+      const body = (await c.req.json().catch(() => ({}))) as { pacingMs?: unknown };
+      const pool = wired.pool as { setHudPacing?: (ms: number) => boolean };
+      const ok = typeof body.pacingMs === "number" && pool.setHudPacing?.(body.pacingMs) === true;
+      return c.json({ ok, pacingMs: ok ? body.pacingMs : null }, ok ? 200 : 409);
+    });
     dev = await startDevProcess({ config, routes: tools });
     const ledger = createLedger(dev.db, dev.clock);
     // META_MODE=fake runs the whole demo for free: teach, first runs, heals and replays all work end to end.

@@ -13,6 +13,12 @@ import {
   VIEWPORT,
 } from "@dockhand/core";
 import { type Browser, type BrowserContext, chromium, type LaunchOptions, type Page } from "playwright";
+import {
+  type Capture,
+  type CaptureOptions,
+  captureOptionsFromEnv,
+  startScreencast,
+} from "./capture/screencast.ts";
 import { DH_SCRIPT } from "./dom/script.ts";
 import { trackNetwork } from "./helpers/settle.ts";
 import { attachHud, HUD_SCRIPT, type HudOptions, hudOptionsFromEnv } from "./hud/hud.ts";
@@ -45,9 +51,14 @@ export interface BrowserPoolConfig {
   launch?: LaunchOptions;
   /**
    * Demo overlay on every leased page (null: off). Default: from DEMO_MODE / DEMO_PACING_MS, and only for a
-   * headed browser, so headless tests and evals never get it.
+   * headed browser or a filmed one (below), so headless tests and evals never get it.
    */
   hud?: HudOptions | null;
+  /**
+   * Films every leased page from inside Chromium (null: off). Default: DEMO_CAPTURE_DIR with DEMO_MODE on
+   * (pnpm video:session). Headless works: the screencast needs no window.
+   */
+  capture?: CaptureOptions | null;
 }
 
 export interface DockhandBrowserPool extends BrowserPool {
@@ -59,6 +70,8 @@ export interface DockhandBrowserPool extends BrowserPool {
   ): Promise<Uint8Array>;
   /** Writes the lease's cookies and storage to `<storageStateDir>/<portalId>.json`; returns the path. */
   saveStorageState(portalId: string, page: Page): Promise<string>;
+  /** Demo pacing for pages leased from now on (the video director sets it per take). False when the HUD is off. */
+  setHudPacing(ms: number): boolean;
   openContexts(): number;
   waiting(): number;
 }
@@ -79,7 +92,8 @@ interface Waiter {
 export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
   if (cfg.maxContexts < 1) throw new RangeError("maxContexts must be at least 1");
   const clock = cfg.clock ?? systemClock;
-  const hud = cfg.hud !== undefined ? cfg.hud : cfg.headless ? null : hudOptionsFromEnv();
+  const capture = cfg.capture !== undefined ? cfg.capture : captureOptionsFromEnv();
+  const hud = cfg.hud !== undefined ? cfg.hud : cfg.headless && !capture ? null : hudOptionsFromEnv();
   let browserPromise: Promise<Browser> | null = null;
   let open = 0;
   const waiters: Waiter[] = [];
@@ -141,12 +155,20 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
     await acquireSlot();
     let context: BrowserContext;
     let page: Page;
+    let filming: Capture | null = null;
     try {
       context = await newContext(o.portalId);
       if (o.cookies?.length) await context.addCookies(o.cookies);
       page = await context.newPage();
       trackNetwork(page);
       if (hud) attachHud(page, hud);
+      if (capture) {
+        filming = await startScreencast(page, {
+          ...capture,
+          label: `${o.portalId}__${o.runId}`,
+          meta: { portalId: o.portalId, runId: o.runId },
+        }).catch(() => null);
+      }
     } catch (e) {
       releaseSlot();
       throw e;
@@ -160,6 +182,7 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
         closed ??= (async () => {
           if (timer) clearTimeout(timer);
           leases.delete(entry);
+          await filming?.stop().catch(() => {});
           await context.close({ reason: `dockhand lease ${reason}` }).catch(() => {});
           releaseSlot();
         })();
@@ -207,6 +230,11 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
       const path = storageFile(cfg.storageStateDir, portalId);
       await page.context().storageState({ path });
       return path;
+    },
+    setHudPacing(ms) {
+      if (!hud) return false;
+      hud.pacingMs = Math.min(5000, Math.max(0, Number.isFinite(ms) ? ms : 0));
+      return true;
     },
     openContexts: () => open,
     waiting: () => waiters.length,

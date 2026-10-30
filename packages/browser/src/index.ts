@@ -1,5 +1,18 @@
 // @dockhand/browser public API
 
+export {
+  type Capture,
+  type CaptureOptions,
+  type ClipInfo,
+  captureOptionsFromEnv,
+  concatScript,
+  type EncodeOptions,
+  encodeClip,
+  type IndexedFrame,
+  readClipInfo,
+  readIndex,
+  startScreencast,
+} from "./capture/screencast.ts";
 export { isCommitTarget } from "./cu/commit.ts";
 export { type KeyPlan, planKeys } from "./cu/keys.ts";
 export { type RunComputerUseOptions, runComputerUse } from "./cu/loop.ts";
