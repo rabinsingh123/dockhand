@@ -120,7 +120,8 @@ describe("runner timing", () => {
       expect(readbacks).toHaveLength(1);
       expect(readbacks[0]?.runId).toBe(runId);
       expect(readbacks[0]?.doc).toMatchObject({ runId, dryRun: true, checked: 13, matched: 13 });
-      expect((readbacks[0]?.doc as { rows: unknown[] }).rows).toContainEqual(
+      const doc = readbacks[0]?.doc as { rows: unknown[] } | undefined;
+      expect(doc?.rows).toContainEqual(
         expect.objectContaining({ label: "City", expected: "Valparaíso", actual: "Valparaíso", ok: true }),
       );
     } finally {

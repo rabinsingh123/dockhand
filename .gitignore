@@ -20,3 +20,6 @@ docs/internal/
 docs/reviews/
 docs/research/participant-guide-copy.md
 evals/results/*.jsonl
+
+# Local debug scratch scripts
+.debug/

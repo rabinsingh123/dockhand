@@ -232,7 +232,7 @@ const CLOCK_PATTERNS: [RegExp, string][] = [
   [new RegExp(String.raw`${AT}${MONTH} \d{1,2},? \d{4}\b`, "g"), "<date>"],
   [new RegExp(String.raw`${AT}\d{1,2}\/\d{1,2}\/\d{4}\b`, "g"), "<date>"],
   [new RegExp(String.raw`${AT}\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp]\.?[Mm]\.?)?\b`, "g"), "<time>"],
-  [new RegExp(String.raw`${AT}(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? (?=<date>)`, "g"), ""],
+  [new RegExp(`${AT}(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? (?=<date>)`, "g"), ""],
 ];
 
 /** Key material with dates and times of day blanked: the fallback identity of a request. */
