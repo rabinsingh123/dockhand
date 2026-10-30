@@ -31,12 +31,15 @@ export interface LagProfile {
 
 /** A real phone on WhatsApp: uploads and deliveries take a second or more. */
 export const PHONE_LAGS: LagProfile = { out: [0.1, 6], in: [-10, -0.05], typicalOut: 1, typicalIn: -1.5 };
-/** The /dev/chat emulator page (rehearsals): everything is local and near-instant. */
+/**
+ * The /dev/chat emulator page (rehearsals): everything is local and near-instant, and the page draws the rep's
+ * own bubble from the server's event, so it can show a moment after the gateway stored the message.
+ */
 export const EMULATOR_LAGS: LagProfile = {
   out: [-0.05, 1.5],
-  in: [-1.5, 0.1],
+  in: [-1, 1],
   typicalOut: 0.15,
-  typicalIn: -0.15,
+  typicalIn: 0.1,
 };
 
 export interface SyncResult {
