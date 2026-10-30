@@ -18,7 +18,10 @@
     "preflight": "tsx apps/gateway/src/doctor.ts",
     "eval": "tsx packages/evals/src/cli.ts",
     "tunnel": "tsx scripts/tunnel.ts",
-    "hubspot:seed": "tsx scripts/hubspot-seed.ts"
+    "hubspot:seed": "tsx scripts/hubspot-seed.ts",
+    "video:session": "tsx scripts/video/session.ts",
+    "video:sync": "tsx scripts/video/phone-sync.ts",
+    "video:cut": "tsx scripts/video/cut.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",
