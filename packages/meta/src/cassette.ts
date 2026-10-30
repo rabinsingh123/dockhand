@@ -214,13 +214,25 @@ async function readCassette(key: string, path: string): Promise<CassetteFile | u
 }
 
 const MONTH = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\.?";
+/**
+ * Where a clock value may start: after anything but a letter or digit, or right after an escape sequence. Page
+ * text often reaches a request inside an embedded JSON document, where a line break is the two characters "\n":
+ * "\n30 Oct 2026" has no word boundary before the 3, and a plain \b missed it.
+ */
+const AT = String.raw`(?:(?<=\\[nrt])|(?<![A-Za-z0-9]))`;
 const CLOCK_PATTERNS: [RegExp, string][] = [
-  [/\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b/g, "<date>"],
-  [new RegExp(`\\b\\d{1,2} ${MONTH},? \\d{4}\\b`, "g"), "<date>"],
-  [new RegExp(`\\b${MONTH} \\d{1,2},? \\d{4}\\b`, "g"), "<date>"],
-  [/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g, "<date>"],
-  [/\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp]\.?[Mm]\.?)?\b/g, "<time>"],
-  [/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? (?=<date>)/g, ""],
+  [
+    new RegExp(
+      String.raw`${AT}\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b`,
+      "g",
+    ),
+    "<date>",
+  ],
+  [new RegExp(String.raw`${AT}\d{1,2} ${MONTH},? \d{4}\b`, "g"), "<date>"],
+  [new RegExp(String.raw`${AT}${MONTH} \d{1,2},? \d{4}\b`, "g"), "<date>"],
+  [new RegExp(String.raw`${AT}\d{1,2}\/\d{1,2}\/\d{4}\b`, "g"), "<date>"],
+  [new RegExp(String.raw`${AT}\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp]\.?[Mm]\.?)?\b`, "g"), "<time>"],
+  [new RegExp(String.raw`${AT}(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? (?=<date>)`, "g"), ""],
 ];
 
 /** Key material with dates and times of day blanked: the fallback identity of a request. */

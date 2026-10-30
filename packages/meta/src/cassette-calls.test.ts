@@ -94,6 +94,15 @@ describe("cassette replay with a page clock in the request", () => {
     expect(s).toBe("SUBMITTED <date>, <time> · <date> · <date> · <date> · <time> · <date>");
   });
 
+  it("blanks them inside an embedded JSON document too, where a line break is a literal \\n", () => {
+    // The annotation request carries the confirmation page as a JSON string: "SUBMITTED\n30 Oct 2026, 10:26".
+    const embedded = String.raw`{"text":"STATUS\nPending review\nSUBMITTED\n30 Oct 2026, 10:26\nMon 2026-11-02\nRegistration"}`;
+    expect(withoutClock(embedded)).toBe(
+      String.raw`{"text":"STATUS\nPending review\nSUBMITTED\n<date>, <time>\n<date>\nRegistration"}`,
+    );
+    expect(withoutClock("Account 12:30 is not 1230 or a12:30")).toBe("Account <time> is not 1230 or a12:30");
+  });
+
   it("serves a recording whose request differed only in clock values, when the exact key misses", async () => {
     const recordedAt = { page: "Registration received. SUBMITTED 29 Oct 2026, 17:32" };
     const rec = createCassettes({ mode: "record", dir, clock, log });
