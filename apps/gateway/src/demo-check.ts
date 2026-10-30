@@ -20,7 +20,7 @@ import { type Browser, chromium, type Page } from "playwright";
 
 // ---------- options ----------
 
-interface Options {
+export interface Options {
   headed: boolean;
   slowMo: number;
   mode: "fake" | "cassette" | "record";
@@ -89,7 +89,7 @@ function parseArgs(argv: string[]): Options {
 
 // ---------- results ----------
 
-class CheckFailure extends Error {}
+export class CheckFailure extends Error {}
 
 function check(cond: unknown, message: string): asserts cond {
   if (!cond) throw new CheckFailure(message);
@@ -222,7 +222,7 @@ interface Submission {
 
 // ---------- the rep's side of the chat ----------
 
-class Rep {
+export class Rep {
   /** Entries up to this seq were seen by an earlier wait. */
   private cursor = 0;
   private shots = 0;
@@ -420,7 +420,7 @@ const SUPPLIER_SAMPLE = {
   signatoryName: "Renata Figueiredo",
 };
 
-interface World {
+export interface World {
   o: Options;
   rep: Rep;
   base: string;
@@ -458,6 +458,11 @@ function latestRun(w: World): {
 /** Free-text fields the model may word differently between runs (the fixtures mark them ungraded). */
 let freeText: readonly string[] = [];
 
+/** Real model output words free text its own way (notes); the stand-ins are exact. */
+export function gradeFor(mode: Options["mode"]): void {
+  freeText = mode === "fake" ? [] : ["notes"];
+}
+
 function fieldsMatch(actual: Record<string, unknown>, want: Record<string, unknown>, what: string): void {
   for (const [k, v] of Object.entries(want)) if (!freeText.includes(k)) same(actual[k], v, `${what}.${k}`);
 }
@@ -480,9 +485,10 @@ async function approveRepeats(w: World, receipt: RegExp): Promise<ChatEntry> {
   return next;
 }
 
-type Step = { name: string; run: (w: World) => Promise<void> };
+export type Step = { name: string; run: (w: World) => Promise<void> };
 
-const STEPS: Step[] = [
+/** The demo, step by step (the video director replays the same steps, so the recorded tapes match). */
+export const STEPS: Step[] = [
   {
     name: "teach",
     async run(w) {
@@ -843,8 +849,7 @@ function watchCost(o: Options, dbPath: string, dev: Dev): void {
 
 async function main(): Promise<number> {
   const o = parseArgs(process.argv.slice(2));
-  // Real model output words free text its own way (notes); the stand-ins are exact.
-  if (o.mode !== "fake") freeText = ["notes"];
+  gradeFor(o.mode);
   const shotsDir = join(o.varDir, "demo-check");
   const results: StepResult[] = [];
   const t0 = performance.now();
@@ -944,10 +949,13 @@ async function main(): Promise<number> {
   return failed.length === 0 ? 0 : 1;
 }
 
-main().then(
-  (code) => process.exit(code),
-  (err) => {
-    process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-    process.exit(2);
-  },
-);
+// Only as a script: the video director (scripts/video/session.ts) imports the rep and the steps.
+if (process.argv[1]?.replace(/\\/g, "/").endsWith("apps/gateway/src/demo-check.ts")) {
+  main().then(
+    (code) => process.exit(code),
+    (err) => {
+      process.stderr.write(`${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+      process.exit(2);
+    },
+  );
+}
