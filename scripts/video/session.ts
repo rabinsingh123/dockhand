@@ -10,7 +10,7 @@
 //                                                 real HubSpot, the emulator plays Rabin (no phone); spends credits
 //   pnpm video:session --mode live                the real session: WhatsApp on Rabin's phone, live models
 //      [--session name] [--from take] [--only teach,use] [--optional] [--cue-port 8799] [--no-camera]
-//      [--no-tunnel] [--keep-drift] [--max-usd 6]
+//      [--no-tunnel] [--keep-drift] [--max-usd 6] [--use-photo]
 //
 // Output: var/recordings/<session>/ (clips/, camera/, phone/, snapshots/, var/, cutlist.json, director.log).
 // The cue screen for Rabin: http://localhost:8799/ (live: press Start per take there).
@@ -62,6 +62,8 @@ interface Args {
   camera: boolean;
   tunnel: boolean;
   keepDrift: boolean;
+  /** Live: the "use" take on the referral photo instead of the voice note (if the transcript came out wrong). */
+  usePhoto: boolean;
   /** Live models: stop the session once its spend passes this (USD, list price). */
   maxUsd: number;
 }
@@ -75,6 +77,7 @@ function parseArgs(argv: string[]): Args {
     camera: true,
     tunnel: true,
     keepDrift: false,
+    usePhoto: false,
     maxUsd: 6,
   };
   const ids = new Set(TAKES.map((t) => t.id));
@@ -103,6 +106,7 @@ function parseArgs(argv: string[]): Args {
     else if (k === "--no-camera") a.camera = false;
     else if (k === "--no-tunnel") a.tunnel = false;
     else if (k === "--keep-drift") a.keepDrift = true;
+    else if (k === "--use-photo") a.usePhoto = true;
     else if (k === "--max-usd") a.maxUsd = Number(v());
     else if (k === "--help" || k === "-h") {
       process.stdout.write(readFileSync(new URL(import.meta.url), "utf8").split("\n\n")[0] ?? "");
@@ -395,7 +399,9 @@ async function main(): Promise<number> {
   if (liveModels) delete env.DOCKHAND_CASSETTE_DIR;
   delete env.ESPOCRM_URL; // set only when the EspoCRM take begins (a gateway restart)
 
-  const takes = takesFor(a.mode, a.optional).filter((t) => !a.only || a.only.includes(t.id));
+  const takes = takesFor(a.mode, a.optional, { usePhoto: a.usePhoto }).filter(
+    (t) => !a.only || a.only.includes(t.id),
+  );
   const startIdx = a.from
     ? Math.max(
         0,

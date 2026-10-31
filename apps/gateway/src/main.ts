@@ -27,7 +27,20 @@ async function main(): Promise<void> {
     const tools = new Hono();
     if (crm) tools.get("/__dev/crm", (c) => c.json(crm.state()));
     // "Skip to 3 AM": run the scheduled drift watch now (the video and demo:check use it).
-    tools.post("/__dev/watch", async (c) => c.json(await wired.orchestrator.watch({ trigger: "schedule" })));
+    // A body may name the rep the card goes to (allow-listed only): without one, the watch reports to whoever
+    // last ran the skill, which in a copied database can be a rehearsal's emulator number.
+    tools.post("/__dev/watch", async (c) => {
+      const body = (await c.req.json().catch(() => ({}))) as { rep?: unknown; skill?: unknown };
+      const rep = typeof body.rep === "string" && config.reps.allowlist.includes(body.rep) ? body.rep : null;
+      if (typeof body.rep === "string" && !rep) return c.json({ error: "rep is not in REP_ALLOWLIST" }, 400);
+      return c.json(
+        await wired.orchestrator.watch({
+          trigger: "schedule",
+          ...(rep ? { rep } : {}),
+          ...(typeof body.skill === "string" ? { skill: body.skill } : {}),
+        }),
+      );
+    });
     // The video director's per-take pacing (DEMO_MODE): pages leased from now on use it.
     tools.post("/__dev/demo", async (c) => {
       const body = (await c.req.json().catch(() => ({}))) as { pacingMs?: unknown };
