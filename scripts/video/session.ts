@@ -6,9 +6,11 @@
 //
 //   pnpm video:session --mode cassette            rehearsal: the emulator plays Rabin, the demo tapes answer, $0
 //   pnpm video:session --mode fake                rehearsal with the stand-ins (includes EspoCRM), $0
+//   pnpm video:session --mode live-sim            the director against live timings: live Meta and Baseten models,
+//                                                 real HubSpot, the emulator plays Rabin (no phone); spends credits
 //   pnpm video:session --mode live                the real session: WhatsApp on Rabin's phone, live models
 //      [--session name] [--from take] [--only teach,use] [--optional] [--cue-port 8799] [--no-camera]
-//      [--no-tunnel] [--keep-drift]
+//      [--no-tunnel] [--keep-drift] [--max-usd 6]
 //
 // Output: var/recordings/<session>/ (clips/, camera/, phone/, snapshots/, var/, cutlist.json, director.log).
 // The cue screen for Rabin: http://localhost:8799/ (live: press Start per take there).
@@ -60,6 +62,8 @@ interface Args {
   camera: boolean;
   tunnel: boolean;
   keepDrift: boolean;
+  /** Live models: stop the session once its spend passes this (USD, list price). */
+  maxUsd: number;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -71,6 +75,7 @@ function parseArgs(argv: string[]): Args {
     camera: true,
     tunnel: true,
     keepDrift: false,
+    maxUsd: 6,
   };
   const ids = new Set(TAKES.map((t) => t.id));
   for (let i = 0; i < argv.length; i++) {
@@ -82,7 +87,8 @@ function parseArgs(argv: string[]): Args {
     };
     if (k === "--mode") {
       const m = v();
-      if (m !== "live" && m !== "cassette" && m !== "fake") throw new Error("--mode live|cassette|fake");
+      if (m !== "live" && m !== "live-sim" && m !== "cassette" && m !== "fake")
+        throw new Error("--mode live|live-sim|cassette|fake");
       a.mode = m;
     } else if (k === "--session") a.session = v();
     else if (k === "--from") {
@@ -97,6 +103,7 @@ function parseArgs(argv: string[]): Args {
     else if (k === "--no-camera") a.camera = false;
     else if (k === "--no-tunnel") a.tunnel = false;
     else if (k === "--keep-drift") a.keepDrift = true;
+    else if (k === "--max-usd") a.maxUsd = Number(v());
     else if (k === "--help" || k === "-h") {
       process.stdout.write(readFileSync(new URL(import.meta.url), "utf8").split("\n\n")[0] ?? "");
       process.exit(0);
@@ -336,7 +343,9 @@ async function main(): Promise<number> {
     }
   }
 
+  // live: Rabin's phone on real WhatsApp. live-sim: live models and real HubSpot, the emulator plays the rep.
   const live = a.mode === "live";
+  const liveModels = live || a.mode === "live-sim";
   const ports = live
     ? (() => {
         const p = loadConfig().ports;
@@ -357,25 +366,33 @@ async function main(): Promise<number> {
     DEMO_CAPTURE_DIR: dirs.clips,
     DRIFT_WATCH_EVERY_MIN: "",
   };
+  const emulator: NodeJS.ProcessEnv = {
+    WHATSAPP_MODE: "emulator",
+    WHATSAPP_TOKEN: "",
+    WHATSAPP_PHONE_NUMBER_ID: "",
+    WHATSAPP_APP_SECRET: "",
+    WHATSAPP_VERIFY_TOKEN: "",
+    REP_ALLOWLIST: REP,
+  };
   const env: NodeJS.ProcessEnv = live
     ? { ...process.env, ...common, META_MODE: "live", WHATSAPP_MODE: "cloud", CRM_MODE: "hubspot" }
-    : {
-        ...process.env,
-        ...common,
-        META_MODE: a.mode,
-        MODEL_API_KEY: "",
-        BASETEN_API_KEY: "",
-        ...(a.mode === "cassette" ? { DOCKHAND_CASSETTE_DIR: join(root, "fixtures", "cassettes-demo") } : {}),
-        HUBSPOT_TOKEN: "",
-        WHATSAPP_MODE: "emulator",
-        WHATSAPP_TOKEN: "",
-        WHATSAPP_PHONE_NUMBER_ID: "",
-        WHATSAPP_APP_SECRET: "",
-        WHATSAPP_VERIFY_TOKEN: "",
-        CRM_MODE: "fake",
-        REP_ALLOWLIST: REP,
-      };
-  if (live) delete env.DOCKHAND_CASSETTE_DIR;
+    : a.mode === "live-sim"
+      ? // Keys and the HubSpot token come from .env (the child reads it); only WhatsApp is the emulator.
+        { ...process.env, ...common, ...emulator, META_MODE: "live", CRM_MODE: "hubspot" }
+      : {
+          ...process.env,
+          ...common,
+          ...emulator,
+          META_MODE: a.mode,
+          MODEL_API_KEY: "",
+          BASETEN_API_KEY: "",
+          ...(a.mode === "cassette"
+            ? { DOCKHAND_CASSETTE_DIR: join(root, "fixtures", "cassettes-demo") }
+            : {}),
+          HUBSPOT_TOKEN: "",
+          CRM_MODE: "fake",
+        };
+  if (liveModels) delete env.DOCKHAND_CASSETTE_DIR;
   delete env.ESPOCRM_URL; // set only when the EspoCRM take begins (a gateway restart)
 
   const takes = takesFor(a.mode, a.optional).filter((t) => !a.only || a.only.includes(t.id));
@@ -469,13 +486,14 @@ async function main(): Promise<number> {
     const repOptions: Options = {
       headed: false,
       slowMo: 0,
-      mode: a.mode === "fake" ? "fake" : "cassette",
+      // live-sim is demo:check's record mode: live models may ask twice to submit; free text is ungraded.
+      mode: a.mode === "fake" ? "fake" : a.mode === "live-sim" ? "record" : "cassette",
       maxUsd: 0,
       cassettes: join(root, "fixtures", "cassettes-demo"),
       varDir: dirs.var,
       ports: { gateway: ports.gateway, partner: ports.partner, supplier: ports.supplier },
       rep: REP,
-      stepTimeoutMs: 300_000,
+      stepTimeoutMs: a.mode === "live-sim" ? 900_000 : 300_000,
     };
     const openChat = async () => {
       repBrowser ??= await chromium.launch({ headless: true });
@@ -634,7 +652,7 @@ async function main(): Promise<number> {
                 rh.error = e instanceof Error ? e : new Error(String(e));
               },
             );
-        const deadline = attempt.readyAt + (live ? 25 * 60_000 : 12 * 60_000);
+        const deadline = attempt.readyAt + (liveModels ? 25 * 60_000 : 12 * 60_000);
         for (;;) {
           const now = Date.now();
           const snap = readSince(dbPath, attempt.readyAt);
@@ -644,7 +662,9 @@ async function main(): Promise<number> {
             cur.detail = st.detail;
             cur.lastDockhand = firstLine(snap.msgs.filter((m) => m.dir === "out").at(-1)?.text ?? "");
           }
-          cueState.spendUsd = live ? realSpend(dbPath, t0) : 0;
+          cueState.spendUsd = liveModels ? realSpend(dbPath, t0) : 0;
+          if (liveModels && cueState.spendUsd > a.maxUsd)
+            throw new Error(`model spend ${cueState.spendUsd.toFixed(2)} passed the ${a.maxUsd} USD cap`);
           if (rh.error) throw rh.error;
           if (take.done(snap.msgs, now) && (live || rh.done)) break;
           if (cue.poll() === "redo") {
@@ -818,7 +838,7 @@ async function main(): Promise<number> {
     process.stdout.write(
       `${x.id.padEnd(11)}${String(x.attempt).padEnd(3)}${(x.timings.setupMs / 1000).toFixed(1).padStart(9)}${(x.timings.runMs / 1000).toFixed(1).padStart(9)}${(x.timings.cameraMs / 1000).toFixed(1).padStart(10)}  ${x.status}${x.error ? `: ${x.error}` : ""}\n`,
     );
-  if (!live) {
+  if (!liveModels) {
     const misses = join(dirs.var, "cassette-misses");
     const missCount = existsSync(misses)
       ? readdirSync(misses, { recursive: true }).filter((f) => String(f).endsWith(".json")).length

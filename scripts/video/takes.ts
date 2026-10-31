@@ -11,7 +11,7 @@ import { workspaceRoot } from "../../packages/core/src/index.ts";
 import type { ChatEntry } from "../../packages/whatsapp/src/index.ts";
 import type { Msg } from "./lib/events.ts";
 
-export type Mode = "live" | "cassette" | "fake";
+export type Mode = "live" | "live-sim" | "cassette" | "fake";
 
 export type TakeId =
   | "check"
@@ -164,7 +164,7 @@ export const TAKES: Take[] = [
     id: "teach",
     title: "Teach from a screen recording",
     shot: "shot 3",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 0,
     director: "Portal on v1, no changes.",
     phone: [
@@ -194,7 +194,7 @@ export const TAKES: Take[] = [
     id: "use",
     title: "Use: replay with zero model calls",
     shot: "shot 4",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 0,
     director: "Portal on v1. Real speed (no pacing): the replay takes about 4 s.",
     phone: [
@@ -214,7 +214,7 @@ export const TAKES: Take[] = [
     id: "hero",
     title: "Hero: the portal changes, the replay repairs itself",
     shot: "shot 1 (one unbroken take)",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 650,
     director:
       'Portal switched to v2 (renamed button, moved field). Pacing on: the HUD says "Slowed for video".',
@@ -244,7 +244,7 @@ export const TAKES: Take[] = [
     id: "ask",
     title: "Ask the rep once: a new required field",
     shot: "shot 6",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 450,
     director: 'Portal v2 now requires "Partner tier".',
     phone: [
@@ -270,7 +270,7 @@ export const TAKES: Take[] = [
     id: "overnight",
     title: "Overnight: it repairs itself before anyone notices",
     shot: "shot 7",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 0,
     director:
       "Portal relabels its fields and renames the submit button; the overnight check runs (the video labels the time skip).",
@@ -317,7 +317,7 @@ export const TAKES: Take[] = [
     id: "supplier",
     title: "Supplier onboarding, zero-shot (about 40 fields)",
     shot: "montage",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 0,
     director: "Nothing: the supplier portal has never been seen.",
     phone: [
@@ -339,7 +339,7 @@ export const TAKES: Take[] = [
     id: "supplier2",
     title: "Second buyer replays in seconds",
     shot: "montage",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 0,
     director: "Nothing.",
     phone: [
@@ -357,7 +357,7 @@ export const TAKES: Take[] = [
     id: "quote",
     title: "Voice note to quote and HubSpot",
     shot: "montage",
-    modes: ["live", "cassette", "fake"],
+    modes: ["live", "live-sim", "cassette", "fake"],
     pacingMs: 0,
     director: "Nothing.",
     phone: [
@@ -367,8 +367,23 @@ export const TAKES: Take[] = [
     ],
     approxMin: 2,
     async setup() {},
-    // The tapes hold the typed script (demo:check), not a recording: the rehearsal sends the text.
-    rehearse: (c) => c.steps("quote to CRM"),
+    // The tapes hold the typed script (demo:check), not a recording: the rehearsal sends the text. demo:check's
+    // step reads the in-memory CRM; live-sim writes to the real HubSpot, so it only checks the messages.
+    async rehearse(c) {
+      if (c.mode !== "live-sim") return c.steps("quote to CRM");
+      const w = c.world as World;
+      const vn2 = (
+        JSON.parse(readFileSync(fixture("voice", "expected.json"), "utf8")) as {
+          scripts: { id: string; script: string }[];
+        }
+      ).scripts.find((s) => s.id === "vn2-quote-cafe-aurora")?.script;
+      if (!vn2) throw new Error("the VN2 script is missing from fixtures/voice/expected.json");
+      await w.rep.sendText(vn2);
+      const plan = await w.rep.card("Quote for Café Aurora", ["Approve", "Cancel"], 300_000);
+      await w.rep.tap(plan, "Approve");
+      await w.rep.expect("the quote PDF", (e) => e.type === "document", 300_000);
+      await w.rep.image(/API · /, 300_000);
+    },
     done: (msgs) => !!out(msgs, "image", /API · /),
   },
   {
@@ -376,7 +391,7 @@ export const TAKES: Take[] = [
     title: "Real software: EspoCRM changed through its own admin",
     shot: "shot 5",
     // No tapes for EspoCRM (demo:check never runs it): rehearsed with the stand-ins only.
-    modes: ["live", "fake"],
+    modes: ["live", "live-sim", "fake"],
     pacingMs: 650,
     director:
       "EspoCRM's admin renames a label and reorders the lead layout; the compiled lead skill is active.",
