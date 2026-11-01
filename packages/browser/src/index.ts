@@ -40,6 +40,7 @@ export {
 export { installWriteGuard, type WriteGuard } from "./helpers/writeGuard.ts";
 export {
   attachHud,
+  HUD_FONTS,
   HUD_HIDE_CSS,
   HUD_SCRIPT,
   HUD_TAG,

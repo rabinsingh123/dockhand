@@ -128,17 +128,17 @@ describe("demo HUD", () => {
     const lease = await open(withHud, "hud-end");
     try {
       const hud = hudOf(lease.page) as Hud;
-      const view = () => (hud as unknown as { compose(): { ticker: string } }).compose();
+      const notes = () => hud.view().notes.map((n) => n.text);
       const skill = (portalId: string) =>
         ({ title: "Register a deal", version: 1, portalId, steps: [] }) as unknown as Skill;
       hud.runStart({ skill: skill("caravela") });
       await hud.end({ outcome: "success" });
-      expect(view().ticker).toMatch(
-        /^This run: \d+\.\d s, \$0 in model calls · computer use, measured mean: 145 s, \$0\.11$/,
-      );
+      expect(hud.view().stage).toBe("Submitted");
+      expect(hud.view().cost).toBe(0);
+      expect(notes()).toContain("Computer use, measured mean: 145 s, $0.11");
       hud.runStart({ skill: skill("supplier") });
       await hud.end({ outcome: "success" });
-      expect(view().ticker).toMatch(/^This run: \d+\.\d s, \$0 in model calls$/);
+      expect(notes().some((n) => n.startsWith("Computer use"))).toBe(false);
       // Filmed: the result stays on screen before the page closes, and that wait is not part of the run's time.
       const filmed = new Hud(lease.page, { endHoldMs: 300 });
       filmed.runStart({ skill: skill("caravela") });

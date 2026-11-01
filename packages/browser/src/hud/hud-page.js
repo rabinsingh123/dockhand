@@ -8,106 +8,133 @@
 // - never touches page elements: markers follow elements by reading getBoundingClientRect each frame;
 // - every motion is driven by requestAnimationFrame, not CSS animations, so screenshots taken with
 //   animations:"disabled" (which finish or cancel document animations) leave it alone;
-// - no network requests, no fonts to load, no globals except a non-enumerable window.__dockhandHud.
+// - no network requests: Geist is inlined by hud.ts and registered under its own family names, which no page uses;
+//   no globals except a non-enumerable window.__dockhandHud.
+//
+// Look (one design spec for the HUD and the flight recorder): light and editorial. Paper #F6F5F1, surface #FFF,
+// ink #111, gray #6B6B6B, hairline #E3E1DB; one accent #FF4F00, only where Dockhand acts (the active step, the
+// repaired element), at most once on screen; error #B42318 only for a real failure. Geist 600 for display at -2%
+// tracking, Geist Mono for IDs, tabular figures. Overlays fade in over 150 ms; click ripples are gone in 360 ms.
+// Sizes: what the viewer must read is 30 px or more (40 px in a 1080p frame once the 1280x800 page fills its
+// height), and everything sits inside the area a 1.15x push-in keeps (84 px from the sides, 52 px from top/bottom).
 (() => {
   if (window.__dockhandHud) return;
 
-  const TONES = {
-    cu: '#a78bfa', replay: '#22d3ee', heal: '#fbbf24', dry: '#60a5fa', wait: '#f472b6',
-    done: '#4ade80', fail: '#fb7185', idle: '#94a3b8',
-  };
-  const OK = '#22c55e', BAD = '#f43f5e';
+  const FONTS = /*__DOCKHAND_FONTS__*/null;
+  const C = { paper: '#F6F5F1', surface: '#FFFFFF', ink: '#111111', gray: '#6B6B6B', hair: '#E3E1DB', accent: '#FF4F00', error: '#B42318' };
+  const SAFE = { x: 84, y: 52 };
+  const FADE = 150;
   const css = `
 :host{all:initial}
 *{box-sizing:border-box}
-.root{position:fixed;inset:0;pointer-events:none;overflow:hidden;font:500 13px/1.3 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;color:#f4f6fa;-webkit-font-smoothing:antialiased;letter-spacing:0}
+.root{position:fixed;inset:0;pointer-events:none;overflow:hidden;font:500 20px/1.25 "Dockhand Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:${C.ink};-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .root *{pointer-events:none}
-.num{font-variant-numeric:tabular-nums}
-.panel{position:absolute;top:9px;right:12px;width:640px;border-radius:14px;background:rgba(12,14,19,.9);backdrop-filter:blur(16px) saturate(150%);border:1px solid rgba(255,255,255,.13);box-shadow:0 12px 32px rgba(3,6,12,.42),0 2px 6px rgba(3,6,12,.3);overflow:hidden;opacity:0;transform:translateY(-6px)}
-.r1{display:flex;align-items:center;gap:11px;height:40px;padding:0 12px 0 11px}
-.brand{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:#fff;padding-right:11px;border-right:1px solid rgba(255,255,255,.12);height:20px;letter-spacing:.1px}
-.logo{width:18px;height:18px;flex:none}
-.phase{display:flex;align-items:center;gap:8px;min-width:0;flex:1;white-space:nowrap}
-.dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 28%,transparent),0 0 14px var(--c)}
-.title{font-weight:700;font-size:13.5px;color:#fff}
-.detail{color:#c3cbd8;font-weight:500;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.detail:not(:empty)::before{content:"\\00b7";margin:0 7px 0 1px;color:#6f7a8a}
-.metrics{display:flex;align-items:center;gap:13px;flex:none}
-.m{display:flex;align-items:center;gap:5px;font-weight:650;font-size:13px;color:#eef1f6}
-.m svg{width:13px;height:13px;color:#8b95a5;flex:none}
-.m.off{display:none}
-.r2{display:flex;align-items:center;gap:9px;height:31px;padding:0 12px;border-top:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);font-size:12.5px;color:#c9d1dc}
-.stepn{font-weight:700;color:#fff;white-space:nowrap;flex:none}
-.stepn:empty{display:none}
-.ticker{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.calls{flex:none;color:#9aa4b2;font-weight:650;font-size:12px;white-space:nowrap}
-.calls:empty{display:none}
-.tags{display:flex;gap:6px;flex:none}
-.tag{height:20px;display:inline-flex;align-items:center;gap:5px;padding:0 7px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.2px;border:1px solid}
-.tag.slow{color:#fcd34d;border-color:rgba(252,211,77,.45);background:rgba(252,211,77,.1)}
-.tag.sim{color:#93c5fd;border-color:rgba(147,197,253,.42);background:rgba(147,197,253,.1)}
-.tag.ok{color:#86efac;border-color:rgba(134,239,172,.42);background:rgba(134,239,172,.1)}
-.tag.bad{color:#fda4af;border-color:rgba(253,164,175,.45);background:rgba(253,164,175,.1)}
+.mono{font-family:"Dockhand Geist Mono",ui-monospace,Consolas,monospace;letter-spacing:0}
+.card{position:absolute;left:0;top:0;background:${C.surface};border:1px solid ${C.hair};border-radius:14px;box-shadow:0 1px 2px rgba(17,17,17,.05),0 10px 30px rgba(17,17,17,.07);opacity:0}
+.strip{right:${SAFE.x}px;top:${SAFE.y}px;left:auto;max-width:700px;padding:13px 22px 14px}
+.s1{display:flex;align-items:baseline;gap:14px;white-space:nowrap;min-width:0}
+.stage{font-weight:600;font-size:30px;line-height:1.15;letter-spacing:-.02em}
+.stage.fail{color:${C.error}}
+.model{font-weight:500;font-size:30px;line-height:1.15;letter-spacing:-.02em;color:${C.gray};overflow:hidden;text-overflow:ellipsis;min-width:0}
+.model.mono{font-weight:500;font-size:28px;color:${C.ink};letter-spacing:-.01em}
+.s2{display:flex;align-items:baseline;gap:26px;margin-top:6px;font-size:30px;font-weight:500;line-height:1.15;letter-spacing:-.01em;white-space:nowrap}
+.s2 .held{color:${C.gray}}
+.s2 .fact.bad{color:${C.error}}
+.s3{margin-top:8px;font-size:20px;line-height:1.35;color:${C.gray};max-width:654px}
+.s3:empty{display:none}
+.s3 .tk{display:inline-block;width:15px;height:15px;margin-right:6px;vertical-align:-1px}
 .cursor{position:absolute;left:0;top:0;width:0;height:0;opacity:0;will-change:transform}
-.cursor .halo{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--c) 55%,transparent) 0,color-mix(in srgb,var(--c) 18%,transparent) 45%,transparent 70%)}
-.cursor svg{position:absolute;left:-2px;top:-1px;width:23px;height:27px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
-.ripple{position:absolute;left:0;top:0;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2.5px solid var(--c)}
-.ripdot{position:absolute;left:0;top:0;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--c)}
-.badge{position:absolute;left:0;top:0;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;display:grid;place-items:center;background:var(--c);box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.28)}
-.badge svg{width:12px;height:12px;color:#fff}
-.glow{position:absolute;left:0;top:0;border-radius:8px;border:2px solid var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 22%,transparent)}
-.box{position:absolute;left:0;top:0;border-radius:8px;border:2px solid var(--c)}
-.box.dash{border-style:dashed;background:color-mix(in srgb,var(--c) 9%,transparent)}
-.box.halo{box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 22%,transparent)}
-.label{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:2px;max-width:520px;padding:5px 9px 6px;border-radius:7px;background:var(--c);color:#0b0d12;font-size:12.5px;font-weight:700;white-space:nowrap;box-shadow:0 6px 16px rgba(3,6,12,.3)}
-.label.dark{background:rgba(12,14,19,.93);color:#fff;border:1px solid color-mix(in srgb,var(--c) 70%,transparent)}
-.label .sub{font-weight:600;font-size:11.5px;opacity:.85}
-.label.dark .sub{color:var(--c);opacity:1}
-.links{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.flash{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 0 3px rgba(255,255,255,.95),inset 0 0 46px rgba(255,255,255,.28)}
-.pill{position:absolute;left:0;top:0;height:18px;display:inline-flex;align-items:center;padding:0 7px;border-radius:999px;background:var(--c);color:#0b0d12;font-size:10.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.25)}
-.ladder{position:absolute;left:0;top:0;width:312px;padding:10px 10px 8px;border-radius:13px;background:rgba(12,14,19,.95);border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 34px rgba(3,6,12,.48),0 2px 6px rgba(3,6,12,.3);color:#e9edf3;opacity:0}
-.lh{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:#8a94a4;margin:0 4px 6px}
-.lr{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:9px;height:30px;padding:0 6px;border-radius:8px;font-size:12.5px;font-weight:650}
-.lr+.lr::before{content:"";position:absolute;left:15px;top:-6px;width:2px;height:10px;border-radius:1px;background:#353c49}
-.ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ld{font-size:11.5px;font-weight:700;color:#8a94a4;white-space:nowrap}
-.lr.pending{color:#a3acb9}
-.lr.trying{background:rgba(251,191,36,.13);color:#fde68a}.lr.trying .ld{color:#fbbf24}
-.lr.fail .ln{color:#c2cad6}.lr.fail .ld{color:#fda4af}
-.lr.ok{background:rgba(74,222,128,.13);color:#dcfce7}.lr.ok .ld{color:#86efac}
-.lr.off,.lr.na{color:#5d6676}.lr.off .ld,.lr.na .ld{color:#5d6676;font-weight:600}
-.li{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;position:relative;z-index:1;background:#0c0e13}
-.lr.pending .li{border:2px solid #4b5563}
-.lr.fail .li{background:#f43f5e}.lr.ok .li{background:#22c55e}
-.lr.off .li,.lr.na .li{border:2px dashed #353c49}
-.li svg{width:11px;height:11px;color:#fff}
-.lr.trying .li svg{width:18px;height:18px}
-.lf{margin:6px 4px 1px;font-size:11.5px;font-weight:700;color:#fda4af}
-.lf.ok{color:#86efac}
-.hint{position:absolute;left:0;top:0;padding:3px 8px;border-radius:6px;background:rgba(12,14,19,.9);color:#fff;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid rgba(255,255,255,.16)}
+.cursor svg{position:absolute;left:-3px;top:-2px;width:26px;height:30px;filter:drop-shadow(0 1px 1.5px rgba(17,17,17,.35))}
+.ripple{position:absolute;left:0;top:0;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid ${C.ink}}
+.outline{position:absolute;left:0;top:0;border-radius:8px;border:2px solid var(--c)}
+.outline.dash{border-style:dashed}
+.tag{position:absolute;left:0;top:0;padding:6px 12px 7px;border-radius:8px;background:${C.surface};border:1px solid ${C.hair};box-shadow:0 1px 2px rgba(17,17,17,.06);color:${C.ink};font-size:22px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;max-width:560px;overflow:hidden;text-overflow:ellipsis}
+.tag .sub{display:block;margin-top:1px;font-size:18px;font-weight:500;color:${C.gray}}
+.tag.ink{background:${C.ink};border-color:${C.ink};color:#fff}.tag.ink .sub{color:#c9c7c1}
+.tag.fail{color:${C.error}}
+.tick{position:absolute;left:0;top:0;width:22px;height:22px;margin:-11px 0 0 -11px;color:${C.gray}}
+.check{position:absolute;left:0;top:0;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;display:grid;place-items:center;background:${C.ink};box-shadow:0 0 0 2px ${C.surface}}
+.check.bad{background:${C.error}}
+.check svg{width:14px;height:14px;color:#fff}
+.scrim{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.spot{width:620px;padding:20px 24px 18px}
+.sh{font-size:30px;font-weight:600;line-height:1.15;letter-spacing:-.02em}
+.ss{margin-top:4px;font-size:22px;line-height:1.3;color:${C.gray}}
+.rungs{margin-top:14px;border-top:1px solid ${C.hair}}
+.rung{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:12px;height:50px;border-bottom:1px solid ${C.hair}}
+.rung .ri{width:26px;height:26px;border-radius:50%;display:grid;place-items:center}
+.rung .ri svg{width:15px;height:15px}
+.rung .rn{font-size:30px;font-weight:600;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rung .rd{font-size:22px;color:${C.gray};white-space:nowrap}
+.rung.ok .ri{background:${C.ink};color:#fff}
+.rung.fail .ri{border:2px solid ${C.gray};color:${C.gray}}
+.rung.fail .rn{color:${C.gray};text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(107,107,107,.55)}
+.rung.trying .ri{color:${C.ink}}
+.rung.pending .ri{border:2px solid ${C.hair}}
+.rung.pending .rn{color:${C.ink}}
+.rung.off .ri,.rung.na .ri{border:2px dashed ${C.hair}}
+.rung.off .rn,.rung.na .rn{color:#a3a19b;font-weight:500}
+.pick{margin-top:16px}
+.pick .ph{font-size:30px;font-weight:600;line-height:1.15;letter-spacing:-.02em}
+.pick .pr{margin-top:8px;font-size:26px;line-height:1.3;color:${C.ink};display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.pick .pm{margin-top:10px;font-size:22px;color:${C.gray}}
+.verified{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid ${C.hair};font-size:24px;font-weight:600;letter-spacing:-.01em}
+.verified .ri{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:${C.ink};color:#fff;flex:none}
+.verified .ri svg{width:15px;height:15px}
+.verified.fail{color:${C.ink};font-weight:500}
+.verified.fail .ri{background:${C.surface};border:2px solid ${C.gray};color:${C.gray}}
+.rb{width:560px;padding:20px 24px 14px}
+.rows{margin-top:12px;border-top:1px solid ${C.hair}}
+.row{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr) 26px;align-items:center;gap:14px;height:34px;border-bottom:1px solid ${C.hair};opacity:.32}
+.row.on{opacity:1}
+.row .rl{font-size:18px;color:${C.gray};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .rv{font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .rv.bad{color:${C.error}}
+.row .rc{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:${C.ink};color:#fff;opacity:0}
+.row.on .rc{opacity:1}
+.row .rc.bad{background:${C.error}}
+.row .rc svg{width:13px;height:13px}
+.row.cur{box-shadow:inset 3px 0 0 ${C.accent}}
+.hint{position:absolute;left:0;top:0;padding:6px 12px;border-radius:8px;background:${C.surface};border:1px solid ${C.hair};color:${C.ink};font-size:22px;font-weight:600;white-space:nowrap}
+.flash{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 0 3px ${C.ink}}
 `;
   const ICON = {
-    check: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 6.3l2.3 2.3 4.9-5"/></svg>',
-    cross: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>',
-    pen: '<svg viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="6" r="2.6"/></svg>',
-    clock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="9" r="5.6"/><path d="M8 6v3.2l2 1.3M6.4 1.6h3.2" stroke-linecap="round"/></svg>',
-    coin: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="8" cy="5" rx="5.2" ry="2.4"/><path d="M2.8 5v6c0 1.3 2.3 2.4 5.2 2.4s5.2-1.1 5.2-2.4V5M2.8 8c0 1.3 2.3 2.4 5.2 2.4s5.2-1.1 5.2-2.4"/></svg>',
-    calls: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 1.8l1.6 3.9 4.1.4-3.1 2.7.9 4-3.5-2.1-3.5 2.1.9-4L2.3 6.1l4.1-.4z"/></svg>',
+    check: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.3l2.3 2.3 4.7-4.9"/></svg>',
+    cross: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.2 3.2l5.6 5.6M8.8 3.2l-5.6 5.6"/></svg>',
+    tick: '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 11.4l3.6 3.6 7.4-7.6"/></svg>',
+    spin: '<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="10" stroke="#E3E1DB" stroke-width="2.4"/><path d="M13 3a10 10 0 0 1 10 10" stroke="#111111" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    dash: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 6h5"/></svg>',
   };
-  const LOGO = '<svg class="logo" viewBox="0 0 18 18"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="18" height="18" rx="5" fill="url(#g)"/><path d="M5.2 4.6h3.6a4.4 4.4 0 0 1 0 8.8H5.2z" fill="none" stroke="#0b0d12" stroke-width="1.9" stroke-linejoin="round"/><circle cx="9.1" cy="9" r="1.35" fill="#0b0d12"/></svg>';
-  const ARROW = '<svg viewBox="0 0 23 27"><path d="M2 1.6v20.6l5.6-5.3 3.7 8.2 3.5-1.6-3.6-8h7.6z" fill="#fff" stroke="#0b0d12" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+  const ARROW = '<svg viewBox="0 0 26 30"><path d="M2.5 2v22.4l6-5.7 4 8.9 3.8-1.7-3.9-8.7h8.3z" fill="#111111" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+
+  function loadFonts() {
+    if (!FONTS || typeof FontFace !== 'function' || !document.fonts) return;
+    for (const [family, b64] of [['Dockhand Geist', FONTS.sans], ['Dockhand Geist Mono', FONTS.mono]]) {
+      try {
+        const bin = atob(b64), bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const face = new FontFace(family, bytes, { weight: '100 900', style: 'normal' });
+        document.fonts.add(face);
+        face.load().catch(() => {});
+      } catch {}
+    }
+  }
+  try { loadFonts(); } catch {}
 
   let host = null, root = null, ui = null;
   let state = null;                 // last view() payload
-  const items = new Map();          // key -> renderable with update(now) -> bool (false = remove)
+  const items = new Map();          // key -> { update(now) -> bool (false = remove), remove() }
   const anims = new Set();          // one-shot animations
   let running = false;
-  const cur = { x: 640, y: 420, shown: false, tween: null, tone: TONES.cu };
+  const cur = { x: 640, y: 420, shown: false, tween: null };
+  let spotCard = null, rbCard = null;
+  const cards = new Set();          // every card on screen, closing ones included
+  const scrim = { on: false, op: 0, from: 0, t0: 0 };
 
   const ease = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const now = () => performance.now();
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html) e.innerHTML = html; return e; };
+  const txt = (tag, cls, text) => { const e = el(tag, cls); e.textContent = text == null ? '' : String(text); return e; };
 
   function mount() {
     if (host && host.isConnected) return true;
@@ -123,26 +150,29 @@
       root = host.attachShadow({ mode: 'closed' });
       const style = el('style'); style.textContent = css; root.appendChild(style);
       const r = el('div', 'root');
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const sc = document.createElementNS(svgNS, 'svg'); sc.setAttribute('class', 'scrim');
+      const scPath = document.createElementNS(svgNS, 'path'); scPath.setAttribute('fill', C.paper); scPath.setAttribute('fill-opacity', '0.86'); scPath.setAttribute('fill-rule', 'evenodd');
+      sc.appendChild(scPath);
+      const under = el('div', 'layer');   // marks: dimmed with the page when the scrim is up
       const layer = el('div', 'layer');
-      const links = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); links.setAttribute('class', 'links');
-      const cursor = el('div', 'cursor', '<div class="halo"></div>' + ARROW);
-      const panel = el('div', 'panel', `<div class="r1"><div class="brand">${LOGO}<span>Dockhand</span></div><div class="phase"><i class="dot"></i><span class="title"></span><span class="detail"></span></div><div class="metrics"><div class="m clock num">${ICON.clock}<span></span></div><div class="m cost num">${ICON.coin}<span></span></div></div></div><div class="r2"><span class="stepn num"></span><span class="ticker"></span><span class="calls num"></span><span class="tags"></span></div>`);
+      const top = el('div', 'layer');
+      const cursor = el('div', 'cursor', ARROW);
+      const strip = el('div', 'card strip', '<div class="s1"><span class="stage"></span><span class="model"></span></div><div class="s2"><span class="clock"></span><span class="cost"></span><span class="facts"></span></div><div class="s3"></div>');
       const flash = el('div', 'flash');
-      r.append(layer, links, cursor, panel, flash);
+      r.append(under, sc, layer, top, cursor, strip, flash);
       root.appendChild(r);
-      ui = { r, layer, links, cursor, panel, flash,
-        title: panel.querySelector('.title'), detail: panel.querySelector('.detail'), dot: panel.querySelector('.dot'),
-        clock: panel.querySelector('.clock span'), clockBox: panel.querySelector('.clock'),
-        cost: panel.querySelector('.cost span'), costBox: panel.querySelector('.cost'),
-        calls: panel.querySelector('.calls'),
-        stepn: panel.querySelector('.stepn'), ticker: panel.querySelector('.ticker'), tags: panel.querySelector('.tags') };
+      ui = { r, under, sc, scPath, layer, top, cursor, strip, flash,
+        stage: strip.querySelector('.stage'), model: strip.querySelector('.model'),
+        clock: strip.querySelector('.clock'), cost: strip.querySelector('.cost'), facts: strip.querySelector('.facts'),
+        s3: strip.querySelector('.s3') };
     }
     parent.appendChild(host);       // after <body>: outside body.innerText, body locators and form ordinals
     if (state) render(state);
     kick();
     return true;
   }
-  function ensure() { return mount(); }
+  const ensure = () => mount();
 
   // ---------- frame loop ----------
   let lastClockText = '';
@@ -166,17 +196,16 @@
     if (ui) ui.cursor.style.transform = `translate(${cur.x.toFixed(1)}px,${cur.y.toFixed(1)}px)`;
     for (const a of anims) { if (a(t) === false) anims.delete(a); else busy = true; }
     for (const [k, it] of items) { if (it.update(t) === false) { it.remove(); items.delete(k); } else busy = true; }
+    if (drawScrim(t)) busy = true;
+    for (const c of cards) { const live = c.update(t); if (!c.node.isConnected) cards.delete(c); else if (live) busy = true; }
     if (state && state.clock && ui) {
       const c = state.clock;
       const ms = Math.max(0, (c.frozenAt ?? Date.now()) - c.startedAt - c.pausedMs - (c.pausedAt ? Date.now() - c.pausedAt : 0));
       const text = fmtClock(ms);
       if (text !== lastClockText) { ui.clock.textContent = text; lastClockText = text; }
+      ui.clock.classList.toggle('held', !!c.pausedAt && !c.frozenAt);
       if (!c.frozenAt) busy = true;
     }
-    if (state && state.pulse && ui) {
-      const a = .55 + .45 * Math.sin(t / 260);
-      ui.dot.style.opacity = a.toFixed(2); busy = true;
-    } else if (ui) ui.dot.style.opacity = '1';
     if (busy) kick();
   }
   function kick() { if (!running) { running = true; requestAnimationFrame(tick); } }
@@ -200,61 +229,56 @@
     return { x: target.x - dx, y: target.y - dy, w: target.w || 0, h: target.h || 0 };
   }
   function onScreen(r) { return r && r.x + r.w > -4 && r.y + r.h > -4 && r.x < innerWidth + 4 && r.y < innerHeight + 4; }
-  function center(r) { return { x: r.x + r.w / 2, y: r.y + r.h / 2 }; }
   // Where a pointer would aim on a control: text fields a little left of centre, like a person clicking in.
   const TEXTY = 'input:not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]):not([type=reset]):not([type=file]),textarea,[role=combobox],[role=textbox]';
   function aim(r, target) {
     const texty = target instanceof Element && target.matches(TEXTY) && r.w > 60;
     return { x: texty ? r.x + Math.min(r.w / 2, Math.max(22, r.w * .2)) : r.x + r.w / 2, y: r.y + r.h / 2 };
   }
-  // Ripple where the cursor lands: after the running glide when it heads there, else after a short glide.
-  function landAndRipple(x, y) {
-    const tw = cur.tween;
-    if (tw && Math.hypot(tw.x1 - x, tw.y1 - y) < 10) { tw.after.push(() => ripple(x, y)); return; }
-    if (Math.hypot(cur.x - x, cur.y - y) > 3 || !cur.shown) { glide(x, y, 200).then(() => ripple(x, y)); return; }
-    ripple(x, y);
+  // A fade value for something born at t0 that may die at dieAt (both performance.now()).
+  function life(t, t0, dieAt) {
+    const born = Math.min(1, (t - t0) / FADE);
+    const dying = dieAt ? Math.max(0, Math.min(1, (dieAt - t) / FADE)) : 1;
+    return born * dying;
   }
+  function place(node, x, y) { node.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`; }
 
-  // ---------- panel ----------
+  // ---------- status strip ----------
   function render(s) {
     if (!ensure() || !ui) return;
-    const tone = TONES[s.tone] || s.tone || TONES.idle;
-    ui.r.style.setProperty('--c', tone);
-    cur.tone = tone;
-    ui.title.textContent = s.title || '';
-    ui.detail.textContent = s.detail || '';
-    ui.stepn.textContent = s.step || '';
-    ui.ticker.textContent = s.ticker || '';
-    ui.costBox.classList.toggle('off', s.cost == null);
+    ui.stage.textContent = s.stage || '';
+    ui.stage.classList.toggle('fail', !!s.fail);
+    ui.model.textContent = s.model || '';
+    ui.model.classList.toggle('mono', !!s.modelMono);
+    ui.model.style.display = s.model ? '' : 'none';
+    ui.clock.style.display = s.clock ? '' : 'none';
+    ui.cost.style.display = s.cost == null ? 'none' : '';
     if (s.cost != null) ui.cost.textContent = fmtCost(s.cost);
-    ui.calls.textContent = s.calls == null ? '' : `${s.calls} model call${s.calls === 1 ? '' : 's'}`;
-    ui.clockBox.classList.toggle('off', !s.clock);
+    ui.facts.innerHTML = '';
+    for (const f of s.facts || []) { const n = txt('span', 'fact' + (f.bad ? ' bad' : ''), f.text); ui.facts.appendChild(n); }
+    ui.facts.style.display = (s.facts || []).length ? 'flex' : 'none';
+    ui.facts.style.gap = '26px';
+    ui.s3.innerHTML = '';
+    (s.notes || []).forEach((n, i) => {
+      if (i) ui.s3.appendChild(document.createTextNode('  ·  '));
+      if (n.tick) ui.s3.appendChild(el('span', 'tk', ICON.tick));
+      ui.s3.appendChild(document.createTextNode(n.text));
+    });
     lastClockText = '';
-    ui.tags.innerHTML = '';
-    for (const t of s.tags || []) { const g = el('span', `tag ${t.kind}`); g.textContent = t.text; ui.tags.appendChild(g); }
-    const show = !!s.visible;
-    fade(ui.panel, show ? 1 : 0, show ? 0 : -6, 180);
-    if (!show) fadeCursor(0);
+    fadeTo(ui.strip, s.visible ? 1 : 0);
+    if (!s.visible) fadeCursor(0);
   }
   function fmtCost(v) { return v >= 1 ? `$${v.toFixed(2)}` : `$${v.toFixed(4)}`; }
-  function fade(node, to, ty, ms) {
+  function fadeTo(node, to, ms = FADE) {
     const from = Number(node.style.opacity || 0), t0 = now();
-    const fromY = Number(node.dataset.ty || (to ? -6 : 0));
-    node.dataset.ty = String(ty);
-    anims.add(t => {
-      const k = Math.min(1, (t - t0) / ms), e = ease(k);
-      node.style.opacity = String(from + (to - from) * e);
-      node.style.transform = `translateY(${(fromY + (ty - fromY) * e).toFixed(2)}px)`;
-      return k < 1;
-    });
-    kick();
-  }
-  function fadeCursor(to, ms = 160) {
-    if (!ui) return;
-    cur.shown = to > 0;
-    const node = ui.cursor, from = Number(node.style.opacity || 0), t0 = now();
+    if (from === to) return;
     anims.add(t => { const k = Math.min(1, (t - t0) / ms); node.style.opacity = String(from + (to - from) * k); return k < 1; });
     kick();
+  }
+  function fadeCursor(to, ms = FADE) {
+    if (!ui) return;
+    cur.shown = to > 0;
+    fadeTo(ui.cursor, to, ms);
   }
 
   // ---------- cursor ----------
@@ -272,264 +296,265 @@
       kick();
     });
   }
+  // A thin ink ring where a click landed: grows a little and is gone in 360 ms.
   function ripple(x, y) {
     if (!ensure()) return;
-    const tone = cur.tone;
-    const ring = el('div', 'ripple'), dot = el('div', 'ripdot');
-    ring.style.setProperty('--c', tone); dot.style.setProperty('--c', tone);
-    ui.layer.append(ring, dot);
+    const ring = el('div', 'ripple');
+    ui.layer.appendChild(ring);
     const t0 = now();
     anims.add(t => {
-      const k = Math.min(1, (t - t0) / 520), e = 1 - Math.pow(1 - k, 3);
-      ring.style.transform = `translate(${x}px,${y}px) scale(${1 + e * 4.2})`;
-      ring.style.opacity = String(.95 * (1 - k));
-      dot.style.transform = `translate(${x}px,${y}px) scale(${1 - k * .6})`;
-      dot.style.opacity = String(1 - k);
-      if (k >= 1) { ring.remove(); dot.remove(); return false; }
+      const k = Math.min(1, (t - t0) / 360), e = 1 - Math.pow(1 - k, 2);
+      ring.style.transform = `translate(${x}px,${y}px) scale(${1 + e * 2.2})`;
+      ring.style.opacity = String(.55 * (1 - k));
+      if (k >= 1) { ring.remove(); return false; }
       return true;
     });
     kick();
+  }
+  function landAndRipple(x, y) {
+    const tw = cur.tween;
+    if (tw && Math.hypot(tw.x1 - x, tw.y1 - y) < 10) { tw.after.push(() => ripple(x, y)); return; }
+    if (Math.hypot(cur.x - x, cur.y - y) > 3 || !cur.shown) { glide(x, y, 200).then(() => ripple(x, y)); return; }
+    ripple(x, y);
   }
 
   // ---------- anchored items ----------
-  function place(node, x, y) { node.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`; }
-  function put(key, it) { const old = items.get(key); if (old) old.remove(); items.set(key, it); kick(); }
+  function put(key, it) { const old = items.get(key); if (old && old !== it) old.remove(); items.set(key, it); kick(); }
   function drop(key) { const it = items.get(key); if (it) { it.remove(); items.delete(key); } }
+  function fadeOut(key) { const it = items.get(key); if (it && !it.dieAt) { it.dieAt = now() + FADE; kick(); } }
 
-  function badge(target, key, kind, note) {
+  // An outline around a target with an optional tag. o = {tone:'accent'|'ink'|'error'|'gray', dash, label, sub,
+  // tagTone:'plain'|'ink'|'fail', below, hole (cut out of the scrim), delay (ms before it appears), ttl}
+  function outline(key, target, o) {
     if (!ensure()) return;
-    const prev = items.get('b:' + key);
-    const color = kind === 'ok' ? OK : kind === 'bad' ? BAD : cur.tone;
-    const node = prev && prev.node ? prev.node : el('div', 'badge');
-    node.style.setProperty('--c', color);
-    node.innerHTML = kind === 'ok' ? ICON.check : kind === 'bad' ? ICON.cross : ICON.pen;
-    let callout = prev && prev.callout;
-    if (kind === 'bad' && note) {
-      if (!callout) { callout = el('div', 'label'); ui.layer.appendChild(callout); }
-      callout.style.setProperty('--c', TONES.fail);
-      callout.textContent = note;
-    } else if (callout) { callout.remove(); callout = null; }
-    if (!node.isConnected) ui.layer.appendChild(node);
-    const t0 = now();
+    const prev = items.get(key);
+    const frame = prev ? prev.frame : el('div', 'outline');
+    const tag = prev ? prev.tag : el('div', 'tag');
+    frame.className = 'outline' + (o.dash ? ' dash' : '');
+    frame.style.setProperty('--c', C[o.tone] || o.tone || C.accent);
+    tag.className = 'tag' + (o.tagTone === 'ink' ? ' ink' : o.tagTone === 'fail' ? ' fail' : '');
+    tag.innerHTML = '';
+    if (o.label) tag.appendChild(document.createTextNode(o.label));
+    if (o.sub) tag.appendChild(txt('span', 'sub', o.sub));
+    if (!frame.isConnected) ui.layer.append(frame, tag);
+    const t0 = prev && !prev.dieAt ? prev.t0 : now() + (o.delay || 0);
     const it = {
-      node, callout, target,
-      update() {
-        const r = rectOf(target);
-        const vis = onScreen(r);
-        node.style.display = vis ? '' : 'none';
-        if (callout) callout.style.display = vis ? '' : 'none';
-        if (!vis) return true;
-        const k = Math.min(1, (now() - t0) / 260), s = k < 1 ? .55 + .45 * (1 - Math.pow(1 - k, 3)) + Math.sin(k * Math.PI) * .18 : 1;
-        const small = r.w < 44;
-        const bx = small ? r.x - 15 : r.x + r.w - 4, by = small ? r.y + r.h / 2 : r.y + 1;
-        node.style.transform = `translate(${Math.round(bx)}px,${Math.round(by)}px) scale(${s.toFixed(3)})`;
-        if (callout) place(callout, Math.min(innerWidth - callout.offsetWidth - 8, Math.max(8, r.x)), r.y + r.h + 6);
-        return true;
-      },
-      remove() { node.remove(); if (callout) callout.remove(); },
-    };
-    items.set('b:' + key, it);
-    kick();
-  }
-  function glow(target, color, ms = 900) {
-    if (!ensure()) return;
-    const node = el('div', 'glow'); node.style.setProperty('--c', color || cur.tone);
-    ui.layer.appendChild(node);
-    const t0 = now();
-    anims.add(t => {
-      const k = Math.min(1, (t - t0) / ms), r = rectOf(target);
-      if (!r || k >= 1) { node.remove(); return false; }
-      node.style.width = `${r.w + 8}px`; node.style.height = `${r.h + 8}px`;
-      place(node, r.x - 4, r.y - 4);
-      node.style.opacity = String(k < .2 ? k / .2 : 1 - (k - .2) / .8);
-      return true;
-    });
-    kick();
-  }
-  // A box with a label: o = {tone, dashed, halo, label, sub, dark, below}
-  function box(key, target, o) {
-    if (!ensure()) return;
-    const color = TONES[o.tone] || o.tone || cur.tone;
-    const prev = items.get('x:' + key);
-    const frame = prev ? prev.frame : el('div', 'box');
-    const label = prev ? prev.label : el('div', 'label');
-    frame.className = `box${o.dashed ? ' dash' : ''}${o.halo ? ' halo' : ''}`;
-    frame.style.setProperty('--c', color); label.style.setProperty('--c', color);
-    label.className = `label${o.dark ? ' dark' : ''}`;
-    label.innerHTML = '';
-    if (o.label) { const a = el('span'); a.textContent = o.label; label.appendChild(a); }
-    if (o.sub) { const b = el('span', 'sub'); b.textContent = o.sub; label.appendChild(b); }
-    label.style.display = o.label || o.sub ? '' : 'none';
-    if (!frame.isConnected) ui.layer.append(frame, label);
-    const t0 = prev ? prev.t0 : now();
-    frame.style.boxShadow = '';
-    const it = {
-      frame, label, t0, target, dim: !!o.dim, dieAt: o.ttl ? now() + o.ttl : 0,
-      update(t) {
-        let fadeK = 1;
-        if (this.dieAt) { fadeK = Math.max(0, Math.min(1, (this.dieAt - t) / 350)); if (fadeK <= 0) return false; }
-        const r = rectOf(target);
-        const vis = onScreen(r);
-        frame.style.display = vis ? '' : 'none';
-        if (!vis) { label.style.display = 'none'; return true; }
-        label.style.display = o.label || o.sub ? '' : 'none';
-        frame.style.width = `${r.w + 10}px`; frame.style.height = `${r.h + 10}px`;
-        place(frame, r.x - 5, r.y - 5);
-        const lw = label.offsetWidth, lh = label.offsetHeight;
-        const above = !o.below && r.y - lh - 9 > 4;
-        const lx = o.left ? Math.min(innerWidth - lw - 8, Math.max(8, r.x - 5)) : Math.min(innerWidth - lw - 8, Math.max(8, r.x + r.w + 5 - lw));
-        place(label, lx, above ? r.y - lh - 9 : r.y + r.h + 9);
-        const k = Math.min(1, (t - this.t0) / 220);
-        const base = this.dim ? .45 : 1;
-        frame.style.opacity = String(base * k * fadeK); label.style.opacity = String((this.dim ? .75 : 1) * k * fadeK);
-        if (o.pulse) frame.style.boxShadow = `0 0 0 ${(4 + 3 * Math.sin(t / 240)).toFixed(1)}px color-mix(in srgb, ${color} 24%, transparent)`;
-        return true;
-      },
-      remove() { frame.remove(); label.remove(); },
-    };
-    items.set('x:' + key, it);
-    kick();
-  }
-  function pill(target, key, text, tone) {
-    if (!ensure()) return;
-    const color = TONES[tone] || tone || TONES.heal;
-    const prev = items.get('p:' + key);
-    const node = prev ? prev.node : el('div', 'pill');
-    node.textContent = text; node.style.setProperty('--c', color);
-    if (!node.isConnected) ui.layer.appendChild(node);
-    const t0 = prev ? prev.t0 : now();
-    items.set('p:' + key, {
-      node, t0,
-      update(t) {
-        const r = rectOf(target);
-        if (!onScreen(r)) { node.style.display = 'none'; return true; }
-        node.style.display = '';
-        const small = r.w < 44, w = node.offsetWidth;
-        const x = small ? r.x - 28 - w : r.x + r.w - 18 - w, y = small ? r.y + r.h / 2 - 9 : r.y - 8;
-        place(node, x, y);
-        node.style.opacity = String(Math.min(1, (t - t0) / 220));
-        return true;
-      },
-      remove() { node.remove(); },
-    });
-    kick();
-  }
-  // ---------- heal ladder ----------
-  const SPIN = '<svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="rgba(251,191,36,.25)" stroke-width="2.4"/><path d="M9 2a7 7 0 0 1 7 7" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/></svg>';
-  function ladder(key, target, st) {
-    if (!ensure()) return;
-    const prev = items.get('L:' + key);
-    const node = prev ? prev.node : el('div', 'ladder');
-    node.innerHTML = '';
-    const head = el('div', 'lh');
-    head.innerHTML = '<span></span><span></span>';
-    head.firstChild.textContent = st.title || 'Heal ladder';
-    head.lastChild.textContent = st.note || '';
-    node.appendChild(head);
-    let spin = null;
-    for (const r of st.rungs) {
-      const row = el('div', 'lr ' + r.status);
-      const icon = el('i', 'li', r.status === 'ok' ? ICON.check : r.status === 'fail' ? ICON.cross : r.status === 'trying' ? SPIN : '');
-      if (r.status === 'trying') spin = icon.firstChild;
-      const n = el('span', 'ln'); n.textContent = r.name;
-      const d = el('span', 'ld'); d.textContent = r.detail || '';
-      row.append(icon, n, d);
-      node.appendChild(row);
-    }
-    if (st.foot) { const f = el('div', 'lf' + (st.footOk ? ' ok' : '')); f.textContent = st.foot; node.appendChild(f); }
-    if (!node.isConnected) ui.layer.appendChild(node);
-    const it = {
-      node, target, spin, t0: prev ? prev.t0 : now(), collapseAt: prev ? prev.collapseAt : 0, toKey: prev ? prev.toKey : null,
-      update(t) {
-        const r = rectOf(this.target);
-        if (!onScreen(r)) { node.style.display = 'none'; return true; }
-        node.style.display = '';
-        const w = node.offsetWidth, h = node.offsetHeight;
-        let x = r.x + r.w + 18;
-        if (x + w > innerWidth - 8) x = r.x - 18 - w;
-        x = Math.max(8, Math.min(innerWidth - w - 8, x));
-        let y = Math.max(8, Math.min(innerHeight - h - 8, r.y + r.h / 2 - h / 2));
-        if (x + w > innerWidth - 660 && y < 88) y = 88;             // keep clear of the status panel
-        const k = Math.min(1, (t - this.t0) / 240), e = 1 - Math.pow(1 - k, 3);
-        let op = e, sc = 1, dx = (1 - e) * 10, dy = 0;
-        if (this.collapseAt && t >= this.collapseAt) {
-          const c = Math.min(1, (t - this.collapseAt) / 420), ce = c * c * (3 - 2 * c);
-          const to = this.toKey && items.get('x:' + this.toKey);
-          const tr = to && to.label && to.label.isConnected ? to.label.getBoundingClientRect() : null;
-          if (tr && tr.width > 0) { dx = (tr.left - x) * ce; dy = (tr.top - y) * ce; }
-          sc = 1 - .45 * ce; op = 1 - ce;
-          if (c >= 1) return false;
-        }
-        if (this.spin) this.spin.style.transform = `rotate(${((t / 2.6) % 360).toFixed(1)}deg)`;
-        node.style.transformOrigin = 'top left';
-        node.style.transform = `translate(${Math.round(x + dx)}px,${Math.round(y + dy)}px) scale(${sc.toFixed(3)})`;
-        node.style.opacity = String(op);
-        return true;
-      },
-      remove() { node.remove(); },
-    };
-    items.set('L:' + key, it);
-    kick();
-  }
-  function ladderCollapse(key, toKey, delay) {
-    const it = items.get('L:' + key);
-    if (it) { it.collapseAt = now() + (delay || 0); it.toKey = toKey; kick(); }
-  }
-  function retire(prefix, ms) {
-    const at = now() + (ms || 0);
-    for (const [k, it] of items) {
-      if ((k.startsWith('x:' + prefix) || k.startsWith('l:' + prefix)) && !it.dieAt) it.dieAt = at;
-      if (k.startsWith('L:' + prefix) && !it.collapseAt) it.collapseAt = at;
-    }
-    kick();
-  }
-  function dim(key, on) { const it = items.get('x:' + key); if (it) { it.dim = on; kick(); } }
-  // Dashed arrow from one box to another (old place -> new place of a healed control).
-  function link(key, fromKey, toKey, tone) {
-    if (!ensure()) return;
-    const color = TONES[tone] || tone || TONES.heal;
-    const ns = 'http://www.w3.org/2000/svg';
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('fill', 'none'); path.setAttribute('stroke', color); path.setAttribute('stroke-width', '2.2');
-    path.setAttribute('stroke-dasharray', '6 5'); path.setAttribute('stroke-linecap', 'round');
-    const head = document.createElementNS(ns, 'path');
-    head.setAttribute('fill', color);
-    ui.links.append(path, head);
-    const t0 = now();
-    put('l:' + key, {
-      dieAt: 0,
+      frame, tag, target, hole: !!o.hole, t0, dieAt: o.ttl ? t0 + o.ttl : 0,
       update(t) {
         if (this.dieAt && t >= this.dieAt) return false;
-        const a = items.get('x:' + fromKey), b = items.get('x:' + toKey);
-        const ra = a && rectOf(a.target), rb = b && rectOf(b.target);
-        if (!ra || !rb || !onScreen(ra) || !onScreen(rb)) { path.style.display = head.style.display = 'none'; return true; }
-        path.style.display = head.style.display = '';
-        const p = center(ra), q = center(rb);
-        if (Math.hypot(q.x - p.x, q.y - p.y) < 30) { path.style.display = head.style.display = 'none'; return true; }
-        const mx = (p.x + q.x) / 2 + (q.y - p.y) * .18, my = (p.y + q.y) / 2 - (q.x - p.x) * .18;
-        // stop at the target box edge
-        const ang = Math.atan2(q.y - my, q.x - mx);
-        const ex = q.x - Math.cos(ang) * (Math.min(rb.w, rb.h) / 2 + 9), ey = q.y - Math.sin(ang) * (Math.min(rb.w, rb.h) / 2 + 9);
-        path.setAttribute('d', `M${p.x},${p.y} Q${mx},${my} ${ex},${ey}`);
-        const s = 8, l = ang + Math.PI * .82, r = ang - Math.PI * .82;
-        head.setAttribute('d', `M${ex + Math.cos(ang) * 2},${ey + Math.sin(ang) * 2} L${ex + Math.cos(l) * s},${ey + Math.sin(l) * s} L${ex + Math.cos(r) * s},${ey + Math.sin(r) * s}Z`);
-        const k = Math.min(1, (t - t0) / 300);
-        path.style.opacity = head.style.opacity = String(k);
-        path.setAttribute('stroke-dashoffset', String(-(t / 40) % 11));
+        const r = rectOf(target);
+        const vis = onScreen(r) && t >= this.t0;
+        frame.style.display = vis ? '' : 'none';
+        tag.style.display = vis && (o.label || o.sub) ? '' : 'none';
+        if (!vis) return true;
+        const pad = o.pad ?? 5;
+        frame.style.width = `${r.w + pad * 2}px`; frame.style.height = `${r.h + pad * 2}px`;
+        place(frame, r.x - pad, r.y - pad);
+        if (o.label || o.sub) {
+          const lw = tag.offsetWidth, lh = tag.offsetHeight;
+          const above = !o.below && r.y - lh - 12 > SAFE.y;
+          const lx = Math.min(innerWidth - SAFE.x - lw, Math.max(SAFE.x, r.x + r.w + pad - lw));
+          place(tag, lx, above ? r.y - pad - lh - 8 : r.y + r.h + pad + 8);
+        }
+        const k = life(t, this.t0, this.dieAt);
+        frame.style.opacity = String(k); tag.style.opacity = String(k);
         return true;
       },
-      remove() { path.remove(); head.remove(); },
+      remove() { frame.remove(); tag.remove(); },
+    };
+    put(key, it);
+  }
+  // The one accent: the step Dockhand is acting on now. Moving it fades the old one out.
+  function active(target, o = {}) {
+    const prev = items.get('active');
+    if (prev && prev.target !== target) { items.delete('active'); prev.dieAt = now() + FADE; items.set('active~' + now(), prev); }
+    outline('active', target, { tone: 'accent', pad: 4, ...o });
+  }
+  function activeOff() { const prev = items.get('active'); if (prev) { items.delete('active'); prev.dieAt = now() + FADE; items.set('active~' + now(), prev); kick(); } }
+
+  // A mark at a field's top-right corner: a quiet gray tick (fixed free) or an ink check / error cross (read back).
+  function mark(target, key, kind, delay = 0) {
+    if (!ensure()) return;
+    const prev = items.get('m:' + key);
+    const node = prev ? prev.node : el('div');
+    node.className = kind === 'free' ? 'tick' : 'check' + (kind === 'bad' ? ' bad' : '');
+    node.innerHTML = kind === 'free' ? ICON.tick : kind === 'bad' ? ICON.cross : ICON.check;
+    if (!node.isConnected) ui.under.appendChild(node);
+    const t0 = now() + delay;
+    put('m:' + key, {
+      node, target, t0,
+      update(t) {
+        const r = rectOf(target);
+        const vis = onScreen(r) && t >= this.t0;
+        node.style.display = vis ? '' : 'none';
+        if (!vis) return true;
+        const small = r.w < 44;
+        const x = small ? r.x - 18 : r.x + r.w, y = small ? r.y + r.h / 2 : r.y;
+        place(node, x, y);
+        node.style.opacity = String(Math.min(1, (t - this.t0) / FADE));
+        return true;
+      },
+      remove() { node.remove(); },
     });
   }
-  function hint(text, x, y, ms = 1100) {
+
+  // ---------- scrim (the spotlight) ----------
+  function holes() {
+    const out = [];
+    for (const it of items.values()) {
+      if (!it.hole || it.dieAt) continue;
+      const r = rectOf(it.target);
+      if (onScreen(r)) out.push(r);
+    }
+    return out;
+  }
+  function drawScrim(t) {
+    if (!ui) return false;
+    const k = Math.min(1, (t - scrim.t0) / FADE);
+    scrim.op = scrim.from + ((scrim.on ? 1 : 0) - scrim.from) * k;
+    ui.sc.style.opacity = String(scrim.op);
+    if (scrim.op <= 0.001) return k < 1;
+    const W = innerWidth, H = innerHeight;
+    let d = `M0 0H${W}V${H}H0Z`;
+    for (const r of holes()) {
+      const p = 12, x = r.x - p, y = r.y - p, w = r.w + 2 * p, h = r.h + 2 * p, rr = 10;
+      d += `M${x + rr} ${y}H${x + w - rr}Q${x + w} ${y} ${x + w} ${y + rr}V${y + h - rr}Q${x + w} ${y + h} ${x + w - rr} ${y + h}H${x + rr}Q${x} ${y + h} ${x} ${y + h - rr}V${y + rr}Q${x} ${y} ${x + rr} ${y}Z`;
+    }
+    ui.scPath.setAttribute('d', d);
+    return true; // holes follow their targets while the scrim is up
+  }
+  function setScrim(on) { if (!ensure()) return; if (scrim.on === on) return; scrim.from = scrim.op; scrim.on = on; scrim.t0 = now(); kick(); }
+
+  // ---------- cards ----------
+  // A card that fades in, can move (eased over 200 ms) and fades out. place() picks its spot each frame.
+  function card(cls, where) {
+    const node = el('div', 'card ' + cls);
+    ui.top.appendChild(node);
+    const c = {
+      node, t0: now(), dieAt: 0, x: null, y: null, tx: 0, ty: 0, m0: 0, mx: 0, my: 0,
+      update(t) {
+        if (!node.isConnected) return false;
+        const k = life(t, this.t0, this.dieAt);
+        node.style.opacity = String(k);
+        if (this.dieAt && t >= this.dieAt) { node.remove(); return false; }
+        const p = where(node.offsetWidth, node.offsetHeight);
+        if (this.x === null) { this.x = p.x; this.y = p.y; this.tx = p.x; this.ty = p.y; }
+        if (Math.abs(p.x - this.tx) > 1 || Math.abs(p.y - this.ty) > 1) { this.mx = this.x; this.my = this.y; this.tx = p.x; this.ty = p.y; this.m0 = t; }
+        const m = this.m0 ? Math.min(1, (t - this.m0) / 200) : 1, e = ease(m);
+        this.x = this.mx + (this.tx - this.mx) * e; this.y = this.my + (this.ty - this.my) * e;
+        if (m >= 1) { this.x = this.tx; this.y = this.ty; this.mx = this.tx; this.my = this.ty; this.m0 = 0; }
+        place(node, this.x, this.y);
+        return k < 1 || this.m0 !== 0 || !!this.dieAt;
+      },
+      close() { if (!this.dieAt) { this.dieAt = now() + FADE; kick(); } },
+    };
+    cards.add(c);
+    kick();
+    return c;
+  }
+  const clampY = (y, h) => Math.max(SAFE.y + 128, Math.min(innerHeight - SAFE.y - h, y));
+  // Beside the newest hole (on the side with more room), else on the left under the strip.
+  // Never over the lit element or the status strip: beside it, else above or below it, inside the safe area.
+  function spotPlace(w, h) {
+    let anchor = null;
+    for (const it of items.values()) if (it.hole && !it.dieAt) { const r = rectOf(it.target); if (onScreen(r)) anchor = r; }
+    const strip = ui.strip.getBoundingClientRect();
+    const minX = SAFE.x, maxX = innerWidth - SAFE.x - w, minY = SAFE.y, maxY = innerHeight - SAFE.y - h;
+    const cx = (x) => Math.max(minX, Math.min(maxX, x)), cy = (y) => Math.max(minY, Math.min(maxY, y));
+    const hits = (x, y, r, m) => r && x < r.x + r.w + m && x + w > r.x - m && y < r.y + r.h + m && y + h > r.y - m;
+    const ok = (p) => !hits(p.x, p.y, anchor, 18) && !hits(p.x, p.y, { x: strip.left, y: strip.top, w: strip.width, h: strip.height }, 12);
+    if (!anchor) {
+      const p = { x: minX, y: cy(strip.bottom + 24) };
+      return ok(p) ? p : { x: minX, y: maxY };
+    }
+    const mid = anchor.y + anchor.h / 2 - h / 2;
+    const tries = [
+      { x: cx(anchor.x + anchor.w + 40), y: cy(mid) },
+      { x: cx(anchor.x - 40 - w), y: cy(mid) },
+      { x: cx(anchor.x + anchor.w / 2 - w / 2), y: cy(anchor.y - 30 - h) },
+      { x: cx(anchor.x + anchor.w / 2 - w / 2), y: cy(anchor.y + anchor.h + 30) },
+      { x: minX, y: cy(anchor.y - 30 - h) },
+      { x: maxX, y: cy(anchor.y - 30 - h) },
+      { x: minX, y: cy(anchor.y + anchor.h + 30) },
+      { x: maxX, y: cy(anchor.y + anchor.h + 30) },
+    ];
+    return tries.find(ok) ?? tries.find((p) => !hits(p.x, p.y, anchor, 18)) ?? tries[0];
+  }
+  function rungRow(r) {
+    const row = el('div', 'rung ' + r.status);
+    const icon = el('span', 'ri', r.status === 'ok' ? ICON.check : r.status === 'fail' ? ICON.cross : r.status === 'trying' ? ICON.spin : r.status === 'na' || r.status === 'off' ? ICON.dash : '');
+    row.append(icon, txt('span', 'rn', r.name), txt('span', 'rd', r.detail || ''));
+    return row;
+  }
+  // st = {title, sub, rungs:[{name,status,detail}], pick:{title, reason, meta}, verified:{ok,text}}
+  function spot(st) {
     if (!ensure()) return;
-    const node = el('div', 'hint'); node.textContent = text; ui.layer.appendChild(node);
+    if (!spotCard || spotCard.dieAt) { spotCard = card('spot', spotPlace); }
+    const n = spotCard.node;
+    n.innerHTML = '';
+    n.appendChild(txt('div', 'sh', st.title));
+    if (st.sub) n.appendChild(txt('div', 'ss', st.sub));
+    if (st.rungs && st.rungs.length) { const list = el('div', 'rungs'); for (const r of st.rungs) list.appendChild(rungRow(r)); n.appendChild(list); }
+    if (st.pick) {
+      const p = el('div', 'pick');
+      p.appendChild(txt('div', 'ph', st.pick.title));
+      if (st.pick.reason) p.appendChild(txt('div', 'pr', st.pick.reason));
+      if (st.pick.meta) p.appendChild(txt('div', 'pm', st.pick.meta));
+      n.appendChild(p);
+    }
+    if (st.verified) {
+      const v = el('div', 'verified' + (st.verified.ok ? '' : ' fail'));
+      v.append(el('span', 'ri', st.verified.ok ? ICON.check : ICON.dash), txt('span', '', st.verified.text));
+      n.appendChild(v);
+    }
+    const spin = n.querySelector('.rung.trying .ri svg');
+    if (spin) anims.add(t => { if (!spin.isConnected) return false; spin.style.transform = `rotate(${((t / 2.4) % 360).toFixed(1)}deg)`; return true; });
+    kick();
+  }
+  function spotOff() { if (spotCard) spotCard.close(); spotCard = null; }
+
+  // The read-back before submit: each written field, read from the page, one row at a time.
+  // st = {title, rows:[{label, value, ok, expected}], stepMs, instant}
+  function readback(st) {
+    if (!ensure()) return;
+    if (rbCard && !rbCard.dieAt) rbCard.close();
+    rbCard = card('rb', (w, h) => ({ x: SAFE.x, y: clampY(SAFE.y + 128, h) }));
+    const n = rbCard.node;
+    const head = txt('div', 'sh', st.title);
+    const sub = txt('div', 'ss', st.sub || '');
+    const list = el('div', 'rows');
+    const rows = st.rows.map(r => {
+      const row = el('div', 'row');
+      const v = txt('span', 'rv' + (r.ok ? '' : ' bad'), r.value === '' ? '(empty)' : r.value);
+      row.append(txt('span', 'rl', r.label), v, el('span', 'rc' + (r.ok ? '' : ' bad'), r.ok ? ICON.check : ICON.cross));
+      list.appendChild(row);
+      return row;
+    });
+    n.append(head, sub, list);
+    const t0 = now(), step = st.instant ? 0 : (st.stepMs || 120);
+    let shown = -1;
+    // One row per step: it lights up with its check; the row being read carries the accent until the sweep ends.
+    anims.add(t => {
+      if (!n.isConnected) return false;
+      const k = step ? Math.floor((t - t0) / step) : rows.length;
+      const upTo = Math.min(rows.length - 1, k);
+      while (shown < upTo) { shown++; rows[shown].classList.add('on'); }
+      const sweeping = step > 0 && k < rows.length;
+      rows.forEach((row, i) => row.classList.toggle('cur', sweeping && i === shown));
+      return sweeping;
+    });
+    kick();
+  }
+  function readbackOff() { if (rbCard) rbCard.close(); rbCard = null; }
+
+  function hint(text, x, y, ms = 1000) {
+    if (!ensure()) return;
+    const node = txt('div', 'hint', text); ui.top.appendChild(node);
     const t0 = now();
     anims.add(t => {
-      const k = Math.min(1, (t - t0) / ms);
-      place(node, Math.min(innerWidth - node.offsetWidth - 8, x + 18), Math.min(innerHeight - 30, y + 14));
-      node.style.opacity = String(k < .15 ? k / .15 : k > .75 ? (1 - k) / .25 : 1);
-      if (k >= 1) { node.remove(); return false; }
+      place(node, Math.max(SAFE.x, Math.min(innerWidth - SAFE.x - node.offsetWidth, x + 18)), Math.max(SAFE.y, Math.min(innerHeight - SAFE.y - node.offsetHeight, y + 14)));
+      node.style.opacity = String(life(t, t0, t0 + ms));
+      if (t >= t0 + ms) { node.remove(); return false; }
       return true;
     });
     kick();
@@ -537,11 +562,17 @@
   function shutter() {
     if (!ensure()) return;
     const node = ui.flash, t0 = now();
-    anims.add(t => { const k = Math.min(1, (t - t0) / 320); node.style.opacity = String(.85 * (1 - k)); return k < 1; });
+    anims.add(t => { const k = Math.min(1, (t - t0) / 240); node.style.opacity = String(.35 * (1 - k)); return k < 1; });
     kick();
   }
   function clear(all) {
     for (const [k, it] of items) { if (all || !k.startsWith('keep:')) { it.remove(); items.delete(k); } }
+    if (all) { spotOff(); readbackOff(); setScrim(false); }
+  }
+  function retire(prefix, ms) {
+    const at = now() + (ms || 0);
+    for (const [k, it] of items) if (k.startsWith(prefix) && !it.dieAt) it.dieAt = at + FADE;
+    kick();
   }
 
   const api = {
@@ -550,16 +581,21 @@
     glideTo(target, ms) { const r = rectOf(target); if (!r || !onScreen(r)) return Promise.resolve(false); const p = aim(r, target); return glide(p.x, p.y, ms || 260).then(() => true); },
     ripple(x, y) { landAndRipple(x, y); },
     rippleOn(target) { const r = rectOf(target); if (!r || !onScreen(r)) return; const p = aim(r, target); landAndRipple(p.x, p.y); },
-    badge, glow, box, dim, link, hint, shutter, clear, pill, retire,
-    pillOn(target, key, text, tone) { pill(target, key, text, tone); },
-    ladder, ladderCollapse,
-    ladderOn(target, key, st) { ladder(key, target, st); },
-    unbox(key) { drop('x:' + key); },
-    // element-first variants (Node passes the element as the first argument)
-    boxOn(target, key, o) { box(key, target, o); },
-    acted(target, o) { if (o.click) api.rippleOn(target); if (o.write) { badge(target, o.key, 'filled'); glow(target); } },
     glideClick(x, y, ms) { return glide(x, y, ms || 300).then(() => landAndRipple(x, y)); },
-    hintBottom(text, ms) { hint(text, innerWidth / 2 - 40, innerHeight - 96, ms); },
+    // element-first variants (Node passes the element as the first argument)
+    activeOn(target, o) { active(target, o || {}); },
+    activeBox(box, o) { active(box, o || {}); },
+    activeOff,
+    markOn(target, key, kind, delay) { mark(target, key, kind, delay || 0); },
+    outlineOn(target, key, o) { outline(key, target, o); },
+    outline(key, box, o) { outline(key, box, o); },
+    acted(target, o) { if (o.click) api.rippleOn(target); },
+    unbox(key) { fadeOut(key); },
+    scrim: setScrim,
+    spot, spotOff, readback, readbackOff,
+    hint,
+    hintBottom(text, ms) { hint(text, innerWidth / 2 - 60, innerHeight - SAFE.y - 60, ms); },
+    shutter, clear, retire,
     hideCursor() { fadeCursor(0); },
     cursorAt() { return { x: cur.x, y: cur.y }; },
   };

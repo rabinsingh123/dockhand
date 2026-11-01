@@ -2,6 +2,11 @@
 // page, fed by small optional hooks in the skills runner and the computer-use loop. It only draws: it never
 // changes what automation sees (see hud-page.js), every page call is best effort, and when pacing is on every
 // second it waits is logged so the runner can leave it out of reported timings.
+//
+// What it shows (the video's design spec): a status strip with five facts (stage, model, elapsed, spend,
+// verified) plus quiet notes; free fixes as gray ticks and one counter; the model heals as a spotlight (the page
+// dims, the ladder shows each rung tried and its result, then Muse Spark Open's pick with its reason, real latency
+// and cost, then what code checked); the read-back before submit, field by field.
 
 import { readFileSync } from "node:fs";
 import type {
@@ -18,9 +23,23 @@ import type {
   Target,
 } from "@dockhand/core";
 import type { ElementHandle, Locator, Page } from "playwright";
+import { toLocator } from "../helpers/locators.ts";
 
-/** The in-page overlay. Installed with addInitScript on every leased context when the HUD is on. */
-export const HUD_SCRIPT: string = readFileSync(new URL("./hud-page.js", import.meta.url), "utf8");
+const fontFile = (name: string) => readFileSync(new URL(`./fonts/${name}`, import.meta.url));
+/** Geist and Geist Mono (SIL OFL 1.1, fonts/OFL.txt), variable weight: the HUD's and the flight recorder's type. */
+export const HUD_FONTS: { sans: Uint8Array; mono: Uint8Array } = {
+  sans: fontFile("Geist-Variable.woff2"),
+  mono: fontFile("GeistMono-Variable.woff2"),
+};
+
+/** The in-page overlay, with Geist inlined. Installed with addInitScript on every leased context when the HUD is on. */
+export const HUD_SCRIPT: string = readFileSync(new URL("./hud-page.js", import.meta.url), "utf8").replace(
+  "/*__DOCKHAND_FONTS__*/null",
+  JSON.stringify({
+    sans: Buffer.from(HUD_FONTS.sans).toString("base64"),
+    mono: Buffer.from(HUD_FONTS.mono).toString("base64"),
+  }),
+);
 export const HUD_TAG = "dockhand-hud";
 /** Added to every screenshot taken through a HUD page (Playwright's `style` option), so no image has it. */
 export const HUD_HIDE_CSS = `${HUD_TAG}{visibility:hidden!important;opacity:0!important}`;
@@ -34,7 +53,7 @@ export interface HudOptions {
    * Off when 0 or unset. Shown on screen as "Slowed for video" and excluded from every reported timing.
    */
   pacingMs?: number;
-  /** META_MODE of the process: model phases carry a "Fake models"/"Cassette" tag unless it is live or record. */
+  /** META_MODE of the process: model phases carry a "Fake models"/"Cassette rehearsal" note unless live or record. */
   metaMode?: string;
   /**
    * Holds a finished replay's last state (submitted, verified, its time and spend) on screen this long before the
@@ -82,46 +101,64 @@ export function attachHud(page: Page, opts: HudOptions): Hud {
 // ---------- in-page API (hud-page.js) ----------
 
 type Box = { x: number; y: number; w: number; h: number; space: "doc" | "view" };
-type BoxTarget = Element | Box;
-interface BoxOpts {
-  tone: string;
-  dashed?: boolean;
-  halo?: boolean;
+interface OutlineOpts {
+  tone?: "accent" | "ink" | "gray" | "error";
+  dash?: boolean;
   label?: string;
   sub?: string;
-  dark?: boolean;
+  tagTone?: "plain" | "ink" | "fail";
   below?: boolean;
-  pulse?: boolean;
-  /** Label at the box's left edge (default: right edge, away from field labels). */
-  left?: boolean;
-  /** Fade out after this many ms. */
+  /** Cut out of the spotlight scrim. */
+  hole?: boolean;
+  pad?: number;
+  delay?: number;
   ttl?: number;
+}
+interface RungView {
+  name: string;
+  status: "pending" | "trying" | "fail" | "ok" | "off" | "na";
+  detail: string;
+}
+interface SpotView {
+  title: string;
+  sub?: string;
+  rungs?: RungView[];
+  pick?: { title: string; reason?: string; meta?: string };
+  verified?: { ok: boolean; text: string };
+}
+interface ReadbackView {
+  title: string;
+  sub: string;
+  rows: { label: string; value: string; ok: boolean }[];
+  stepMs: number;
+  instant: boolean;
 }
 interface HudPageApi {
   view(s: View): void;
   glide(x: number, y: number, ms?: number): Promise<void>;
-  glideTo(target: BoxTarget, ms?: number): Promise<boolean>;
+  glideTo(target: Element | Box, ms?: number): Promise<boolean>;
   ripple(x: number, y: number): void;
-  rippleOn(target: BoxTarget): void;
-  badge(target: BoxTarget, key: string, kind: "filled" | "ok" | "bad", note?: string): void;
-  glow(target: BoxTarget, color?: string, ms?: number): void;
-  box(key: string, target: BoxTarget, o: BoxOpts): void;
-  dim(key: string, on: boolean): void;
-  link(key: string, from: string, to: string, tone?: string): void;
+  rippleOn(target: Element): void;
+  glideClick(x: number, y: number, ms?: number): Promise<void>;
+  activeOn(target: Element, o?: OutlineOpts): void;
+  activeBox(box: Box, o?: OutlineOpts): void;
+  activeOff(): void;
+  markOn(target: Element, key: string, kind: "free" | "ok" | "bad", delay?: number): void;
+  outlineOn(target: Element, key: string, o: OutlineOpts): void;
+  outline(key: string, box: Box, o: OutlineOpts): void;
+  acted(target: Element, o: { click: boolean }): void;
+  unbox(key: string): void;
+  scrim(on: boolean): void;
+  spot(st: SpotView): void;
+  spotOff(): void;
+  readback(st: ReadbackView): void;
+  readbackOff(): void;
   hint(text: string, x: number, y: number, ms?: number): void;
+  hintBottom(text: string, ms?: number): void;
   shutter(): void;
   clear(all?: boolean): void;
-  unbox(key: string): void;
-  hideCursor(): void;
-  boxOn(target: Element, key: string, o: BoxOpts): void;
-  acted(target: Element, o: { click: boolean; write: boolean; key: string }): void;
-  glideClick(x: number, y: number, ms?: number): Promise<void>;
-  hintBottom(text: string, ms?: number): void;
-  pillOn(target: Element, key: string, text: string, tone: string): void;
-  ladder(key: string, target: BoxTarget, st: unknown): void;
-  ladderOn(target: Element, key: string, st: unknown): void;
-  ladderCollapse(key: string, toKey: string, delay?: number): void;
   retire(prefix: string, ms?: number): void;
+  hideCursor(): void;
 }
 type Method = keyof HudPageApi;
 
@@ -131,38 +168,23 @@ declare global {
   }
 }
 
-type Tone = "cu" | "replay" | "heal" | "dry" | "wait" | "done" | "fail" | "idle";
-type TagKind = "slow" | "sim" | "ok" | "bad";
+/** The status strip: stage and model, then elapsed, spend and the verified count, then quiet notes. */
 interface View {
   visible: boolean;
-  tone: Tone;
-  title: string;
-  detail: string;
-  step: string;
-  ticker: string;
+  stage: string;
+  model: string;
+  /** The model slot holds an ID (registration number): set in Geist Mono. */
+  modelMono?: boolean;
+  /** A real failure: the stage is set in the error color. */
+  fail?: boolean;
   clock: { startedAt: number; pausedMs: number; pausedAt: number | null; frozenAt?: number } | null;
   cost: number | null;
-  calls: number | null;
-  tags: { kind: TagKind; text: string }[];
-  pulse: boolean;
+  facts: { text: string; bad?: boolean }[];
+  notes: { text: string; tick?: boolean }[];
 }
 
 // ---------- labels ----------
 
-const RUNG_NO: Record<HealRung, number> = {
-  fallback: 1,
-  similarity: 1,
-  open_weights: 2,
-  computer_use: 3,
-  ask_rep: 4,
-};
-const RUNG_HOW: Record<HealRung, string> = {
-  fallback: "stored fallback selector",
-  similarity: "fingerprint match",
-  open_weights: "Muse Spark Open",
-  computer_use: "Muse computer use",
-  ask_rep: "asked the rep",
-};
 const KNOWN_MODELS: Record<string, string> = {
   "muse-spark-1.3": "Muse Spark 1.3",
   "muse-wonder-1.0": "Muse Wonder 1.0",
@@ -220,91 +242,43 @@ function money(usd: number): string {
   return usd >= 1 ? `$${usd.toFixed(2)}` : `$${usd.toFixed(4)}`;
 }
 
-function docBox(b: BBox | undefined): Box | null {
-  return b && (b.w > 0 || b.h > 0) ? { x: b.x, y: b.y, w: b.w, h: b.h, space: "doc" } : null;
+/** A model's reason, for the spotlight: parentheticals out, one paragraph (the card clamps it to three lines). */
+export function spotlightReason(reason: string): string {
+  return reason
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The open-weights repairer's note ("now 'X' (reason)") split into the chosen element and the model's reason. */
+export function parsePickNote(note: string): { chosen: string | null; reason: string } {
+  const m = /^now '(.+?)' \(([\s\S]*)\)$/.exec(note.trim());
+  return m ? { chosen: m[1] ?? null, reason: m[2] ?? "" } : { chosen: null, reason: note };
 }
 
 const WRITE_OPS = new Set(["fill", "select", "check", "upload"]);
 const CLICKY_OPS = new Set(["click", "fill", "select", "check"]);
 
-function stepVerb(step: Step): string {
-  const name = nameOf(targetOf(step)?.fingerprint);
-  switch (step.op) {
-    case "goto":
-      return `Open ${step.url.replace(/^https?:\/\/[^/]+/, "") || "/"}`;
-    case "click":
-      return `Click '${name}'`;
-    case "fill":
-      return `Fill '${name}'`;
-    case "select":
-      return `Choose in '${name}'`;
-    case "check":
-      return `${step.checked ? "Tick" : "Untick"} '${name}'`;
-    case "upload":
-      return `Attach a file to '${name}'`;
-    case "press":
-      return `Press ${step.key}`;
-    case "waitFor":
-      return "Wait for the page";
-    case "extract":
-      return `Read ${step.name} from the page`;
-  }
-}
-
-function describeCuAction(a: CuAction, target?: Target): string {
-  const name = target ? `'${nameOf(target.fingerprint)}'` : "";
-  switch (a.type) {
-    case "click":
-      return a.button === "back"
-        ? "Go back"
-        : a.button === "forward"
-          ? "Go forward"
-          : `Click ${name || `(${a.x}, ${a.y})`}`;
-    case "double_click":
-      return `Double-click ${name || `(${a.x}, ${a.y})`}`;
-    case "type":
-      return `Type “${clip(a.text.replace(/\s+/g, " "), 42)}”${name ? ` into ${name}` : ""}`;
-    case "keypress":
-      return `Press ${a.keys.join("+")}`;
-    case "scroll":
-      return `Scroll ${a.scroll_y > 0 ? "down" : a.scroll_y < 0 ? "up" : "sideways"}`;
-    case "move":
-      return `Point at ${name || `(${a.x}, ${a.y})`}`;
-    case "drag":
-      return "Drag";
-    case "wait":
-      return "Wait for the page";
-    case "screenshot":
-      return "Look at the screen";
-    default:
-      return "Act";
-  }
-}
-
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 type RungId = "free" | "open_weights" | "computer_use" | "ask_rep";
-interface LadderRung {
+interface LadderRung extends RungView {
   id: RungId;
-  name: string;
-  status: "pending" | "trying" | "fail" | "ok" | "off" | "na";
-  detail: string;
 }
-/** The heal ladder drawn next to a broken step: every rung, lit as it is tried. */
+/** The heal ladder for one broken step: every rung, marked as it is tried. */
 interface Ladder {
-  key: string;
   stepIdx: number;
-  anchor: Box | null;
+  name: string;
+  why: string;
   rungs: LadderRung[];
   done: boolean;
-  foot?: string;
 }
 /** The ladder row a heal rung belongs to (both free rungs share the first row). */
 const rungRow = (r: HealRung): RungId => (r === "fallback" || r === "similarity" ? "free" : r);
-const RUNG_ROW: Record<RungId, string> = {
-  free: "Free · stored selectors, similarity",
+const RUNG_NAME: Record<RungId, string> = {
+  free: "Free fixes",
   open_weights: "Muse Spark Open",
-  computer_use: "Muse computer use",
+  computer_use: "Computer use",
   ask_rep: "Ask the rep",
 };
 
@@ -328,7 +302,7 @@ interface RunState {
   original: Map<string, Step>;
   idx: number;
   actions: number;
-  ended: { tone: Tone; title: string; detail: string; ticker: string } | null;
+  ended: { stage: string; model: string; modelMono?: boolean; fail?: boolean; notes: View["notes"] } | null;
 }
 
 /**
@@ -340,22 +314,22 @@ export class Hud {
   private readonly endHold: number;
   private readonly sim: string | null;
   private run: RunState | null = null;
-  private heal: { idx: number; rung?: HealRung; model: string; stepId?: string } | null = null;
-  private waiting: { title: string; ticker: string } | null = null;
+  private heal: { idx: number; rung?: HealRung; model: string } | null = null;
+  private waiting: { stage: string; model: string } | null = null;
   private clock: View["clock"] = null;
   private baseCost = 0;
   private liveCost = 0;
   private calls = 0;
   private verified: { matched: number; checked: number } | null = null;
-  private ticker = "";
+  private readbackSig = "";
   private readonly pauses: { start: number; end: number }[] = [];
   private pushQueued = false;
   private lastCuModel = "Muse computer use";
-  private readonly fixes = new Map<string, { label: string; sub?: string; rung?: HealRung }>();
+  private readonly freeFixed = new Set<string>();
+  private readonly paidFixed = new Map<string, HealRung>();
   private lastStep = -1;
   private clockHolds = 0;
   private clockHoldStart = 0;
-  private typed = 0;
   private readonly ladders = new Map<string, Ladder>();
   private avail = new Set<HealRung>();
   /** When the current step began (performance.now()): the free rungs' time when a step breaks. */
@@ -368,7 +342,7 @@ export class Hud {
     this.pacing = Math.max(0, opts.pacingMs ?? 0);
     this.endHold = Math.max(0, opts.endHoldMs ?? 0);
     const mode = opts.metaMode ?? "live";
-    this.sim = mode === "fake" ? "Fake models" : mode === "cassette" ? "Cassette replay" : null;
+    this.sim = mode === "fake" ? "Fake models" : mode === "cassette" ? "Cassette rehearsal" : null;
   }
 
   // ---------- timing ----------
@@ -421,6 +395,13 @@ export class Hud {
     }
   }
 
+  /** A model call's time as shown: a cassette answers in milliseconds, so it says "replayed" instead. */
+  private latency(ms: number): string {
+    if (this.sim === "Cassette rehearsal") return "replayed";
+    if (this.sim === "Fake models") return "fake model";
+    return secs(ms);
+  }
+
   // ---------- page calls ----------
 
   /** Calls an in-page HUD method by name (no closures cross into the page; nothing is eval'd there). */
@@ -463,6 +444,17 @@ export class Hud {
     );
   }
 
+  /** The element a target's stored selectors find now (first one that matches exactly one), for drawing only. */
+  private async locate(t: Target | undefined): Promise<Locator | null> {
+    for (const c of t?.candidates ?? []) {
+      if ("value" in c && c.value.includes("{{")) continue;
+      if ("name" in c && c.name.includes("{{")) continue;
+      const loc = toLocator(this.page, c);
+      if ((await loc.count().catch(() => 0)) === 1) return loc;
+    }
+    return null;
+  }
+
   /** Coalesces state pushes to one page call per tick. */
   private push(): void {
     if (this.pushQueued) return;
@@ -483,76 +475,73 @@ export class Hud {
 
   // ---------- view ----------
 
+  /** Quiet notes under the facts: what was fixed for free, what a model fixed, and every honesty label. */
+  private notes(modelPhase: boolean): View["notes"] {
+    const run = this.run;
+    const out: View["notes"] = [];
+    if (this.freeFixed.size > 0) out.push({ text: `${this.freeFixed.size} fixed free`, tick: true });
+    const paid = new Map<string, number>();
+    for (const r of this.paidFixed.values()) {
+      const who =
+        r === "open_weights" ? "Muse Spark Open" : r === "computer_use" ? "computer use" : "the rep";
+      paid.set(who, (paid.get(who) ?? 0) + 1);
+    }
+    for (const [who, n] of paid) out.push({ text: `${n} by ${who}` });
+    if (this.paced() > 0) out.push({ text: "Slowed for video" });
+    if (run?.mode === "cu" && run.provider === "scripted") out.push({ text: "Scripted model (CI)" });
+    else if (modelPhase && this.sim) out.push({ text: this.sim });
+    return out;
+  }
+
   private compose(): View {
     const run = this.run;
-    const tags: View["tags"] = [];
+    const facts: View["facts"] = [];
     const base: View = {
       visible: run !== null,
-      tone: "idle",
-      title: "",
-      detail: "",
-      step: "",
-      ticker: this.ticker,
+      stage: "",
+      model: "",
       clock: this.clock,
       cost: run ? this.baseCost + this.liveCost : null,
-      calls: null,
-      tags,
-      pulse: false,
+      facts,
+      notes: [],
     };
     if (!run) return base;
-    if (run.mode === "cu") base.step = `Action ${run.actions}`;
-    else base.step = `Step ${Math.min(run.idx + 1, run.total)}/${run.total}`;
-    if (this.paced() > 0) tags.push({ kind: "slow", text: "Slowed for video" });
     if (this.verified) {
       const v = this.verified;
-      tags.push({ kind: v.matched === v.checked ? "ok" : "bad", text: `${v.matched}/${v.checked} verified` });
+      facts.push({ text: `${v.matched}/${v.checked} verified`, bad: v.matched !== v.checked });
+    } else if (run.mode === "cu") {
+      facts.push({ text: `${run.actions} action${run.actions === 1 ? "" : "s"}` });
     }
     if (run.ended) {
       return {
         ...base,
-        tone: run.ended.tone,
-        title: run.ended.title,
-        detail: run.ended.detail,
-        ticker: run.ended.ticker,
-        calls: run.mode === "cu" || this.calls > 0 ? this.calls : null,
+        stage: run.ended.stage,
+        model: run.ended.model,
+        ...(run.ended.modelMono ? { modelMono: true } : {}),
+        ...(run.ended.fail ? { fail: true } : {}),
+        notes: [...run.ended.notes, ...this.notes(false).filter((n) => n.text !== "Slowed for video")],
       };
     }
     const modelPhase = run.mode === "cu" || this.heal !== null;
-    if (modelPhase && this.sim && !(run.mode === "cu" && run.provider === "scripted")) {
-      tags.push({ kind: "sim", text: this.sim });
-    }
-    if (run.mode === "cu" && run.provider === "scripted") tags.push({ kind: "sim", text: "Scripted (CI)" });
-    if (this.waiting) {
-      return { ...base, tone: "wait", title: this.waiting.title, ticker: this.waiting.ticker, pulse: true };
-    }
+    const notes = this.notes(modelPhase);
+    if (this.waiting) return { ...base, stage: this.waiting.stage, model: this.waiting.model, notes };
     if (this.heal) {
-      const rung = this.heal.rung ? `rung ${RUNG_NO[this.heal.rung]} · ` : "";
-      return {
-        ...base,
-        tone: "heal",
-        title: "Healing",
-        detail: `${rung}${this.heal.model}`,
-        calls: this.calls,
-      };
+      return { ...base, stage: `Repairing step ${this.heal.idx + 1}`, model: this.heal.model, notes };
     }
     if (run.mode === "cu") {
-      const what = run.purpose === "cu_repair" ? "repair" : "first run";
-      return {
-        ...base,
-        tone: "cu",
-        title: "Computer use",
-        detail: `${what} · ${run.model}`,
-        calls: this.calls,
-      };
+      const what = run.purpose === "cu_repair" ? "Computer use repair" : "Computer use";
+      return { ...base, stage: what, model: run.model, notes };
     }
     if (run.mode === "dry_run") {
-      return { ...base, tone: "dry", title: run.label ?? "Dry run", detail: "canary, stops before submit" };
+      return run.label
+        ? { ...base, stage: run.label, model: "never submitted", notes }
+        : { ...base, stage: "Dry run", model: "test values, never submitted", notes };
     }
     return {
       ...base,
-      tone: "replay",
-      title: "Replay",
-      detail: `${this.calls} model call${this.calls === 1 ? "" : "s"}`,
+      stage: "Replay",
+      model: `${this.calls} model call${this.calls === 1 ? "" : "s"}`,
+      notes,
     };
   }
 
@@ -563,6 +552,20 @@ export class Hud {
 
   private freezeClock(): void {
     if (this.clock) this.clock = { ...this.clock, frozenAt: Date.now() };
+  }
+
+  private resetCounters(): void {
+    this.heal = null;
+    this.waiting = null;
+    this.baseCost = 0;
+    this.liveCost = 0;
+    this.calls = 0;
+    this.verified = null;
+    this.readbackSig = "";
+    this.freeFixed.clear();
+    this.paidFixed.clear();
+    this.ladders.clear();
+    this.lastStep = -1;
   }
 
   // ---------- replay (skills runner) ----------
@@ -582,96 +585,76 @@ export class Hud {
       actions: 0,
       ended: null,
     };
-    this.heal = null;
-    this.waiting = null;
-    this.baseCost = 0;
-    this.liveCost = 0;
-    this.calls = 0;
-    this.verified = null;
-    this.fixes.clear();
-    this.ladders.clear();
-    this.lastStep = -1;
-    this.ticker = `${o.skill.title} · v${o.skill.version}`;
+    this.resetCounters();
     this.startClock();
     void this.call("clear", true);
     this.push();
   }
 
-  /** A step begins: counter and ticker. */
+  /** A step begins. */
   step(idx: number, steps: readonly Step[]): void {
     const run = this.run;
     if (!run || run.mode === "cu") return;
-    const step = steps[idx];
     if (idx !== this.lastStep) {
       this.stepAt = performance.now();
-      if (this.lastStep >= 0) void this.call("retire", "heal:", this.paced() > 0 ? 500 : 900);
+      if (this.lastStep >= 0) void this.call("retire", "heal:", this.paced() > 0 ? 300 : 0);
       this.lastStep = idx;
     }
     run.idx = idx;
     run.total = steps.length;
-    if (step) this.ticker = clip(step.intent || stepVerb(step), 90);
     this.push();
   }
 
   /**
-   * The step's element was found; the action is about to run. Shows free heals (another stored selector or a
-   * fingerprint match) and travels the cursor there. Awaited only when pacing is on.
+   * The step's element was found; the action is about to run. A free heal (another stored selector or the
+   * fingerprint found it at once) leaves a quiet gray tick and counts; the step gets the accent; the cursor
+   * travels there. Awaited only when pacing is on.
    */
   async before(
     idx: number,
     step: Step,
     locator: Locator,
     outcome: { status: string; rung?: HealRung },
-    started: number,
+    _started: number,
   ): Promise<void> {
     const run = this.run;
     if (!run || run.mode === "cu") return;
+    run.idx = idx;
     const P = this.paced();
-    let heldForHeal = 0;
-    if (outcome.status === "healed" && outcome.rung && !this.fixes.has(step.id)) {
-      // A free rung: the recorded selector missed, another stored one (or the fingerprint) found it at once.
-      const rung = outcome.rung;
-      const ms = performance.now() - started - this.pausedSince(started);
-      const label = `Healed · rung ${RUNG_NO[rung]} · ${RUNG_HOW[rung]} · ${secs(ms)} · $0`;
-      this.fixes.set(step.id, { label });
-      this.ticker = `Step ${idx + 1}: the recorded selector for '${nameOf(targetOf(run.original.get(step.id))?.fingerprint)}' missed. ${label}`;
-      this.push();
-      await this.onElement(locator, "boxOn", `heal:fix:${step.id}`, {
-        tone: "heal",
-        halo: true,
-        label,
-        sub: "the recorded selector no longer matched",
-      });
-      void this.onElement(locator, "pillOn", step.id, `rung ${RUNG_NO[rung]}`, "heal");
-      heldForHeal = P * 1.6;
-    } else if (this.fixes.has(step.id)) {
-      // A paid rung fixed this step: anchor its label on the element the replacement step really uses.
-      const fix = this.fixes.get(step.id);
-      void this.onElement(locator, "boxOn", `heal:fix:${step.id}`, {
-        tone: "done",
-        halo: true,
-        label: fix?.label ?? "Fixed",
-        ...(fix?.sub ? { sub: fix.sub } : {}),
-      });
-      if (fix?.rung) void this.onElement(locator, "pillOn", step.id, `rung ${RUNG_NO[fix.rung]}`, "heal");
+    if (
+      outcome.status === "healed" &&
+      (outcome.rung === "fallback" || outcome.rung === "similarity") &&
+      !this.paidFixed.has(step.id)
+    ) {
+      if (!this.freeFixed.has(step.id)) {
+        this.freeFixed.add(step.id);
+        this.push();
+      }
+      void this.onElement(locator, "markOn", step.id, "free");
     }
-    if (heldForHeal > 0) await this.hold(heldForHeal);
+    void this.onElement(locator, "activeOn");
     const glide = this.onElement(locator, "glideTo", P > 0 ? Math.min(760, Math.max(240, P * 0.6)) : 240);
     if (P > 0) await this.hold(P * 0.25, glide);
   }
 
-  /** The step's action ran: click ripple, "filled" badge on written fields. */
+  /** The step's action ran: a click ripple. */
   async after(idx: number, step: Step, locator: Locator): Promise<void> {
     const run = this.run;
     if (!run || run.mode === "cu") return;
     run.idx = idx;
-    const write = WRITE_OPS.has(step.op);
-    const p = this.onElement(locator, "acted", { click: CLICKY_OPS.has(step.op), write, key: step.id });
+    const p = this.onElement(locator, "acted", {
+      click: CLICKY_OPS.has(step.op),
+      write: WRITE_OPS.has(step.op),
+    });
     const P = this.paced();
     if (P > 0) await this.hold(P * 0.35, p);
   }
 
-  /** Read-back before the commit: every written field gets a green check, or red with what was found. */
+  /**
+   * Read-back before the commit: a card lists every written field as read from the page, one row at a time,
+   * and each visible field gets a check (or the error cross). A repeat of the same read-back (the commit step
+   * was healed in between) is shown at once.
+   */
   async verify(
     items: {
       stepId: string;
@@ -684,17 +667,35 @@ export class Hud {
   ): Promise<void> {
     if (!this.run || this.run.mode === "cu") return;
     const matched = items.filter((i) => i.ok).length;
+    const sig = items.map((i) => `${i.stepId}:${i.ok ? 1 : 0}`).join(",");
+    const again = sig === this.readbackSig;
+    this.readbackSig = sig;
     this.verified = { matched, checked: items.length };
-    this.ticker = `Read-back before submit: ${matched}/${items.length} fields match`;
     this.push();
     const P = this.paced();
-    const gap = P > 0 ? Math.min(140, Math.max(60, P / 6)) : 0;
-    for (const i of items) {
-      const note = i.ok ? "" : clip(`Expected “${i.expected}” · read back “${i.actual}”`, 80);
-      const p = this.onElement(i.locator, "badge", i.stepId, i.ok ? "ok" : "bad", note);
-      if (gap > 0) await this.hold(gap, p);
-    }
-    if (P > 0) await this.hold(P);
+    const stepMs = again ? 0 : P > 0 ? Math.min(240, Math.max(130, P / 3)) : 90;
+    const bad = items.length - matched;
+    void this.call("activeOff");
+    void this.call("readback", {
+      title: "Read back from the page",
+      sub:
+        bad === 0
+          ? `${matched} of ${items.length} fields match what the skill wrote`
+          : `${bad} field${bad === 1 ? "" : "s"} do not match: nothing is submitted`,
+      rows: items.map((i) => ({
+        label: i.label,
+        value: i.ok ? i.actual : clip(`${i.actual || "(empty)"} · expected ${i.expected}`, 60),
+        ok: i.ok,
+      })),
+      stepMs,
+      instant: again,
+    } satisfies ReadbackView);
+    await Promise.all(
+      items.map((i, n) =>
+        this.onElement(i.locator, "markOn", `rb:${i.stepId}`, i.ok ? "ok" : "bad", n * stepMs),
+      ),
+    );
+    if (P > 0 && !again) await this.hold(stepMs * items.length + P);
   }
 
   /** The replay ended. With pacing on, holds the final state on screen for a moment. */
@@ -707,53 +708,59 @@ export class Hud {
     const run = this.run;
     if (!run || run.mode === "cu") return;
     const id = Object.values(r.extracted ?? {})[0];
-    const v = this.verified;
-    const verified = v ? `${v.matched}/${v.checked} fields verified` : "";
-    const ends: Record<string, { tone: Tone; title: string }> = {
-      success: { tone: "done", title: "Submitted" },
-      dry_run_ok: { tone: "done", title: "Dry run passed" },
-      rejected: { tone: "fail", title: "Not submitted" },
-      expired: { tone: "fail", title: "Approval expired" },
-      needs_input: { tone: "wait", title: "Needs the rep" },
-      unknown: { tone: "fail", title: "Outcome unknown" },
-      failed: { tone: "fail", title: "Stopped safely" },
+    const ends: Record<string, { stage: string; fail?: boolean }> = {
+      success: { stage: "Submitted" },
+      dry_run_ok: { stage: "Dry run passed" },
+      rejected: { stage: "Not submitted" },
+      expired: { stage: "Approval expired" },
+      needs_input: { stage: "Needs the rep" },
+      unknown: { stage: "Outcome unknown", fail: true },
+      failed: { stage: "Stopped safely", fail: true },
     };
-    const e = ends[r.outcome] ?? { tone: "fail" as Tone, title: r.outcome };
-    let ticker =
-      r.outcome === "success" || r.outcome === "dry_run_ok"
-        ? verified || "Every step matched"
-        : clip(r.error ?? "", 110);
-    if (run.mode === "replay" && r.outcome === "success" && this.clock) {
+    const e = ends[r.outcome] ?? { stage: r.outcome, fail: true };
+    const notes: View["notes"] = [];
+    if (run.mode === "replay" && r.outcome === "success") {
       // The on-screen clock's time: pacing holds and the rep's approval waits are left out.
-      const c = this.clock;
-      const ms = Date.now() - c.startedAt - c.pausedMs - (c.pausedAt !== null ? Date.now() - c.pausedAt : 0);
-      const spent = this.baseCost + this.liveCost;
       const cu = CU_MEASURED[run.portalId ?? ""];
-      // The verified count is already on the tag beside it; the line keeps to what fits the overlay.
-      ticker = [
-        `This run: ${secs(ms)}, ${spent > 0 ? money(spent) : "$0"} in model calls`,
-        cu ? `computer use, measured mean: ${cu.s} s, $${cu.usd.toFixed(2)}` : "",
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      if (cu) notes.push({ text: `Computer use, measured mean: ${cu.s} s, $${cu.usd.toFixed(2)}` });
     }
+    const detail =
+      id ??
+      (r.outcome === "dry_run_ok"
+        ? "never submitted"
+        : r.errorCode
+          ? r.errorCode.toLowerCase().replace(/_/g, " ")
+          : r.outcome === "success"
+            ? ""
+            : clip(r.error ?? "", 40));
     run.ended = {
-      ...e,
-      detail: id ?? (r.errorCode ? r.errorCode.toLowerCase().replace(/_/g, " ") : verified),
-      ticker,
+      stage: e.stage,
+      model: detail,
+      ...(id ? { modelMono: true } : {}),
+      ...(e.fail ? { fail: true } : {}),
+      notes,
     };
     this.heal = null;
     this.waiting = null;
     for (const lad of this.ladders.values()) {
       if (lad.done) continue;
-      lad.foot = "No rung fixed it: stopped safely, nothing submitted";
-      this.drawLadder(lad);
+      void this.call("scrim", false);
+      this.drawLadder(lad, {
+        verified: { ok: false, text: "No rung fixed it: stopped safely, nothing submitted" },
+      });
     }
     this.freezeClock();
+    void this.call("activeOff");
+    void this.call("readbackOff");
     void this.call("hideCursor");
     this.push();
     const hold = Math.max(this.paced() * 3, run.mode === "replay" ? this.endHold : 0);
     if (hold > 0) await this.hold(hold);
+  }
+
+  /** What `end` would show, for tests: the strip as composed now. */
+  view(): View {
+    return this.compose();
   }
 
   // ---------- computer use (loop) ----------
@@ -777,12 +784,7 @@ export class Hud {
       actions: 0,
       ended: null,
     };
-    this.waiting = null;
-    this.baseCost = 0;
-    this.liveCost = 0;
-    this.calls = 0;
-    this.verified = null;
-    this.ticker = "";
+    this.resetCounters();
     this.startClock();
     void this.call("clear", true);
     this.push();
@@ -791,8 +793,6 @@ export class Hud {
   /** A model turn is about to be sent (the screenshot was just taken). */
   cuThinking(): void {
     if (!this.run) return;
-    const who = this.run.mode === "cu" ? this.run.model : (this.heal?.model ?? this.lastCuModel);
-    this.ticker = `${who} is looking at the screen…`;
     this.push();
   }
 
@@ -804,17 +804,16 @@ export class Hud {
     this.push();
   }
 
-  /** An action is about to run: ticker and cursor travel (never awaited). */
-  cuAction(a: CuAction, pt: { x: number; y: number } | null, target?: Target): void {
+  /** An action is about to run: cursor travel (never awaited). */
+  cuAction(a: CuAction, pt: { x: number; y: number } | null, _target?: Target): void {
     const run = this.run;
     if (!run) return;
     if (run.mode === "cu" && a.type !== "screenshot") run.actions++;
-    this.ticker = describeCuAction(a, target);
     this.push();
     if (pt) void this.call("glide", pt.x, pt.y, a.type === "scroll" ? 200 : 300);
   }
 
-  /** The action ran: ripple for clicks, "filled" badge on the field typed into. */
+  /** The action ran: ripple for clicks, the accent on the field typed into. */
   cuActed(a: CuAction, pt: { x: number; y: number } | null, handle?: ElementHandle | null): void {
     if (!this.run) return;
     const pointerClick =
@@ -822,49 +821,49 @@ export class Hud {
     if (pt && pointerClick) {
       void this.call("ripple", pt.x, pt.y);
     } else if (pt && a.type === "scroll") {
-      void this.call("hint", a.scroll_y > 0 ? "Scroll ↓" : "Scroll ↑", pt.x, pt.y, 900);
+      void this.call("hint", a.scroll_y > 0 ? "Scroll ↓" : "Scroll ↑", pt.x, pt.y, 800);
     } else if (a.type === "keypress") {
-      void this.call("hintBottom", `Key: ${a.keys.join("+")}`, 900);
+      void this.call("hintBottom", `Key: ${a.keys.join("+")}`, 800);
     }
     if (a.type === "type" && handle) {
-      void this.onElement(handle, "acted", { click: false, write: true, key: `cu${++this.typed}` });
+      void this.onElement(handle, "activeOn");
     }
   }
 
   /** The harness refused a submit control without approval. */
   cuBlocked(info: { name: string; box: { x: number; y: number; w: number; h: number } }): void {
     if (!this.run) return;
-    void this.call(
-      "box",
-      "blocked",
-      { ...info.box, space: "view" },
-      {
-        tone: "fail",
-        dark: true,
-        label: `Blocked: '${clip(info.name, 40)}' submits`,
-        sub: "Nothing is submitted without the rep's tap",
-      },
-    );
+    void this.call("outline", "blocked", { ...info.box, space: "view" }, {
+      tone: "ink",
+      dash: true,
+      tagTone: "ink",
+      label: `Blocked: ‘${clip(info.name, 40)}’ submits`,
+      sub: "Nothing is submitted without the rep’s tap",
+    } satisfies OutlineOpts);
   }
 
   cuEnd(outcome: string, message?: string): void {
     const run = this.run;
     if (!run) return;
     if (run.mode !== "cu") {
-      this.ticker = "";
       this.push();
       return; // a repair inside a replay: the replay's state carries on
     }
     const ok = outcome === "done";
     run.ended = {
-      tone: ok ? "done" : "fail",
-      title: ok ? "Computer use done" : outcome === "rejected" ? "Not submitted" : "Stopped",
-      detail: `${run.actions} action${run.actions === 1 ? "" : "s"}`,
-      ticker: ok
-        ? "The trace compiles into a skill: next time replays with 0 model calls"
-        : clip(message ?? outcome, 110),
+      stage: ok ? "Computer use done" : outcome === "rejected" ? "Not submitted" : "Stopped",
+      model: `${run.actions} action${run.actions === 1 ? "" : "s"}`,
+      ...(ok ? {} : { fail: outcome !== "rejected" }),
+      notes: [
+        {
+          text: ok
+            ? "The trace compiles into a skill: next time 0 model calls"
+            : clip(message ?? outcome, 70),
+        },
+      ],
     };
     this.freezeClock();
+    void this.call("activeOff");
     void this.call("hideCursor");
     this.push();
   }
@@ -878,10 +877,7 @@ export class Hud {
       ...hooks,
       approveCommit: (r) => this.approval(r, (x) => hooks.approveCommit(x)),
       approveSafety: async (r) => {
-        this.waiting = {
-          title: "Safety check · waiting for approval on WhatsApp",
-          ticker: clip(r.checks.map((c) => c.message).join(" · "), 110),
-        };
+        this.waiting = { stage: "Safety check", model: "waiting for the rep on WhatsApp" };
         this.push();
         this.pauseClock();
         try {
@@ -912,81 +908,95 @@ export class Hud {
       ...base,
       ...(hooks.repairers ? { repairers: hooks.repairers.map((r) => this.wrapRepairer(r)) } : {}),
       ...(hooks.askRep
-        ? {
-            askRep: async (q) => {
-              const ask = hooks.askRep as NonNullable<RunHooks["askRep"]>;
-              this.waiting = {
-                title: "Asking the rep on WhatsApp",
-                ticker: `The page now requires '${q.label}', which the skill has no value for`,
-              };
-              this.push();
-              const field = this.page
-                .getByRole("combobox", { name: q.label })
-                .or(this.page.getByRole("textbox", { name: q.label }))
-                .or(this.page.getByLabel(q.label))
-                .first();
-              void this.onElement(field, "boxOn", "ask", {
-                tone: "wait",
-                label: `New required field · '${clip(q.label, 40)}'`,
-                sub: "Rung 4: asked the rep on WhatsApp",
-                pulse: true,
-              });
-              // The ladder for new data: no selector to fix, so the free and model rungs do not apply.
-              const na = "n/a · new field";
-              const askLadder: Ladder = {
-                key: `heal:ladder:ask:${q.label}`,
-                stepIdx: this.run?.idx ?? 0,
-                anchor: null,
-                done: false,
-                rungs: [
-                  { id: "free", name: RUNG_ROW.free, status: "na", detail: na },
-                  { id: "open_weights", name: RUNG_ROW.open_weights, status: "na", detail: na },
-                  { id: "computer_use", name: RUNG_ROW.computer_use, status: "na", detail: na },
-                  { id: "ask_rep", name: RUNG_ROW.ask_rep, status: "trying", detail: "asking on WhatsApp…" },
-                ],
-              };
-              const drawAsk = () =>
-                void this.onElement(field, "ladderOn", askLadder.key, this.ladderView(askLadder));
-              drawAsk();
-              const askedAt = Date.now();
-              let answer: string | null = null;
-              this.pauseClock();
-              try {
-                answer = await ask(q);
-                return answer;
-              } finally {
-                this.resumeClock();
-                const waited = secs(Date.now() - askedAt);
-                askLadder.rungs[3] = {
-                  id: "ask_rep",
-                  name: RUNG_ROW.ask_rep,
-                  status: answer === null ? "fail" : "ok",
-                  detail: answer === null ? `no answer · ${waited}` : `“${clip(answer, 14)}” · ${waited}`,
-                };
-                askLadder.done = answer !== null;
-                drawAsk();
-                if (answer !== null) void this.call("ladderCollapse", askLadder.key, "ask", 1700);
-                this.waiting = null;
-                this.push();
-                void this.onElement(field, "boxOn", "ask", {
-                  tone: answer === null ? "fail" : "done",
-                  halo: true,
-                  label:
-                    answer === null
-                      ? `No answer for '${clip(q.label, 40)}'`
-                      : `Rep answered “${clip(answer, 30)}”`,
-                  sub:
-                    answer === null
-                      ? "Stopped safely"
-                      : "Fixed · rung 4 · asked the rep · saved as a new param",
-                });
-              }
-            },
-          }
+        ? { askRep: (q) => this.askRep(q, hooks.askRep as NonNullable<RunHooks["askRep"]>) }
         : {}),
     };
     Object.defineProperty(wrapped, WRAPPED, { value: this, enumerable: false });
     return wrapped;
+  }
+
+  /** Rung 4: the page needs data the skill has no value for. The new field gets the accent; the ladder says why. */
+  private async askRep(
+    q: Parameters<NonNullable<RunHooks["askRep"]>>[0],
+    ask: NonNullable<RunHooks["askRep"]>,
+  ): Promise<string | null> {
+    const P = this.paced();
+    this.waiting = { stage: "Asking the rep", model: "on WhatsApp" };
+    this.push();
+    void this.call("readbackOff");
+    void this.call("activeOff");
+    const field = this.page
+      .getByRole("combobox", { name: q.label })
+      .or(this.page.getByRole("textbox", { name: q.label }))
+      .or(this.page.getByLabel(q.label))
+      .first();
+    void this.onElement(field, "outlineOn", "ask", {
+      tone: "accent",
+      hole: true,
+      label: `New required field: ‘${clip(q.label, 36)}’`,
+      tagTone: "ink",
+    } satisfies OutlineOpts);
+    // No selector to fix, so the free and model rungs do not apply: new data comes from the rep.
+    const na = (id: RungId): LadderRung => ({
+      id,
+      name: RUNG_NAME[id],
+      status: "na",
+      detail: "no selector to fix",
+    });
+    const lad: Ladder = {
+      stepIdx: this.run?.idx ?? 0,
+      name: q.label,
+      why: "is new and required",
+      done: false,
+      rungs: [
+        na("free"),
+        na("open_weights"),
+        na("computer_use"),
+        { id: "ask_rep", name: RUNG_NAME.ask_rep, status: "trying", detail: "on WhatsApp" },
+      ],
+    };
+    const draw = (verified?: SpotView["verified"]) =>
+      void this.call("spot", {
+        title: "The form needs new data",
+        sub: `‘${clip(q.label, 40)}’ is now required; the skill has no value for it`,
+        rungs: lad.rungs,
+        ...(verified ? { verified } : {}),
+      } satisfies SpotView);
+    draw();
+    const askedAt = Date.now();
+    let answer: string | null = null;
+    this.pauseClock();
+    try {
+      answer = await ask(q);
+      return answer;
+    } finally {
+      this.resumeClock();
+      const waited = secs(Date.now() - askedAt);
+      lad.rungs[3] = {
+        id: "ask_rep",
+        name: RUNG_NAME.ask_rep,
+        status: answer === null ? "fail" : "ok",
+        detail: answer === null ? `no answer · ${waited}` : `“${clip(answer, 14)}” · ${waited}`,
+      };
+      lad.done = answer !== null;
+      if (answer !== null) this.paidFixed.set(`ask:${q.label}`, "ask_rep");
+      draw(
+        answer === null
+          ? { ok: false, text: "No answer: stopped safely" }
+          : { ok: true, text: "Saved as a new parameter of the skill" },
+      );
+      this.waiting = null;
+      this.push();
+      const shown = P > 0 ? P * 2.5 : 1700;
+      if (P > 0) await this.hold(shown);
+      setTimeout(
+        () => {
+          void this.call("spotOff");
+          void this.call("unbox", "ask");
+        },
+        P > 0 ? 0 : shown,
+      ).unref?.();
+    }
   }
 
   private async approval(
@@ -994,28 +1004,16 @@ export class Hud {
     ask: (r: Parameters<CuHooks["approveCommit"]>[0]) => Promise<Decision>,
   ): Promise<Decision> {
     const box = r.highlight ? { ...r.highlight, space: "view" as const } : null;
-    const v = this.verified;
-    this.waiting = {
-      title: "Waiting for approval on WhatsApp",
-      ticker: clip(
-        [
-          v ? `${v.matched}/${v.checked} fields verified` : "",
-          r.summary,
-          "clock paused while the rep decides",
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        110,
-      ),
-    };
+    this.waiting = { stage: "Waiting for approval", model: "on WhatsApp" };
     void this.call("unbox", "blocked");
+    void this.call("activeOff");
     if (box) {
-      void this.call("box", "commit", box, {
-        tone: "wait",
-        label: "Submit waits for the rep's tap on WhatsApp",
-        pulse: true,
+      void this.call("outline", "commit", box, {
+        tone: "accent",
+        tagTone: "ink",
+        label: "Submit waits for the rep’s tap",
         below: true,
-      });
+      } satisfies OutlineOpts);
     }
     this.push();
     let d: Decision = "rejected";
@@ -1027,18 +1025,24 @@ export class Hud {
       this.resumeClock();
       this.waiting = null;
       this.push();
+      void this.call("readbackOff");
       if (box) {
         void this.call(
-          "box",
+          "outline",
           "commit",
           box,
           d === "approved"
-            ? { tone: "done", halo: true, below: true, label: "Approved on WhatsApp · submitting" }
-            : {
-                tone: "fail",
+            ? ({
+                tone: "accent",
+                tagTone: "ink",
                 below: true,
-                label: d === "edit" ? "The rep asked for changes · not submitted" : `Not submitted (${d})`,
-              },
+                label: "Approved on WhatsApp",
+              } satisfies OutlineOpts)
+            : ({
+                tone: "gray",
+                below: true,
+                label: d === "edit" ? "The rep asked for changes: not submitted" : "Not submitted",
+              } satisfies OutlineOpts),
         );
         if (d === "approved" && this.run && this.run.mode !== "cu") {
           const c = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
@@ -1052,27 +1056,27 @@ export class Hud {
 
   // ---------- heal ladder ----------
 
-  private ladderFor(stepKey: string, stepIdx: number, anchor: Box | null): Ladder {
+  private ladderFor(stepKey: string, stepIdx: number, name: string, why: string): Ladder {
     const known = this.ladders.get(stepKey);
     if (known) return known;
     const freeMs = this.stepAt ? performance.now() - this.stepAt - this.pausedSince(this.stepAt) : 0;
     const has = (r: HealRung) => this.avail.size === 0 || this.avail.has(r);
     const paid = (id: "open_weights" | "computer_use"): LadderRung => ({
       id,
-      name: RUNG_ROW[id],
+      name: RUNG_NAME[id],
       status: has(id) ? "pending" : "off",
       detail: has(id) ? "" : "not configured",
     });
     const lad: Ladder = {
-      key: `heal:ladder:${stepKey}`,
       stepIdx,
-      anchor,
+      name,
+      why,
       done: false,
       rungs: [
-        { id: "free", name: RUNG_ROW.free, status: "fail", detail: `${secs(freeMs)} · $0` },
+        { id: "free", name: RUNG_NAME.free, status: "fail", detail: `${secs(freeMs)} · $0` },
         paid("open_weights"),
         paid("computer_use"),
-        { id: "ask_rep", name: RUNG_ROW.ask_rep, status: "na", detail: "only for new data" },
+        { id: "ask_rep", name: RUNG_NAME.ask_rep, status: "na", detail: "only for new data" },
       ],
     };
     this.ladders.set(stepKey, lad);
@@ -1080,78 +1084,53 @@ export class Hud {
   }
 
   private rungState(lad: Ladder, rung: HealRung, status: LadderRung["status"], detail: string): void {
-    const id = rungRow(rung);
-    const r = lad.rungs.find((x) => x.id === id);
+    const r = lad.rungs.find((x) => x.id === rungRow(rung));
     if (r) {
       r.status = status;
       r.detail = detail;
     }
   }
 
-  private rungName(lad: Ladder, rung: HealRung, name: string): void {
-    const id = rungRow(rung);
-    const r = lad.rungs.find((x) => x.id === id);
-    if (r) r.name = name;
-  }
-
-  private ladderView(lad: Ladder): { title: string; rungs: LadderRung[]; foot?: string; footOk: boolean } {
-    return {
-      title: `Heal ladder · step ${lad.stepIdx + 1}`,
-      rungs: lad.rungs,
-      ...(lad.foot ? { foot: lad.foot } : {}),
-      footOk: lad.done,
-    };
-  }
-
-  private drawLadder(lad: Ladder): void {
-    const anchor = lad.anchor ?? { x: 24, y: 330, w: 1, h: 1, space: "view" as const };
-    void this.call("ladder", lad.key, anchor, this.ladderView(lad));
+  private drawLadder(lad: Ladder, extra: Pick<SpotView, "pick" | "verified"> = {}): void {
+    void this.call("spot", {
+      title: `Repairing step ${lad.stepIdx + 1}`,
+      sub: `‘${lad.name}’ ${lad.why}`,
+      rungs: lad.rungs.map(({ name, status, detail }) => ({ name, status, detail })),
+      ...extra,
+    } satisfies SpotView);
   }
 
   private wrapRepairer(inner: Repairer): Repairer {
     const tagged = (inner as Repairer & { rung?: HealRung }).rung;
     const wrapped: Repairer = async (req, hooks, ctx) => {
       const step = req.skill.steps[req.stepIdx];
-      const old = targetOf(step);
-      const name = nameOf(old?.fingerprint);
+      const name = nameOf(targetOf(step)?.fingerprint);
       const P = this.paced();
-      const brokenKey = `heal:broken:${step?.id ?? req.stepIdx}`;
       const how = tagged
         ? tagged === "computer_use"
           ? this.lastCuModel
-          : RUNG_HOW[tagged]
+          : tagged === "open_weights"
+            ? "Muse Spark Open"
+            : "the next rung"
         : "the next rung";
-      const rungText = tagged ? `rung ${RUNG_NO[tagged]} · ${how}` : how;
       const why =
         req.error.code === "STEP_NOT_FOUND" || req.error.code === "STEP_TIMEOUT"
-          ? "not found"
+          ? "is no longer on the page"
           : req.error.code === "STEP_AMBIGUOUS"
-            ? "is ambiguous"
+            ? "matches more than one element"
             : "failed";
-      const oldBox = docBox(old?.fingerprint.bbox);
-      if (oldBox) {
-        void this.call("box", brokenKey, oldBox, {
-          tone: "fail",
-          dashed: true,
-          dark: true,
-          label: `Step ${req.stepIdx + 1} · '${name}' ${why}`,
-        });
-      }
-      // The ladder: free rungs already failed (that is why we are here); this rung lights up as it runs.
-      const lad = this.ladderFor(step?.id ?? String(req.stepIdx), req.stepIdx, oldBox);
-      if (tagged) this.rungState(lad, tagged, "trying", "trying…");
+      // The spotlight: the page dims while the ladder climbs (computer use acts on the page, so it stays lit).
+      const lad = this.ladderFor(step?.id ?? String(req.stepIdx), req.stepIdx, name, why);
+      if (tagged)
+        this.rungState(lad, tagged, "trying", tagged === "computer_use" ? "at most 8 actions" : "text only");
+      void this.call("readbackOff");
+      void this.call("activeOff");
+      void this.call("scrim", tagged !== "computer_use");
       this.drawLadder(lad);
-      void rungText;
       if (this.run) this.run.idx = req.stepIdx;
-      this.heal = {
-        idx: req.stepIdx,
-        ...(tagged ? { rung: tagged } : {}),
-        model: how,
-        ...(step ? { stepId: step.id } : {}),
-      };
-      this.ticker = `'${name}' ${why}: ${tagged === "open_weights" ? "Muse Spark Open picks the element from the page's accessibility list (text only)" : tagged === "computer_use" ? "computer use with a narrow goal, at most 8 actions" : "trying the next rung"}`;
+      this.heal = { idx: req.stepIdx, ...(tagged ? { rung: tagged } : {}), model: how };
       this.push();
-      if (P > 0) await this.hold(P * 1.6);
+      if (P > 0) await this.hold(P * 1.8);
       const t0 = performance.now();
       const live0 = this.liveCost;
       let res: Awaited<ReturnType<Repairer>> | undefined;
@@ -1172,73 +1151,69 @@ export class Hud {
             this.calls++;
         }
         const rung = res?.rung ?? tagged;
-        const label = rung
-          ? `rung ${RUNG_NO[rung]} · ${rung === "computer_use" ? (this.heal?.model ?? how) : RUNG_HOW[rung]}`
-          : how;
+        const spent = `${this.latency(ms)} · ${money(res?.costUsd ?? 0)}`;
         if (rung) {
-          const spent = `${secs(ms)} · ${money(res?.costUsd ?? 0)}`;
-          const why2 = res && !res.ok ? ` · ${clip(res.reason.replace(/:.*$/, ""), 18)}` : "";
-          this.rungState(lad, rung, res?.ok ? "ok" : "fail", res?.ok ? spent : `${spent}${why2}`);
-          if (rung === "computer_use" && this.heal?.model)
-            this.rungName(lad, rung, `${this.heal.model} · computer use`);
+          const short = res && !res.ok ? ` · ${clip(res.reason.replace(/:.*$/, ""), 20)}` : "";
+          this.rungState(lad, rung, res?.ok ? "ok" : "fail", res?.ok ? spent : `${spent}${short}`);
         }
-        if (res?.ok) lad.done = true;
-        this.drawLadder(lad);
+        const healModel = this.heal?.model;
+        if (!res?.ok) this.heal = null;
         if (res?.ok && step) {
-          // collapse into the "Fixed · rung N" label once the viewer has read the ladder
-          void this.call("ladderCollapse", lad.key, `heal:fix:${step.id}`, P > 0 ? P * 1.3 : 1700);
-        }
-        this.heal = null;
-        if (res?.ok && step) {
-          const fixLabel = `Fixed · ${label} · ${secs(ms)} · ${money(res.costUsd)}`;
-          this.fixes.set(step.id, {
-            label: fixLabel,
-            sub: res.note ? clip(res.note, 70) : "",
-            rung: res.rung,
-          });
+          lad.done = true;
+          for (const r of lad.rungs)
+            if (r.status === "pending") Object.assign(r, { status: "na", detail: "not needed" });
+          this.paidFixed.set(step.id, res.rung);
+          this.freeFixed.delete(step.id);
+          const { chosen, reason } =
+            res.rung === "open_weights" ? parsePickNote(res.note) : { chosen: null, reason: "" };
           const fresh = targetOf(res.steps.at(-1));
-          const freshBox = docBox(fresh?.fingerprint.bbox);
-          if (oldBox) {
-            void this.call("box", brokenKey, oldBox, {
-              tone: "fail",
-              dashed: true,
-              dark: true,
-              label: `Step ${req.stepIdx + 1} · '${name}' ${why}`,
-            });
+          const label = chosen ?? (fresh ? nameOf(fresh.fingerprint) : "the replacement");
+          const who = res.rung === "computer_use" ? (healModel ?? this.lastCuModel) : "Muse Spark Open";
+          // Reveal: the element it picked, lit through the scrim with the accent.
+          const loc = await this.locate(fresh);
+          if (loc) {
+            void this.call("scrim", true);
+            void this.onElement(loc, "outlineOn", "heal:hole", {
+              tone: "accent",
+              hole: true,
+              pad: 6,
+            } satisfies OutlineOpts);
           }
-          const near =
-            oldBox &&
-            freshBox &&
-            Math.hypot(
-              oldBox.x + oldBox.w / 2 - freshBox.x - freshBox.w / 2,
-              oldBox.y + oldBox.h / 2 - freshBox.y - freshBox.h / 2,
-            ) < 40;
-          if (near) void this.call("unbox", brokenKey);
-          if (freshBox) {
-            void this.call("box", `heal:fix:${step.id}`, freshBox, {
-              tone: "done",
-              halo: true,
-              label: fixLabel,
-              ...(res.note ? { sub: clip(res.note, 70) } : {}),
-            });
-            if (oldBox)
-              void this.call("link", `heal:link:${step.id}`, brokenKey, `heal:fix:${step.id}`, "heal");
-          }
-          this.ticker = `${fixLabel}. Continuing the replay`;
+          this.drawLadder(lad, {
+            pick: {
+              title: `${who} picked ‘${clip(label, 34)}’`,
+              ...(reason ? { reason: spotlightReason(reason) } : {}),
+              meta: res.rung === "open_weights" ? `${spent} · text only, no screenshot` : spent,
+            },
+          });
           this.push();
-          if (P > 0) await this.hold(P * 2);
+          if (P > 0) await this.hold(P * 6);
+          this.drawLadder(lad, {
+            pick: {
+              title: `${who} picked ‘${clip(label, 34)}’`,
+              ...(reason ? { reason: spotlightReason(reason) } : {}),
+              meta: res.rung === "open_weights" ? `${spent} · text only, no screenshot` : spent,
+            },
+            verified: {
+              ok: true,
+              text:
+                res.rung === "open_weights"
+                  ? "Checked by code: same kind of control, exactly one match"
+                  : `Step ${req.stepIdx + 1} now uses ‘${clip(label, 30)}’`,
+            },
+          });
+          if (P > 0) await this.hold(P * 2.2);
+          this.heal = null;
+          const lift = () => {
+            void this.call("scrim", false);
+            void this.call("spotOff");
+            void this.call("unbox", "heal:hole");
+          };
+          if (P > 0) lift();
+          else setTimeout(lift, 1800).unref?.();
+          this.push();
         } else {
-          const reason = res && !res.ok ? res.reason : "the rung failed";
-          if (oldBox) {
-            void this.call("box", brokenKey, oldBox, {
-              tone: "fail",
-              dashed: true,
-              dark: true,
-              label: `Step ${req.stepIdx + 1} · '${name}' ${why}`,
-              sub: clip(`${label}: ${reason}`, 80),
-            });
-          }
-          this.ticker = clip(`${label}: ${reason}`, 110);
+          this.drawLadder(lad);
           this.push();
           if (P > 0) await this.hold(P);
         }
@@ -1247,3 +1222,5 @@ export class Hud {
     return tagged ? Object.assign(wrapped, { rung: tagged }) : wrapped;
   }
 }
+
+export type { BBox as HudBBox, Box as HudBox, View as HudView };
