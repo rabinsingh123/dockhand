@@ -139,7 +139,7 @@ describe("drift watch", () => {
 
       await send({ file: { path: CAFE, mime: "image/jpeg" } });
       const plan = lastCard();
-      expect(plan.body).toContain("Partner tier: Gold");
+      expect(plan.body).toMatch(/with register_partner_deal v\d+\./);
       await tap(plan, "Approve");
       const commit = lastCard();
       expect(commit.body).toMatch(/^Ready to submit/); // no question this time

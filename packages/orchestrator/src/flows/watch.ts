@@ -291,9 +291,7 @@ export async function watchSkill(env: FlowEnv & { tmpDir: string }, w: WatchCtx)
       canary,
       costUsd,
       usedOpenWeights: realOpenWeights(env, job.id, runId),
-      eyebrow: "Drift watch",
-      title: `${portal.name} changed${when}`,
-      sub: "Repaired and verified before anyone noticed. Nothing to do.",
+      watch: { when: w.trigger === "schedule" ? "overnight" : "on demand" },
     }),
   );
   await say(

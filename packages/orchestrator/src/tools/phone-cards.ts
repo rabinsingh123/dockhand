@@ -1,12 +1,20 @@
-// Phone cards: Dockhand's WhatsApp images (teach "what Muse saw", skill diff, drift watch...). One builder,
-// one renderer: 540 CSS px wide at 2x, so the PNG is 1080 px wide, one phone screen, crisp when opened full
-// screen and still legible in the chat bubble. Dockhand's dark visual language (same as the HUD and recorder).
+// Phone cards: every image Dockhand sends in WhatsApp (teach, plan, submit, question, receipt, new skill, repair,
+// drift watch). One design system, one renderer: a 4:5 card, 540 x 675 CSS px at 2x, so the PNG is 1080 x 1350,
+// exactly what WhatsApp shows uncropped in the chat bubble.
+//
+// Light and editorial, like every real surface in the film: paper, ink, one gray, hairlines, Geist and Geist Mono
+// (bundled in packages/orchestrator/assets/fonts, SIL OFL, inlined so a render never touches the network). In the
+// demo video a card is seen at phone scale inside a 1080p frame, about a third of its size, so each card has one
+// big figure the viewer can read there; the rest is for the rep on the phone. The accent appears at most once
+// per card and only where Dockhand acted. No gradients, glows, shadows, icons or emoji.
 
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { promisify } from "node:util";
 import type {
   ArtifactRef,
   ArtifactStore,
+  BBox,
   Db,
   HealRung,
   Id,
@@ -20,6 +28,7 @@ import { displayName, stepTarget } from "@dockhand/skills";
 const run = promisify(execFile);
 
 export const PHONE_CARD_WIDTH = 540;
+export const PHONE_CARD_HEIGHT = 675;
 export const PHONE_CARD_SCALE = 2;
 
 /** renderHtml from the browser pool (scale honored); a renderer without `scale` gives a 1x image. */
@@ -30,7 +39,7 @@ export type PhoneRender = (
 ) => Promise<Uint8Array>;
 
 export interface PhoneCards {
-  /** Renders a phone card (from phoneCardHtml or one of the templates below) to a stored PNG. */
+  /** Renders a phone card (one of the templates below) to a stored PNG. */
   render(jobId: Id, html: string): Promise<ArtifactRef>;
 }
 
@@ -39,122 +48,240 @@ export function createPhoneCards(deps: { artifacts: ArtifactStore; render: Phone
     async render(jobId, html) {
       const png = await deps.render(
         html,
-        { w: PHONE_CARD_WIDTH, h: 320 }, // full page: the image is as tall as the card
-        { fullPage: true, scale: PHONE_CARD_SCALE },
+        { w: PHONE_CARD_WIDTH, h: PHONE_CARD_HEIGHT },
+        { fullPage: false, scale: PHONE_CARD_SCALE },
       );
       return deps.artifacts.put(png, "image/png", { kind: "receipt", jobId });
     },
   };
 }
 
-// ---------- the builder ----------
+// ---------- shared formatting ----------
 
 export const esc = (s: unknown): string =>
   String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-export type Tone = "cu" | "replay" | "heal" | "ok" | "bad" | "wait" | "muted";
-const TONE: Record<Tone, string> = {
-  cu: "#a78bfa",
-  replay: "#22d3ee",
-  heal: "#fbbf24",
-  ok: "#4ade80",
-  bad: "#fb7185",
-  wait: "#f472b6",
-  muted: "#94a3b8",
-};
-
-export interface PhoneCardSpec {
-  /** Small caps over the title ("What Muse saw", "Skill repaired", "Drift watch"). */
-  eyebrow: string;
-  title: string;
-  sub?: string;
-  tone?: Tone;
-  chips?: { text: string; tone?: Tone }[];
-  /** Big numbers in a row, at most 3 read well. */
-  stats?: { value: string; label: string; tone?: Tone }[];
-  /** Sections in order. `html` is trusted markup built with the helpers below (escape any data in it). */
-  /** `fold`: this section starts below the 4:5 top (1080x1350), which must stand on its own in the chat bubble. */
-  sections: { heading: string; html: string; fold?: boolean }[];
-  foot?: string;
-  credit?: string;
+/**
+ * Money as the ledger recorded it, with enough precision that a paid call never reads as free: $0.0029,
+ * $0.096, $0.30. Only a true zero is "$0".
+ */
+export function money(v: number): string {
+  if (!Number.isFinite(v) || v <= 0) return "$0";
+  if (v < 0.0001) return "<$0.0001";
+  if (v < 0.01) return `$${v.toFixed(4)}`;
+  if (v < 0.1) return `$${v.toFixed(3)}`;
+  return `$${v.toFixed(2)}`;
 }
 
-const LOGO =
-  '<svg width="30" height="30" viewBox="0 0 18 18"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="18" height="18" rx="5" fill="url(#g)"/><path d="M5.2 4.6h3.6a4.4 4.4 0 0 1 0 8.8H5.2z" fill="none" stroke="#0b0d12" stroke-width="1.9" stroke-linejoin="round"/><circle cx="9.1" cy="9" r="1.35" fill="#0b0d12"/></svg>';
+/** "3.1 s" under a minute, "2 min 5 s" above. */
+export function seconds(s: number): string {
+  if (!Number.isFinite(s) || s < 0) return "0.0 s";
+  if (s < 59.95) return `${s.toFixed(1)} s`;
+  const whole = Math.round(s);
+  return `${Math.floor(whole / 60)} min ${whole % 60} s`;
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** A param name as a label: "end_customer_company" -> "End customer company". */
+export const label = (name: string) => cap(name.replace(/_/g, " "));
+
+// ---------- counts: one source for every number about a draft or a skill ----------
+
+/**
+ * What a teach draft holds, as the teach card and the teach message both say it: `steps` are the plain-language
+ * steps written from the video, `values` every value the person typed or picked in it.
+ */
+export function draftCounts(d: Pick<SkillDraft, "steps" | "params">): {
+  steps: number;
+  values: number;
+  required: number;
+} {
+  return {
+    steps: d.steps.length,
+    values: d.params.length,
+    required: d.params.filter((p) => p.required).length,
+  };
+}
+
+const FIELD_OPS = new Set(["fill", "select", "check", "upload"]);
+
+/**
+ * What a compiled skill holds, as the skill card, its message and the code view say it: `steps` are program steps
+ * (navigation, fields, submit), `values` the inputs a request supplies, `fields` the steps that write a form field,
+ * which is what a replay reads back before submitting ("13/13 fields verified").
+ */
+export function skillCounts(s: Pick<Skill, "steps" | "params">): {
+  steps: number;
+  values: number;
+  fields: number;
+} {
+  return {
+    steps: s.steps.length,
+    values: s.params.length,
+    fields: s.steps.filter((st) => FIELD_OPS.has(st.op)).length,
+  };
+}
+
+// ---------- fonts and styles ----------
+
+function font(file: string): string {
+  try {
+    const bytes = readFileSync(new URL(`../../assets/fonts/${file}`, import.meta.url));
+    return `url(data:font/woff2;base64,${bytes.toString("base64")}) format("woff2")`;
+  } catch {
+    return "local(Arial)"; // the font files ship with the repo; this only keeps a broken checkout rendering
+  }
+}
+
+let fontCss: string | undefined;
+function fonts(): string {
+  fontCss ??=
+    `@font-face{font-family:"Geist";src:${font("Geist-Variable.woff2")};font-weight:100 900;font-display:block}` +
+    `@font-face{font-family:"Geist Mono";src:${font("GeistMono-Variable.woff2")};font-weight:100 900;font-display:block}`;
+  return fontCss;
+}
+
+/** The palette. ACCENT: at most once per card, only where Dockhand acted. ERROR: only for a real failure. */
+export const INK = "#111111";
+export const GRAY = "#6B6B6B";
+export const PAPER = "#F6F5F1";
+export const HAIR = "#E3E1DB";
+export const ACCENT = "#FF4F00";
+export const ERROR = "#B42318";
 
 const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#0a0c10}
-body{width:${PHONE_CARD_WIDTH}px;font:17px/1.4 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Arial,sans-serif;color:#e9edf3;-webkit-font-smoothing:antialiased}
-.card{min-height:100vh;padding:26px 26px 22px;background:radial-gradient(120% 60% at 0% 0%,color-mix(in srgb,var(--c) 16%,transparent) 0,transparent 60%),#0d1016}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.brand b{font-size:19px;font-weight:800;letter-spacing:.1px}
-.eyebrow{margin-left:auto;font-size:13px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--c)}
-h1{font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-.3px;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.sub{margin-top:6px;font-size:17px;color:#aeb7c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sub b{color:#fff;font-weight:750}
-.fold{margin-top:22px;border-top:1px dashed rgba(255,255,255,.18)}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.chip{display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;font-size:15px;font-weight:750;border:1.5px solid color-mix(in srgb,var(--t) 50%,transparent);color:var(--t);background:color-mix(in srgb,var(--t) 13%,transparent)}
-.stats{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:10px;margin-top:18px}
-.stat{padding:12px 14px 11px;border-radius:14px;background:#151922;border:1px solid rgba(255,255,255,.08)}
-.stat b{display:block;font-size:28px;line-height:1.1;font-weight:800;color:var(--t);white-space:nowrap}
-.stat span{display:block;margin-top:3px;font-size:14px;color:#9aa4b2;line-height:1.25}
-h2{margin:18px 0 8px;font-size:13.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#8a94a4}
-.frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.frames figure{position:relative;aspect-ratio:16/10;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.14);line-height:0;background:#151922}
-.frames img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
-.frames figcaption{position:absolute;left:6px;top:6px;padding:1px 6px;border-radius:6px;background:rgba(10,12,16,.86);font:700 13px/1.3 Consolas,"Cascadia Mono",monospace;color:#fff}
-ol.steps{list-style:none;counter-reset:s}
-ol.steps li{counter-increment:s;display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;padding:6px 0;font-size:17px;line-height:1.35}
-ol.steps li::before{content:counter(s);width:26px;height:26px;margin-top:1px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c);font-weight:800;font-size:14px}
-.more{margin:4px 0 0 39px;font-size:15px;color:#8a94a4}
-.p{display:inline-block;padding:0 7px;border-radius:6px;background:rgba(167,139,250,.18);color:#ddd6fe;font:650 15px/1.5 Consolas,"Cascadia Mono",monospace}
-.params{display:flex;flex-wrap:wrap;gap:8px}
-.param{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:10px;background:#151922;border:1px solid rgba(255,255,255,.08);font:650 15px/1.2 Consolas,"Cascadia Mono",monospace;color:#e9edf3}
-.param i{font-style:normal;font:700 12px/1 "Segoe UI",system-ui,sans-serif;letter-spacing:.4px;text-transform:uppercase;color:#8a94a4}
-.param .req{color:#fb7185}
-.box{padding:13px 15px;border-radius:14px;background:#151922;border:1px solid rgba(255,255,255,.08);font-size:17px}
-.box+.box{margin-top:8px}
-.box .k{display:block;font-size:13px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:#8a94a4;margin-bottom:3px}
-.change{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 13px;border-radius:14px;background:#151922;border:1px solid rgba(255,255,255,.08)}
-.change+.change{margin-top:8px}
-.change .what{font-size:17px;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
-.change .old{color:#fda4af;text-decoration:line-through;text-decoration-thickness:1.5px}
-.change .arrow{color:#fbbf24;font-weight:800;margin:0 6px}
-.change .new{color:#bbf7d0}
-.rung{white-space:nowrap;padding:4px 10px;border-radius:999px;font-size:13.5px;font-weight:800;color:#0b0d12;background:var(--t)}
-.ok{color:#4ade80}.bad{color:#fb7185}
-.foot{margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);font-size:14.5px;color:#9aa4b2;line-height:1.4}
-.foot code{font:650 14.5px Consolas,"Cascadia Mono",monospace;color:#e9edf3;background:#151922;padding:1px 6px;border-radius:5px}
-.credit{margin-top:8px;font-size:14px;font-weight:750;color:#c4b5fd}
+html,body{background:${PAPER}}
+body{width:${PHONE_CARD_WIDTH}px;height:${PHONE_CARD_HEIGHT}px;overflow:hidden;font:400 16px/1.4 "Geist",system-ui,sans-serif;color:${INK};-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.card{height:${PHONE_CARD_HEIGHT}px;padding:26px 30px 22px;display:flex;flex-direction:column}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:13px;border-bottom:1px solid ${HAIR};white-space:nowrap}
+.wm{font-weight:600;font-size:19px;letter-spacing:-.045em}
+.ctx{font-size:15px;font-weight:500;color:${GRAY};overflow:hidden;text-overflow:ellipsis}
+h1{margin-top:18px;font-weight:600;font-size:28px;line-height:1.12;letter-spacing:-.02em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sub{margin-top:6px;font-size:16px;color:${GRAY};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:"Geist Mono",ui-monospace,monospace;letter-spacing:-.01em}
+.fig{margin-top:18px}
+.fig b{display:block;font-weight:600;font-size:92px;line-height:.9;letter-spacing:-.045em;white-space:nowrap}
+.fig b.m{font-family:"Geist Mono",ui-monospace,monospace;font-size:62px;line-height:1;letter-spacing:-.045em}
+.fig b.t{font-size:68px;line-height:.98;letter-spacing:-.04em}
+.fig span{display:block;margin-top:8px;font-size:17px;color:${GRAY}}
+.a{color:${ACCENT}}
+.facts{display:flex;margin-top:18px;border-top:1px solid ${HAIR};border-bottom:1px solid ${HAIR}}
+.facts div{flex:1;padding:10px 0 9px;min-width:0}
+.facts div+div{padding-left:14px;border-left:1px solid ${HAIR}}
+.facts b{display:block;font:600 20px/1.15 "Geist Mono",ui-monospace,monospace;letter-spacing:-.02em;white-space:nowrap}
+.facts span{display:block;margin-top:2px;font-size:13.5px;color:${GRAY};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h{margin-top:18px;margin-bottom:7px;font-size:14px;font-weight:500;color:${GRAY}}
+.list{background:#fff;border:1px solid ${HAIR};border-radius:8px;overflow:hidden}
+.row{display:grid;grid-template-columns:44% minmax(0,1fr);gap:10px;padding:6px 12px;font-size:14.5px;line-height:1.35}
+.row+.row{border-top:1px solid ${HAIR}}
+.row .k{color:${GRAY};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.more .k{grid-column:1/-1}
+.cols{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}
+.cols div{padding:5px 0;font-size:14.5px;border-top:1px solid ${HAIR};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cols div i{font-style:normal;color:${GRAY}}
+.frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px}
+.frames figure{line-height:0}
+.frames img{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;border:1px solid ${HAIR};border-radius:6px;background:#fff}
+.frames figcaption{margin-top:5px;font:500 12.5px/1.2 "Geist Mono",ui-monospace,monospace;color:${GRAY}}
+.shot{position:relative;margin-top:16px;border:1px solid ${HAIR};border-radius:8px;overflow:hidden;background:#fff;line-height:0}
+.shot img{width:100%;display:block;object-fit:cover;object-position:top}
+.shot .hl{position:absolute;border:2.5px solid ${ACCENT};border-radius:4px}
+.chg{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:12px;padding:8px 12px;font-size:15.5px}
+.chg+.chg{border-top:1px solid ${HAIR}}
+.chg.on{box-shadow:inset 3px 0 0 ${ACCENT}}
+.chg .w{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chg .old{color:${GRAY};text-decoration:line-through;text-decoration-thickness:1px}
+.chg .to{color:${GRAY};margin:0 6px}
+.chg .new{font-weight:600}
+.chg .r{font-size:13.5px;color:${GRAY};white-space:nowrap}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.opts span{padding:6px 12px;border:1px solid ${HAIR};border-radius:999px;background:#fff;font-size:15px;font-weight:500}
+.note{margin-top:14px;font-size:15px;color:${GRAY};line-height:1.4}
+.note b{color:${INK};font-weight:500}
+.err{color:${ERROR}}
+.foot{margin-top:auto;padding-top:11px;border-top:1px solid ${HAIR};display:flex;justify-content:space-between;align-items:baseline;gap:14px;font-size:13.5px;color:${GRAY};white-space:nowrap}
+.foot span{overflow:hidden;text-overflow:ellipsis}
+.foot .mono{color:${INK}}
 `;
 
-/** The reusable card: brand row, title, chips, big stats, sections, foot. Returns a full HTML document. */
+// ---------- the skeleton ----------
+
+export interface PhoneCardSpec {
+  /** Right of the wordmark, sentence case: "Learned from your video", "Drift watch". */
+  context: string;
+  title: string;
+  sub?: string;
+  /** The one figure a viewer can read at phone scale in the film. `accent` only where Dockhand acted. */
+  figure?: { value: string; label?: string; style?: "number" | "mono" | "text"; accent?: boolean };
+  /** Trusted markup built with the helpers below (escape any data in it). */
+  body?: string;
+  /** Left and right of the bottom line. Trusted markup. */
+  foot?: [string, (string | undefined)?];
+}
+
+/** The reusable 4:5 card. Returns a full HTML document. */
 export function phoneCardHtml(c: PhoneCardSpec): string {
-  const color = TONE[c.tone ?? "replay"];
-  const chips = (c.chips ?? [])
-    .map((x) => `<span class="chip" style="--t:${TONE[x.tone ?? "muted"]}">${esc(x.text)}</span>`)
-    .join("");
-  const stats = (c.stats ?? []).slice(0, 3);
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${CSS}</style></head><body><div class="card" style="--c:${color}">
-<div class="brand">${LOGO}<b>Dockhand</b><span class="eyebrow">${esc(c.eyebrow)}</span></div>
+  const f = c.figure;
+  const fig = f
+    ? `<div class="fig"><b class="${f.style === "mono" ? "m" : f.style === "text" ? "t" : ""}${f.accent ? " a" : ""}">${esc(f.value)}</b>${f.label ? `<span>${esc(f.label)}</span>` : ""}</div>`
+    : "";
+  const foot = c.foot
+    ? `<div class="foot"><span>${c.foot[0]}</span>${c.foot[1] ? `<span>${c.foot[1]}</span>` : ""}</div>`
+    : "";
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${fonts()}${CSS}</style></head><body><div class="card">
+<div class="top"><span class="wm">Dockhand</span><span class="ctx">${esc(c.context)}</span></div>
 <h1>${esc(c.title)}</h1>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ""}
-${chips ? `<div class="chips">${chips}</div>` : ""}
-${stats.length ? `<div class="stats" style="--n:${stats.length}">${stats.map((s) => `<div class="stat" style="--t:${TONE[s.tone ?? "replay"]}"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join("")}</div>` : ""}
-${c.sections.map((s) => `${s.fold ? '<div class="fold" data-fold></div>' : ""}<h2>${esc(s.heading)}</h2>${s.html}`).join("\n")}
-${c.foot || c.credit ? `<div class="foot">${c.foot ?? ""}${c.credit ? `<div class="credit">${esc(c.credit)}</div>` : ""}</div>` : ""}
+${fig}${c.body ?? ""}
+${foot}
 </div></body></html>`;
 }
 
-/** "{{company_name}}" in a step becomes a param chip; the rest is escaped. */
-export function withParams(text: string): string {
-  return text
-    .split(/(\{\{[a-z][a-z0-9_]*(?:\|[^}]*)?\}\})/g)
-    .map((p) =>
-      /^\{\{.*\}\}$/.test(p) ? `<span class="p">${esc(p.slice(2, -2).split("|")[0])}</span>` : esc(p),
+/** A label/value table; past `max` rows, a "+N more" row. */
+export function rowsHtml(rows: [string, string][], max: number): string {
+  const shown = rows.length > max ? rows.slice(0, max - 1) : rows;
+  const more = rows.length - shown.length;
+  return `<div class="list">${shown
+    .map(
+      ([k, v]) => `<div class="row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`,
     )
-    .join("");
+    .join("")}${more > 0 ? `<div class="row more"><span class="k">+${more} more</span></div>` : ""}</div>`;
+}
+
+/** Facts in a row between hairlines: [value, label]. Values are set in Geist Mono. */
+export function factsHtml(facts: [string, string][]): string {
+  return `<div class="facts">${facts.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
+}
+
+const png = (b: Uint8Array) => `data:image/png;base64,${Buffer.from(b).toString("base64")}`;
+const jpeg = (b: Uint8Array) => `data:image/jpeg;base64,${Buffer.from(b).toString("base64")}`;
+
+/** Width and height from a PNG header, or undefined for anything else. */
+export function pngSize(b: Uint8Array): { w: number; h: number } | undefined {
+  if (b.length < 24 || b[0] !== 0x89 || b[1] !== 0x50) return undefined;
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  return { w: v.getUint32(16), h: v.getUint32(20) };
+}
+
+/**
+ * A real screenshot of the page, cropped to `height` CSS px from `focusY` (0..1 of the image). `highlight`
+ * outlines the control Dockhand will act on, in the accent.
+ */
+export function shotHtml(
+  bytes: Uint8Array,
+  o: { height: number; focusY?: number; highlight?: BBox; width?: number },
+): string {
+  const size = pngSize(bytes);
+  const w = o.width ?? PHONE_CARD_WIDTH - 60 - 2;
+  const scale = size ? w / size.w : 1;
+  const fullH = size ? size.h * scale : o.height;
+  const top = Math.max(0, Math.min(fullH - o.height, (o.focusY ?? 0) * fullH - o.height / 2));
+  const hl =
+    o.highlight && size
+      ? `<span class="hl" style="left:${(o.highlight.x * scale - 4).toFixed(1)}px;top:${(o.highlight.y * scale - top - 4).toFixed(1)}px;width:${(o.highlight.w * scale + 8).toFixed(1)}px;height:${(o.highlight.h * scale + 8).toFixed(1)}px"></span>`
+      : "";
+  return `<div class="shot" style="height:${o.height}px"><img src="${png(bytes)}" style="width:${w}px;height:${fullH.toFixed(1)}px;margin-top:${(-top).toFixed(1)}px">${hl}</div>`;
 }
 
 // ---------- frames from a video ----------
@@ -164,7 +291,7 @@ export async function videoDuration(ffmpeg: string, src: string): Promise<number
   const probe = await run(ffmpeg, ["-hide_banner", "-i", src], { timeout: 10_000, windowsHide: true }).catch(
     (e: { stderr?: string }) => ({ stderr: e.stderr ?? "" }),
   );
-  const m = /Duration:s*(d+):(d+):(d+(?:.d+)?)/.exec(String(probe.stderr));
+  const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(String(probe.stderr));
   return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : undefined;
 }
 
@@ -186,13 +313,8 @@ export async function teachFrames(
 /** `n` frames sampled evenly across a video, as JPEG bytes; [] when ffmpeg or the file is unavailable. */
 export async function videoFrames(ffmpeg: string, src: string, n = 4): Promise<Uint8Array[]> {
   try {
-    const probe = await run(ffmpeg, ["-hide_banner", "-i", src], {
-      timeout: 10_000,
-      windowsHide: true,
-    }).catch((e: { stderr?: string }) => ({ stderr: e.stderr ?? "" }));
-    const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(String(probe.stderr));
-    if (!m) return [];
-    const dur = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+    const dur = await videoDuration(ffmpeg, src);
+    if (!dur) return [];
     const out: Uint8Array[] = [];
     for (let i = 0; i < n; i++) {
       const t = ((i + 0.5) / n) * dur;
@@ -211,12 +333,7 @@ export async function videoFrames(ffmpeg: string, src: string, n = 4): Promise<U
           "scale=520:-2",
           "-q:v",
           "3",
-          "-f",
-          "image2pipe",
-          "-vcodec",
-          "mjpeg",
-          "pipe:1",
-        ],
+        ].concat(["-f", "image2pipe", "-vcodec", "mjpeg", "pipe:1"]),
         { encoding: "buffer", timeout: 15_000, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
       );
       if (r.stdout.length > 0) out.push(new Uint8Array(r.stdout));
@@ -232,7 +349,15 @@ function clock(s: number): string {
   return `${m}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
-const jpeg = (b: Uint8Array) => `data:image/jpeg;base64,${Buffer.from(b).toString("base64")}`;
+/** "{{company_name}}" in a step becomes the value's label; the rest is escaped. */
+export function withParams(text: string): string {
+  return text
+    .split(/(\{\{[a-z][a-z0-9_]*(?:\|[^}]*)?\}\})/g)
+    .map((p) =>
+      /^\{\{.*\}\}$/.test(p) ? `<b>${esc(label(p.slice(2, -2).split("|")[0] ?? ""))}</b>` : esc(p),
+    )
+    .join("");
+}
 
 // ---------- teach: what Muse saw ----------
 
@@ -244,71 +369,245 @@ export interface TeachCardOptions {
   durationS?: number;
 }
 
-/** Chips shown in the card's 4:5 top: required values first, at most this many. */
-const TOP_PARAMS = 6;
+/** Values listed on the card, required ones first. */
+const TEACH_VALUES = 8;
 
 export function teachPhoneCardHtml(d: SkillDraft, o: TeachCardOptions): string {
+  const n = draftCounts(d);
   const frames = (o.frames ?? []).slice(0, 3);
-  const n = frames.length;
-  const steps = d.steps.slice(0, 8);
-  const required = d.params.filter((p) => p.required);
-  const ordered = [...required, ...d.params.filter((p) => !p.required)];
-  const shown = ordered.slice(0, TOP_PARAMS);
-  const sections: PhoneCardSpec["sections"] = [];
-  if (n > 0) {
-    sections.push({
-      heading: "What Muse saw",
-      html: `<div class="frames">${frames
+  const ordered = [...d.params.filter((p) => p.required), ...d.params.filter((p) => !p.required)];
+  const shown = ordered.length > TEACH_VALUES ? ordered.slice(0, TEACH_VALUES - 1) : ordered;
+  const more = ordered.length - shown.length;
+  const strip = frames.length
+    ? `<div class="frames">${frames
         .map(
           (f, i) =>
-            `<figure><img src="${jpeg(f)}"><figcaption>${o.durationS ? clock(((i + 0.5) / n) * o.durationS) : `${i + 1}/${n}`}</figcaption></figure>`,
+            `<figure><img src="${jpeg(f)}"><figcaption>${o.durationS ? clock(((i + 0.5) / frames.length) * o.durationS) : `${i + 1}/${frames.length}`}</figcaption></figure>`,
         )
-        .join("")}</div>`,
-    });
-  }
-  sections.push({
-    heading: `Typed values it will ask for (${d.params.length} · ${required.length} required)`,
-    html: `<div class="params">${shown
-      .map(
-        (p) =>
-          `<span class="param">${esc(p.name)}${p.required ? '<span class="req">*</span>' : ""}<i>${esc(p.type)}</i></span>`,
-      )
-      .join(
-        "",
-      )}${ordered.length > shown.length ? `<span class="param"><i>+${ordered.length - shown.length} more</i></span>` : ""}</div>`,
-  });
-  // Below the 4:5 top: what you see when the image is opened.
-  sections.push({
-    fold: true,
-    heading: `The steps it wrote (${d.steps.length})`,
-    html: `<ol class="steps">${steps.map((st) => `<li><span>${withParams(st)}</span></li>`).join("")}</ol>${
-      d.steps.length > steps.length ? `<div class="more">+${d.steps.length - steps.length} more</div>` : ""
-    }`,
-  });
-  sections.push({
-    heading: "Done when",
-    html: `<div class="box">${esc(d.success)}<span class="k" style="margin:8px 0 0">Submits with “${esc(d.commitStep)}”, only after your tap</span></div>`,
-  });
-  const from = o.durationS ? ` · from your ${Math.round(o.durationS)} s recording` : ` · ${o.portalName}`;
+        .join("")}</div>`
+    : "";
+  const values = `<div class="h">Values it will ask for, required first</div><div class="cols">${shown
+    .map((p) => `<div>${esc(label(p.name))}${p.required ? "" : " <i>optional</i>"}</div>`)
+    .join("")}${more > 0 ? `<div><i>+${more} more</i></div>` : ""}</div>`;
+  const from = o.durationS ? `your ${Math.round(o.durationS)} s video` : "your video";
   return phoneCardHtml({
-    eyebrow: "Teach",
-    tone: "cu",
+    context: "Learned from your video",
     title: d.title,
-    sub: `${d.steps.length} steps · ${d.params.length} typed values${from}`,
-    sections,
-    foot: "Values seen in the video are never reused. The first real request runs once with computer use, then replays as a program.",
+    sub: `on ${o.portalName}`,
+    figure: {
+      value: String(n.values),
+      label: `values seen in ${from} · ${n.required} required · ${n.steps} steps`,
+      accent: true,
+    },
+    body: strip + values,
+    foot: [`Submits with “${esc(d.commitStep)}” only after your tap`],
   });
 }
 
-// ---------- diff: v1 -> v2 ----------
+// ---------- plan: what will be written where ----------
 
-const RUNG_CHIP: Record<HealRung, { text: string; tone: Tone }> = {
-  fallback: { text: "rung 1 · free", tone: "heal" },
-  similarity: { text: "rung 1 · free", tone: "heal" },
-  open_weights: { text: "rung 2 · Muse Spark Open", tone: "heal" },
-  computer_use: { text: "rung 3 · computer use", tone: "heal" },
-  ask_rep: { text: "rung 4 · you answered", tone: "wait" },
+export interface PlanCardView {
+  title: string;
+  /** "Caravela Partner Hub", "HubSpot". */
+  where: string;
+  /** "Replay of register_partner_deal v1, no model calls". */
+  how: string;
+  figure: { value: string; label: string };
+  rows: [string, string][];
+  /** Bottom line: the safety fact ("Nothing is submitted until you approve the filled form"). */
+  foot: string;
+}
+
+export function planPhoneCardHtml(v: PlanCardView): string {
+  return phoneCardHtml({
+    context: "Plan · needs your OK",
+    title: v.title,
+    sub: `${v.where} · ${v.how}`,
+    figure: { value: v.figure.value, label: v.figure.label },
+    body: `<div class="h">What I will write</div>${rowsHtml(v.rows, 10)}`,
+    foot: [esc(v.foot)],
+  });
+}
+
+// ---------- submit: the filled form, before the tap ----------
+
+export interface SubmitCardView {
+  portalName: string;
+  /** The filled form, as the approval screenshot shows it. */
+  screenshot?: Uint8Array;
+  /** The submit control Dockhand will click (outlined in the accent). */
+  highlight?: BBox;
+  /** Values read back from the page right now. */
+  readback: { label: string; value: string }[];
+}
+
+export function submitPhoneCardHtml(v: SubmitCardView): string {
+  const lines = v.readback.filter((f) => f.value.trim() !== "" && f.value !== "false");
+  const shot = v.screenshot
+    ? shotHtml(v.screenshot, {
+        height: lines.length ? 150 : 330,
+        focusY:
+          v.highlight && pngSize(v.screenshot)
+            ? (v.highlight.y + v.highlight.h / 2) / (pngSize(v.screenshot)?.h ?? 1)
+            : 0.5,
+        ...(v.highlight ? { highlight: v.highlight } : {}),
+      })
+    : "";
+  return phoneCardHtml({
+    context: "Ready to submit",
+    title: `The form on ${v.portalName} is filled`,
+    figure: lines.length
+      ? { value: String(lines.length), label: "fields read back from the page, listed below" }
+      : { value: "Review page", label: "a wizard's last page has nothing to read back", style: "text" },
+    body:
+      shot +
+      (lines.length
+        ? `<div class="h">On the page now</div>${rowsHtml(
+            lines.map((f) => [f.label, f.value]),
+            6,
+          )}`
+        : ""),
+    foot: ["Nothing is sent until you tap Approve"],
+  });
+}
+
+// ---------- question: the app needs something new ----------
+
+export interface AskCardView {
+  portalName: string;
+  /** The new field's label ("Partner tier"). */
+  label: string;
+  options: string[];
+  screenshot?: Uint8Array;
+}
+
+export function askPhoneCardHtml(v: AskCardView): string {
+  const opts = v.options.filter((o) => o.trim() !== "");
+  return phoneCardHtml({
+    context: "Needs your answer",
+    title: `${v.portalName} added a required field`,
+    figure: { value: v.label, label: "Which one should I use?", style: "text" },
+    body:
+      (opts.length
+        ? `<div class="opts">${opts
+            .slice(0, 6)
+            .map((o) => `<span>${esc(o)}</span>`)
+            .join("")}${opts.length > 6 ? `<span>+${opts.length - 6} more</span>` : ""}</div>`
+        : "") + (v.screenshot ? shotHtml(v.screenshot, { height: 250, focusY: 0.55 }) : ""),
+    foot: ["You answer once. It becomes the default.", "Nothing submitted yet"],
+  });
+}
+
+// ---------- receipt ----------
+
+export type ReceiptTier = "api" | "replay" | "agentic" | "repair";
+
+export interface ReceiptCardView {
+  title: string;
+  tier: ReceiptTier;
+  /** The record ID ("NW-REG-48221"), set big in Geist Mono. */
+  headline?: string;
+  /** One short line under the figure. */
+  line?: string;
+  seconds: number;
+  execCostUsd: number;
+  intakeCostUsd: number;
+  skill?: { name: string; version: number };
+  verified?: { matched: number; checked: number };
+  usedOpenWeights?: boolean;
+  /** The portal's own confirmation page. */
+  screenshot?: Uint8Array;
+}
+
+export const TIER_LABEL: Record<ReceiptTier, string> = {
+  api: "API",
+  replay: "Replay · compiled skill",
+  agentic: "First run · computer use",
+  repair: "Replay · repaired",
 };
+
+export function receiptPhoneCardHtml(r: ReceiptCardView): string {
+  const looksLikeId =
+    r.headline !== undefined && /^[A-Z0-9][A-Z0-9-]{4,}$/.test(r.headline) && /\d/.test(r.headline);
+  const facts: [string, string][] = [
+    ...(r.verified
+      ? [[`${r.verified.matched}/${r.verified.checked}`, "fields verified"] as [string, string]]
+      : []),
+    [seconds(r.seconds), "machine time"],
+    [money(r.execCostUsd), "to run"],
+    [money(r.intakeCostUsd), "intake"],
+  ];
+  return phoneCardHtml({
+    context: TIER_LABEL[r.tier],
+    title: r.title,
+    ...(r.line ? { sub: r.line } : {}),
+    ...(r.headline
+      ? {
+          figure: {
+            value: r.headline,
+            style: looksLikeId ? "mono" : "text",
+            accent: true,
+            label: "Submitted after your approval",
+          },
+        }
+      : {}),
+    body:
+      factsHtml(facts.slice(0, 4)) +
+      (r.screenshot ? shotHtml(r.screenshot, { height: r.headline ? 250 : 340, focusY: 0.3 }) : ""),
+    foot: [
+      r.skill ? `<span class="mono">${esc(r.skill.name)} v${r.skill.version}</span>` : "Synthetic demo data",
+      r.usedOpenWeights ? "Built with Muse Spark Open" : undefined,
+    ],
+  });
+}
+
+// ---------- new skill: the program it wrote ----------
+
+export interface SkillCardView {
+  skill: Pick<Skill, "name" | "version" | "title" | "params" | "steps">;
+  portalName: string;
+  verified: { passed: number; total: number };
+  /** The teach draft it was compiled from, so the card can say how the video's counts became the program's. */
+  draft?: Pick<SkillDraft, "steps" | "params">;
+}
+
+export function skillPhoneCardHtml(v: SkillCardView): string {
+  const n = skillCounts(v.skill);
+  const from = v.draft ? draftCounts(v.draft) : undefined;
+  const unused = v.draft ? v.draft.params.filter((p) => !v.skill.params.some((q) => q.name === p.name)) : [];
+  const ordered = [...v.skill.params.filter((p) => p.required), ...v.skill.params.filter((p) => !p.required)];
+  return phoneCardHtml({
+    context: "New skill",
+    title: v.skill.title,
+    sub: `on ${v.portalName}`,
+    figure: { value: "0", label: "model calls when it replays", accent: true },
+    body:
+      factsHtml([
+        [String(n.steps), "program steps"],
+        [String(n.values), "values per request"],
+        [`${v.verified.passed}/${v.verified.total}`, "dry runs passed"],
+      ]) +
+      (from
+        ? `<div class="note">Compiled from the first run: your video's <b>${from.steps} steps</b> became <b>${n.steps} program steps</b>, and its <b>${from.values} values</b> became <b>${n.values}</b>${unused.length ? ` (${esc(unused.map((p) => label(p.name)).join(", "))} not needed)` : ""}.</div>`
+        : "") +
+      `<div class="h">Values per request</div><div class="cols">${ordered
+        .slice(0, 8)
+        .map((p) => `<div>${esc(label(p.name))}${p.required ? "" : " <i>optional</i>"}</div>`)
+        .join("")}${ordered.length > 8 ? `<div><i>+${ordered.length - 8} more</i></div>` : ""}</div>`,
+    foot: [`<span class="mono">${esc(v.skill.name)} v${v.skill.version}</span>`],
+  });
+}
+
+// ---------- repair and drift watch: v1 -> v2 ----------
+
+const RUNG_TEXT: Record<HealRung, string> = {
+  fallback: "stored selector, free",
+  similarity: "similarity, free",
+  open_weights: "Muse Spark Open",
+  computer_use: "Muse computer use",
+  ask_rep: "your answer",
+};
+const PAID: HealRung[] = ["open_weights", "computer_use"];
 
 export interface DiffCardInput {
   portalName: string;
@@ -317,19 +616,21 @@ export interface DiffCardInput {
   /** The run's step results (rung per step id). */
   steps: StepResult[];
   canary: { passed: number; total: number };
-  /** The healing run's cost from the ledger (diffCardLedger). */
+  /** The repairing run's cost from the ledger (diffCardLedger). */
   costUsd: number;
   usedOpenWeights?: boolean;
-  /** Overrides for the drift watch card ("Drift watch", "… changed overnight", "Nothing to do"). */
-  eyebrow?: string;
-  title?: string;
-  sub?: string;
+  /** The drift watch's card: found and fixed on a schedule, before anyone noticed. */
+  watch?: { when?: string };
 }
 
-/** Ledger cost as shown on a card: "$0.000" when the ledger says nothing was spent (fake, cassette, scripted). */
-export function cardMoney(v: number): string {
-  if (!Number.isFinite(v) || v <= 0) return "$0.000";
-  return `$${v < 0.01 ? v.toFixed(3) : v.toFixed(2)}`;
+/**
+ * The repair cost as the card may state it: the ledger's value at full precision. A run that used a paid rung
+ * but recorded no cost (the fake stand-in in tests) shows no figure at all, never "$0".
+ */
+export function repairCost(v: Pick<DiffCardInput, "steps" | "costUsd">): string | undefined {
+  const paid = v.steps.some((s) => s.rung && PAID.includes(s.rung));
+  if (v.costUsd > 0) return money(v.costUsd);
+  return paid ? undefined : "$0";
 }
 
 /** "Built with Muse Spark Open" only when Baseten really served a heal for this job or run. */
@@ -357,14 +658,13 @@ export function diffCardLedger(
 
 const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
-/** Rows in "What changed" and new-value chips: past these, a "+N more" line keeps the card within 4:5. */
-const MAX_CHANGES = 3;
-const MAX_NEW_VALUES = 3;
+/** Change rows on the card; past this, a "+N more" row. */
+const MAX_CHANGES = 4;
 
 export function diffPhoneCardHtml(v: DiffCardInput): string {
   const rungOf = new Map(v.steps.flatMap((s) => (s.rung ? [[s.stepId, s.rung] as const] : [])));
   const before = new Map(v.parent.steps.map((s) => [s.id, s]));
-  const named: string[] = [];
+  const named: { html: string; paid: boolean }[] = [];
   let free = 0;
   for (const s of v.saved.steps) {
     const rung = rungOf.get(s.id);
@@ -372,70 +672,62 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
     const old = before.get(s.id);
     const a = old ? displayName(stepTarget(old)?.fingerprint) : "";
     const b = displayName(stepTarget(s)?.fingerprint);
-    const chip = RUNG_CHIP[rung];
     if ((rung === "fallback" || rung === "similarity") && (!a || a === b)) {
       free++;
       continue;
     }
     const what =
       rung === "ask_rep" || !old
-        ? `<span class="new">New: ${esc(b || s.intent)}</span>`
+        ? `<span class="new">New: ${esc(clip(b || s.intent, 30))}</span>`
         : a && a !== b
-          ? `<span class="old">${esc(clip(a, 26))}</span><span class="arrow">→</span><span class="new">${esc(clip(b, 26))}</span>`
-          : `<span class="new">${esc(b || s.intent)}</span>: new selector`;
-    named.push(
-      `<div class="change"><span class="what">${what}</span><span class="rung" style="--t:${TONE[chip.tone]}">${esc(chip.text)}</span></div>`,
-    );
+          ? `<span class="old">${esc(clip(a, 20))}</span><span class="to">→</span><span class="new">${esc(clip(b, 22))}</span>`
+          : `<span class="new">${esc(clip(b || s.intent, 26))}</span> <span class="old" style="text-decoration:none">moved</span>`;
+    named.push({
+      html: `<span class="w">${what}</span><span class="r">${esc(RUNG_TEXT[rung])}</span>`,
+      paid: PAID.includes(rung),
+    });
   }
-  if (free > 0) {
-    named.push(
-      `<div class="change"><span class="what"><span class="new">${free} field${free === 1 ? "" : "s"}</span>: found by stored selectors</span><span class="rung" style="--t:${TONE.heal}">rung 1 · free</span></div>`,
+  // The accent marks the one change a model repaired (the first, when several).
+  const firstPaid = named.findIndex((x) => x.paid);
+  const rows = named.map((x, i) => `<div class="chg${i === firstPaid ? " on" : ""}">${x.html}</div>`);
+  const shown =
+    rows.length > MAX_CHANGES
+      ? [
+          ...rows.slice(0, MAX_CHANGES - 1),
+          `<div class="chg"><span class="w">+${rows.length - MAX_CHANGES + 1} more changes</span></div>`,
+        ]
+      : rows;
+  if (free > 0)
+    shown.push(
+      `<div class="chg"><span class="w">${free} other step${free === 1 ? "" : "s"} found again</span><span class="r">stored selectors, free</span></div>`,
     );
-  }
+  const fixed = rungOf.size;
   const added = v.saved.params.filter((p) => !v.parent.params.some((q) => q.name === p.name));
-  const fixed = [...rungOf.keys()].length;
-  const allPassed = v.canary.passed === v.canary.total;
+  const cost = repairCost(v);
+  const facts: [string, string][] = [
+    [String(fixed), `step${fixed === 1 ? "" : "s"} repaired`],
+    [`${v.canary.passed}/${v.canary.total}`, "dry runs passed"],
+    ...(cost ? [[cost, "to repair"] as [string, string]] : []),
+  ];
+  const versions = `v${v.parent.version} → v${v.saved.version}`;
+  const watch = v.watch;
   return phoneCardHtml({
-    eyebrow: v.eyebrow ?? "Skill repaired",
-    tone: "heal",
-    title: v.title ?? `${v.portalName} changed`,
-    sub: v.sub ?? `${v.saved.name} v${v.parent.version} → v${v.saved.version}`,
-    stats: [
-      { value: String(fixed), label: `step${fixed === 1 ? "" : "s"} fixed`, tone: "heal" },
-      {
-        value: `${v.canary.passed}/${v.canary.total}`,
-        label: "dry runs passed",
-        tone: allPassed ? "ok" : "bad",
-      },
-      { value: cardMoney(v.costUsd), label: "to repair (ledger)", tone: "replay" },
+    context: watch ? `Drift watch${watch.when ? ` · ${watch.when}` : ""}` : "Skill repaired",
+    title: `${v.portalName} changed${watch?.when === "overnight" ? " overnight" : ""}`,
+    sub: `${v.saved.name}${watch ? ` ${versions}` : ""}${added.length ? ` · new value: ${added.map((p) => label(p.name)).join(", ")}` : ""}`,
+    figure: watch
+      ? {
+          value: "Nothing to do",
+          label: `Repaired and checked with ${v.canary.total} dry runs before anyone noticed`,
+          style: "text",
+        }
+      : { value: versions, label: "repaired, checked, now active", style: "text" },
+    body:
+      factsHtml(facts) +
+      `<div class="h">What changed</div><div class="list">${shown.join("") || '<div class="chg"><span class="w">Selectors refreshed</span></div>'}</div>`,
+    foot: [
+      `v${v.parent.version} kept: <span class="mono">/rollback ${esc(v.saved.name)} ${v.parent.version}</span>`,
+      v.usedOpenWeights ? "Built with Muse Spark Open" : undefined,
     ],
-    sections: [
-      {
-        heading: "What changed",
-        html:
-          (named.length > MAX_CHANGES
-            ? [
-                ...named.slice(0, MAX_CHANGES - 1),
-                `<div class="change"><span class="what">+${named.length - MAX_CHANGES + 1} more changes</span></div>`,
-              ]
-            : named
-          ).join("") || `<div class="box">Selectors refreshed</div>`,
-      },
-      ...(added.length
-        ? [
-            {
-              heading: "New values",
-              html: `<div class="params">${added
-                .slice(0, MAX_NEW_VALUES)
-                .map((p) => `<span class="param">${esc(p.name)}<i>${esc(p.type)}</i></span>`)
-                .join(
-                  "",
-                )}${added.length > MAX_NEW_VALUES ? `<span class="param"><i>+${added.length - MAX_NEW_VALUES} more</i></span>` : ""}</div>`,
-            },
-          ]
-        : []),
-    ],
-    foot: `v${v.parent.version} kept for rollback: <code>/rollback ${esc(v.saved.name)} ${v.parent.version}</code>`,
-    ...(v.usedOpenWeights ? { credit: "Built with Muse Spark Open" } : {}),
   });
 }

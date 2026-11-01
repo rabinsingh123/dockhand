@@ -4,301 +4,50 @@
 <meta charset="utf-8">
 <title>Dockhand cost chart</title>
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="charts.css">
 <style>
-.bg {
-  background:
-    radial-gradient(1300px 760px at 100% 0%, rgba(167, 139, 250, 0.09), transparent 65%),
-    radial-gradient(1100px 600px at 0% 100%, rgba(34, 211, 238, 0.06), transparent 70%),
-    var(--bg);
-}
-.head { left: 120px; top: 62px; }
-.head .sub { margin-top: 16px; }
-.big { font: 700 100px/1 var(--display); letter-spacing: -2.5px; color: #fff; white-space: nowrap; }
-.big .co { color: var(--replay); }
-.big .cu { color: var(--cu); }
-.big .vs { color: var(--muted); font-weight: 600; }
-#chart { left: 0; top: 0; overflow: visible; }
-#chart text { font-family: var(--sans); }
-.tick { font-size: 30px; font-weight: 600; fill: var(--muted); }
-.axis-title { font-size: 30px; font-weight: 600; fill: var(--muted); }
-.lbl { font-size: 33px; font-weight: 650; fill: var(--text-2); }
-.val { font: 700 66px var(--display); letter-spacing: -1.2px; }
-.pill-text { font-size: 30px; font-weight: 700; fill: #fff; }
-.proj { font-size: 32px; font-weight: 650; fill: #cdbdfd; }
+.head { left: 160px; top: 96px; width: 1600px; }
 </style>
 </head>
 <body>
 <div class="stage">
-  <div class="bg"></div>
-
-  <div class="head abs" id="headA">
-    <div class="title">Compile once vs computer use every run</div>
-    <div class="sub">Cumulative cost of the same task, run after run</div>
+  <div class="head abs">
+    <h1 class="ctitle" id="title"></h1>
+    <div class="csub" id="sub"></div>
   </div>
-  <div class="head abs" id="headB">
-    <div class="big" id="bigLine"></div>
-    <div class="sub">Compile once + heal vs computer use every run</div>
-  </div>
-
-  <svg id="chart" class="abs" width="1920" height="1080" viewBox="0 0 1920 1080">
-    <defs>
-      <clipPath id="plotClip"><rect x="150" y="230" width="1300" height="660"/></clipPath>
-    </defs>
-    <g id="grid"></g>
-    <g id="ticks"></g>
-    <line id="baseline" stroke="rgba(255,255,255,.28)" stroke-width="3"/>
-    <text class="axis-title" id="xTitle" text-anchor="middle">Runs</text>
-    <g clip-path="url(#plotClip)">
-      <path id="gap" fill="rgba(167,139,250,.085)"/>
-      <line id="beLine" stroke="rgba(244,246,250,.6)" stroke-width="3" stroke-dasharray="7 10"/>
-      <path id="coGlow" fill="none" stroke="#22d3ee" stroke-opacity=".16" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-      <path id="cuGlow" fill="none" stroke="#a78bfa" stroke-opacity=".16" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-      <path id="co" fill="none" stroke="#22d3ee" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-      <path id="cuDash" fill="none" stroke="#a78bfa" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="14 18"/>
-      <path id="cu" fill="none" stroke="#a78bfa" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle id="beDotCu" r="9" fill="#a78bfa" stroke="#0a0c10" stroke-width="3"/>
-      <circle id="beDotCo" r="9" fill="#22d3ee" stroke="#0a0c10" stroke-width="3"/>
-      <circle id="junction" r="8" fill="#0a0c10" stroke="#a78bfa" stroke-width="4"/>
-    </g>
-    <circle id="coHalo" r="22" fill="#22d3ee" fill-opacity=".2"/>
-    <circle id="cuHalo" r="22" fill="#a78bfa" fill-opacity=".2"/>
-    <circle id="coHead" r="10" fill="#22d3ee" stroke="#0a0c10" stroke-width="3"/>
-    <circle id="cuHead" r="10" fill="#a78bfa" stroke="#0a0c10" stroke-width="3"/>
-    <g id="beLabel">
-      <rect id="beRect" rx="12" fill="#151922" stroke="rgba(255,255,255,.22)" stroke-width="2" height="52"/>
-      <text class="pill-text" id="beText" x="18" y="36"></text>
-    </g>
-    <text class="proj" id="proj" text-anchor="middle"></text>
-    <text class="lbl" id="cuName">Computer use every run</text>
-    <text class="lbl" id="coName">Compile once + heal</text>
-    <g id="cuEnd"><text class="lbl" y="-20">Computer use every run</text><text class="val" id="cuVal" y="50" fill="#a78bfa"></text></g>
-    <g id="coEnd"><text class="lbl" y="-20">Compile once + heal</text><text class="val" id="coVal" y="50" fill="#22d3ee"></text></g>
-  </svg>
-
-  <div class="caption" id="caption"></div>
-  <div class="grain"></div>
-  <div class="black" id="black"></div>
+  <svg id="chart" class="abs" width="1920" height="1080" viewBox="0 0 1920 1080" style="left:0;top:0"></svg>
+  <div class="source abs" id="source"></div>
 </div>
 <script src="data.js"></script>
 <script src="runtime.js"></script>
+<script src="charts.js"></script>
 <script>
 (() => {
-  const { fx, rise, seg, ease, lerp, clamp, fmt } = DH;
   const D = window.DOCKHAND_DATA;
   const C = D.cost;
-  const N = C.totalRuns;
-  const M = C.measuredCuRuns;
-  const BE = C.breakEvenRun;
-  // Cumulative USD after run i (index 0 is before the first run).
-  const cu = [0, ...C.cuCum];
-  const co = [0, ...C.compileCum];
-  const P = { L: 200, R: 1410, T: 290, B: 860 };
-  // Close-up on the measured runs first, then every run.
-  const Z0 = { x: 10, y: Math.ceil(cu[M] * 1.3 * 4) / 4 };
-  const Z1 = { x: N, y: Math.ceil(C.cuTotalUsd * 1.06) };
-
+  const { fade } = DH;
   const $ = (id) => document.getElementById(id);
-  const NS = "http://www.w3.org/2000/svg";
-  const make = (tag, attrs, parent) => {
-    const e = document.createElementNS(NS, tag);
-    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
-    parent.appendChild(e);
-    return e;
-  };
-  const f2 = (v) => v.toFixed(2);
-
-  // Static text, all from data.js (evals/results/live-headline.json).
-  const co$ = fmt.usd(C.compileTotalUsd);
-  const cu$ = fmt.usd(C.cuTotalUsd);
-  $("bigLine").innerHTML = `<span class="co">${co$}</span> <span class="vs">vs</span> <span class="cu">${cu$}</span> over ${N} runs`;
-  $("cuVal").textContent = cu$;
-  $("coVal").textContent = co$;
-  $("beText").textContent = `Break-even: run ${BE}`;
-  $("proj").textContent = `projected from ${M} measured runs`;
-  $("caption").textContent = `Live Meta + Baseten calls · ${fmt.date(D.date)} · list prices`;
-
-  // Ticks: a close-up set and an every-run set, cross-faded while the axes zoom out.
-  const ticks = [];
-  const addTick = (axis, set, v, text) => {
-    const label = make("text", { class: "tick", "text-anchor": axis === "y" ? "end" : "middle" }, $("ticks"));
-    label.textContent = text;
-    const grid = axis === "y" ? make("line", { stroke: "rgba(255,255,255,.075)", "stroke-width": 2 }, $("grid")) : null;
-    ticks.push({ axis, set, v, label, grid });
-  };
-  addTick("y", "both", 0, "$0");
-  addTick("x", "both", 0, "0");
-  for (let v = 0.25; v <= Z0.y + 1e-9; v += 0.25) addTick("y", "zoom", v, `$${v.toFixed(2)}`);
-  for (let v = 2; v <= Z1.y - 0.5; v += 2) addTick("y", "full", v, `$${v}`);
-  for (let v = 2; v <= Z0.x; v += 2) addTick("x", "zoom", v, String(v));
-  for (let v = 20; v <= N - 10; v += 20) addTick("x", "full", v, String(v));
-  addTick("x", "full", N, String(N));
-
-  // Series value at a fractional run, and a path from run a to run b.
-  const at = (s, r) => {
-    const i = Math.floor(r);
-    if (i >= s.length - 1) return s[s.length - 1];
-    return s[i] + (s[i + 1] - s[i]) * (r - i);
-  };
-  const points = (s, a, b, X, Y) => {
-    if (b <= a) return [];
-    const pts = [[X(a), Y(at(s, a))]];
-    for (let i = Math.floor(a) + 1; i < b; i++) pts.push([X(i), Y(s[i])]);
-    pts.push([X(b), Y(at(s, b))]);
-    return pts;
-  };
-  const d = (pts) => (pts.length ? pts.map((p, i) => `${i ? "L" : "M"}${f2(p[0])},${f2(p[1])}`).join("") : "");
-
-  // Timeline (seconds).
-  const A = { at: 0.7, dur: 2.2 };   // draw the measured runs, close up
-  const Z = { at: 3.1, dur: 1.5 };   // zoom out to every run
-  const Cc = { at: 4.6, dur: 2.0 };  // draw to run N (computer use projected, dashed)
-  const rA = (t) => M * seg(t, A.at, A.dur, ease.inOut);
-  const rC = (t) => lerp(M, N, seg(t, Cc.at, Cc.dur, ease.inOut));
-  const run = (t) => (t < Cc.at ? rA(t) : rC(t));
-  // When the close-up head reaches the break-even run (bisection on the monotone ease).
-  const when = (f, target, lo, hi) => {
-    for (let k = 0; k < 60; k++) {
-      const mid = (lo + hi) / 2;
-      if (f(mid) < target) lo = mid;
-      else hi = mid;
-    }
-    return hi;
-  };
-  const tBE = when(rA, BE, A.at, A.at + A.dur);
-  const tProj = when(rC, M + (N - M) * 0.68, Cc.at, Cc.at + Cc.dur);
-
+  $("title").textContent = `${DHC.usd(C.compileTotalUsd)} vs ${DHC.usd(C.cuTotalUsd)} over ${C.totalRuns} runs`;
+  $("sub").textContent = `Cumulative cost of the same task. Computer use was measured for ${C.measuredCuRuns} runs, dashed after.`;
+  const c = DHC.costChart($("chart"), { L: 300, R: 1700, T: 400, B: 860 }, D, {
+    yMax: 12,
+    yStep: 4,
+    xTicks: [1, 25, 50, 75, C.totalRuns],
+    accent: "dockhand",
+    dockName: "Dockhand: compile once, then replay and repair",
+  });
+  $("source").textContent = `Live Meta and Baseten calls at list prices, ${D.dateShort}. Break-even at run ${C.breakEvenRun}. evals/results/live-headline.md`;
   DH.clip({
     duration: 10,
-    init() {
-      const w = $("beText").getComputedTextLength();
-      $("beRect").setAttribute("width", f2(w + 36));
-    },
     frame(t) {
-      fx($("black"), { o: 1 - seg(t, 0, 0.4, ease.linear) });
-      rise($("headA"), t, 0.1, { dur: 0.6, dy: 26, blur: 8, out: { at: 7.35, dur: 0.45, dy: 30 } });
-      rise($("headB"), t, 7.55, { dur: 0.65, dy: 34, blur: 10 });
-      rise($("caption"), t, 0.5, { dur: 0.6, dy: 0, blur: 0 });
-
-      const zp = seg(t, Z.at, Z.dur, ease.inOut);
-      const xMax = Math.exp(lerp(Math.log(Z0.x), Math.log(Z1.x), zp));
-      const yMax = Math.exp(lerp(Math.log(Z0.y), Math.log(Z1.y), zp));
-      const X = (r) => P.L + (r / xMax) * (P.R - P.L);
-      const Y = (v) => P.B - (v / yMax) * (P.B - P.T);
-
-      // Axes.
-      const oAxes = seg(t, 0.25, 0.5, ease.linear);
-      const oZoom = 1 - seg(t, Z.at, 0.55, ease.linear);
-      const oFull = seg(t, Z.at + 0.85, 0.65, ease.linear);
-      for (const k of ticks) {
-        let o = oAxes * (k.set === "zoom" ? oZoom : k.set === "full" ? oFull : 1);
-        if (k.axis === "y") {
-          const y = Y(k.v);
-          o *= clamp((y - (P.T - 44)) / 44);
-          k.label.setAttribute("x", P.L - 24);
-          k.label.setAttribute("y", f2(y + 11));
-          k.grid.setAttribute("x1", P.L);
-          k.grid.setAttribute("x2", P.R);
-          k.grid.setAttribute("y1", f2(y));
-          k.grid.setAttribute("y2", f2(y));
-          k.grid.setAttribute("opacity", (k.v === 0 ? 0 : o).toFixed(3));
-        } else {
-          const x = X(k.v);
-          o *= clamp((P.R + 44 - x) / 44);
-          k.label.setAttribute("x", f2(x));
-          k.label.setAttribute("y", P.B + 50);
-        }
-        k.label.setAttribute("opacity", o.toFixed(3));
-      }
-      const base = $("baseline");
-      base.setAttribute("x1", P.L);
-      base.setAttribute("x2", P.R);
-      base.setAttribute("y1", P.B);
-      base.setAttribute("y2", P.B);
-      base.setAttribute("opacity", oAxes.toFixed(3));
-      $("xTitle").setAttribute("x", (P.L + P.R) / 2);
-      $("xTitle").setAttribute("y", P.B + 100);
-      $("xTitle").setAttribute("opacity", oAxes.toFixed(3));
-
-      // Lines: computer use solid over its measured runs, dashed after; compile once + heal throughout.
-      const r = run(t);
-      const cuSolid = points(cu, 0, Math.min(r, M), X, Y);
-      const cuProj = r > M ? points(cu, M, r, X, Y) : [];
-      const coPts = points(co, 0, r, X, Y);
-      $("cu").setAttribute("d", d(cuSolid));
-      $("cuGlow").setAttribute("d", d(cuSolid));
-      $("cuDash").setAttribute("d", d(cuProj));
-      $("co").setAttribute("d", d(coPts));
-      $("coGlow").setAttribute("d", d(coPts));
-      const upper = cuSolid.concat(cuProj.slice(1));
-      $("gap").setAttribute("d", upper.length ? `${d(upper)}${d([...coPts].reverse()).replace(/^M/, "L")}Z` : "");
-      $("gap").setAttribute("opacity", seg(t, 1.0, 0.6, ease.linear).toFixed(3));
-
-      // Heads (they stay as the end points).
-      const showHeads = r > 0.02 ? 1 : 0;
-      const hx = X(r);
-      for (const [id, s] of [["cu", cu], ["co", co]]) {
-        const hy = Y(at(s, r));
-        for (const part of ["Head", "Halo"]) {
-          const c = $(id + part);
-          c.setAttribute("cx", f2(hx));
-          c.setAttribute("cy", f2(hy));
-          c.setAttribute("opacity", part === "Halo" ? (showHeads * (1 - seg(t, Cc.at + Cc.dur, 0.5, ease.linear))).toFixed(3) : String(showHeads));
-        }
-      }
-      const j = $("junction");
-      j.setAttribute("cx", f2(X(M)));
-      j.setAttribute("cy", f2(Y(cu[M])));
-      j.setAttribute("opacity", r > M + 0.05 ? "1" : "0");
-
-      // Break-even at run BE.
-      const pb = seg(t, tBE, 0.5, ease.out);
-      const bx = X(BE);
-      const be = $("beLine");
-      be.setAttribute("x1", f2(bx));
-      be.setAttribute("x2", f2(bx));
-      be.setAttribute("y1", P.B);
-      be.setAttribute("y2", f2(lerp(P.B, P.T - 8, pb)));
-      be.setAttribute("opacity", pb > 0 ? "1" : "0");
-      const pl = seg(t, tBE + 0.15, 0.5, ease.outBack);
-      const lab = $("beLabel");
-      lab.setAttribute("transform", `translate(${f2(bx + 18)},${f2(P.T - 4 + (1 - pl) * 14)})`);
-      lab.setAttribute("opacity", clamp(pl).toFixed(3));
-      const dotO = seg(t, tBE, 0.3, ease.linear) * (1 - seg(t, Z.at, 0.4, ease.linear));
-      for (const [id, s] of [["beDotCu", cu], ["beDotCo", co]]) {
-        $(id).setAttribute("cx", f2(bx));
-        $(id).setAttribute("cy", f2(Y(s[BE])));
-        $(id).setAttribute("opacity", dotO.toFixed(3));
-      }
-
-      // Names travel with the heads in the close-up, then sit at the line ends with the totals.
-      const oNames = seg(t, 1.7, 0.4, ease.linear) * (1 - seg(t, Z.at - 0.15, 0.3, ease.linear));
-      const cuName = $("cuName");
-      cuName.setAttribute("x", f2(hx + 28));
-      cuName.setAttribute("y", f2(Y(at(cu, r)) + 12));
-      cuName.setAttribute("opacity", oNames.toFixed(3));
-      const coName = $("coName");
-      coName.setAttribute("x", f2(hx + 28));
-      coName.setAttribute("y", f2(Y(at(co, r)) - 24));
-      coName.setAttribute("opacity", oNames.toFixed(3));
-      const pe = seg(t, Cc.at + Cc.dur - 0.15, 0.55, ease.out);
-      // Computer use: name above its end point, total below. Compile once: both above (the x axis is below).
-      for (const [id, s, dy] of [["cuEnd", cu, 0], ["coEnd", co, -46]]) {
-        const g = $(id);
-        g.setAttribute("transform", `translate(${f2(X(N) + 30 - (1 - pe) * 18)},${f2(Y(s[N]) + dy)})`);
-        g.setAttribute("opacity", pe.toFixed(3));
-      }
-
-      // "projected from M measured runs", along the dashed line.
-      const pp = seg(t, tProj, 0.5, ease.out);
-      const a = Math.round(N * 0.55);
-      const x0 = X(a - 10);
-      const y0 = Y(at(cu, a - 10));
-      const x1 = X(a + 10);
-      const y1 = Y(at(cu, a + 10));
-      const ang = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
-      const pr = $("proj");
-      pr.setAttribute("transform", `translate(${f2(X(a))},${f2(Y(at(cu, a)))}) rotate(${f2(ang)}) translate(0,${f2(-30 - (1 - pp) * 10)})`);
-      pr.setAttribute("opacity", pp.toFixed(3));
+      fade(c.axes, t, 0);
+      fade(c.cuG, t, 0.8);
+      fade(c.proj, t, 2.0);
+      fade(c.projLbl, t, 2.0);
+      fade(c.cuLbl, t, 2.0);
+      fade(c.dock, t, 3.6);
+      fade(c.dockLbl, t, 3.6);
+      fade($("source"), t, 0);
     },
   });
 })();

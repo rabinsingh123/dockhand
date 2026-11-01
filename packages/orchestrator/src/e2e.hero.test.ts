@@ -136,7 +136,8 @@ describe("hero loop through WhatsApp", () => {
     await send({ file: { path: inbound("referral-cafe-aurora.jpg"), mime: "image/jpeg" } });
     const plan = lastCard();
     expect(plan.body).toContain("First time: computer use");
-    expect(plan.body).toContain("Company name: Café Aurora Ltda.");
+    expect(plan.body).toContain("Register *Café Aurora Ltda.* on Caravela Partner Hub");
+    expect(plan.headerImagePath).toBeTruthy(); // the plan card lists every value
     await tap(plan, "a");
 
     const commit = lastCard();
@@ -176,7 +177,8 @@ describe("hero loop through WhatsApp", () => {
     expect(plan.body).toContain("register_partner_deal v1");
     await tap(plan, "a");
     const commit = lastCard();
-    expect(commit.body).toContain("Vila Nova Logística Ltda.");
+    expect(plan.body).toContain("Vila Nova Logística Ltda.");
+    expect(commit.body).toContain("Ready to submit on Caravela Partner Hub");
     await tap(commit, "a");
 
     const runId = latestRunId();
@@ -184,7 +186,7 @@ describe("hero loop through WhatsApp", () => {
     expect(sys.ledger.totals({ runId }).calls).toBe(0);
     const receipt = outbox().findLast((r) => r.type === "image");
     expect(receipt?.caption).toContain("Replay · compiled skill");
-    expect(receipt?.caption).toContain("execution $0.00");
+    expect(receipt?.caption).toContain("execution $0 +");
     expect(receipt?.caption).toMatch(/\d+\/\d+ fields verified/);
     expect(sys.portals.partner.submissions().at(-1)?.fields.companyName).toBe("Vila Nova Logística Ltda.");
   }, 120_000);

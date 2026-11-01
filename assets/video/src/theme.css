@@ -1,34 +1,40 @@
-/* Dockhand motion graphics: the HUD and flight-recorder palette (packages/browser/src/hud,
-   apps/gateway/src/recorder) scaled up for 1080p video watched on a phone. System fonts only, so there is
-   nothing to fetch and nothing that can differ between two renders. */
+/* Dockhand motion graphics: light, editorial, one accent. Every real surface in the film (the portals, EspoCRM,
+   WhatsApp) is light, so Dockhand's own surfaces are too. Geist and Geist Mono are bundled in ../fonts (SIL OFL),
+   so nothing is fetched at render time and two renders cannot differ.
+
+   Rules: the accent appears at most once per frame and only where Dockhand acted (the key number, the repaired
+   element). Error red only for a real failure. No gradients, glows, blur or heavy shadows. Everything the viewer
+   must read is at least 40 px. */
+@font-face {
+  font-family: "Geist";
+  src: url("../fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: block;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: block;
+}
 :root {
-  --bg: #0a0c10;
-  --panel: #11141a;
-  --panel-2: #161a22;
-  --panel-3: #1c212b;
-  --line: rgba(255, 255, 255, 0.09);
-  --line-2: rgba(255, 255, 255, 0.16);
-  --text: #f4f6fa;
-  --text-2: #d3d9e3;
-  --muted: #a9b2c0;
-  --faint: #6f7a8a;
-  --cu: #a78bfa;
-  --replay: #22d3ee;
-  --heal: #fbbf24;
-  --dry: #60a5fa;
-  --ok: #4ade80;
-  --bad: #fb7185;
-  --display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
-    "Helvetica Neue", Arial, sans-serif;
-  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, "SFMono-Regular", Menlo, monospace;
-  color-scheme: dark;
+  --paper: #f6f5f1;
+  --surface: #ffffff;
+  --ink: #111111;
+  --gray: #6b6b6b;
+  --hair: #e3e1db;
+  --accent: #ff4f00;
+  --error: #b42318;
+  --sans: "Geist", system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--paper); }
 body {
   font-family: var(--sans);
-  color: var(--text);
+  font-weight: 400;
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
   font-kerning: normal;
@@ -43,47 +49,22 @@ h1, h2, h3, p { margin: 0; }
   width: 1920px;
   height: 1080px;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--paper);
   transform-origin: 0 0;
-  isolation: isolate;
 }
+.stage.clear { background: transparent; }
 .abs { position: absolute; }
-.bg { position: absolute; inset: 0; z-index: -1; }
-/* Static film grain: dithers the dark gradients so 8-bit H.264 does not band them. */
-.grain {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 240px 240px;
-}
-.black { position: absolute; inset: 0; z-index: 60; background: #000; pointer-events: none; }
 
-.eyebrow {
-  font: 700 26px/1 var(--sans);
-  letter-spacing: 3.5px;
-  text-transform: uppercase;
-  color: var(--c, var(--muted));
-}
-.title { font: 700 66px/1.08 var(--display); letter-spacing: -1.4px; color: #fff; white-space: nowrap; }
-.sub { font: 500 36px/1.3 var(--sans); color: var(--muted); white-space: nowrap; }
-.caption {
-  position: absolute;
-  left: 120px;
-  bottom: 46px;
-  font: 600 29px/1 var(--sans);
-  color: var(--muted);
-  letter-spacing: 0.2px;
-  white-space: nowrap;
-}
-.grad {
-  background: linear-gradient(100deg, #b49cfc 0%, #22d3ee 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.lockup { display: flex; align-items: center; }
-.lockup .name { font: 700 96px/1 var(--display); letter-spacing: -1.5px; color: #fff; }
-.dmark { display: block; flex: none; overflow: visible; }
+/* Type scale (1080p). Display: 600, -2% tracking, sentence case. */
+.display { font-weight: 600; letter-spacing: -0.02em; line-height: 1.04; }
+.d1 { font-size: 132px; }
+.d2 { font-size: 96px; }
+.d3 { font-size: 72px; }
+.d4 { font-size: 56px; }
+.body { font-size: 44px; font-weight: 400; line-height: 1.3; letter-spacing: -0.005em; }
+.label { font-size: 40px; font-weight: 500; line-height: 1.2; color: var(--gray); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.gray { color: var(--gray); }
+.accent { color: var(--accent); }
+.rule { height: 2px; background: var(--hair); }
+.wordmark { font-weight: 600; letter-spacing: -0.045em; line-height: 1; color: var(--ink); white-space: nowrap; }

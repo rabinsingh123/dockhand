@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dockhand why band</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+/* A caption band for real footage (the WhatsApp thread): rendered with alpha (title-band.mov), so only the band
+   covers the picture. Opaque paper, so it reads over anything. */
+html, body { background: transparent; }
+.band { left: 0; right: 0; bottom: 0; height: 292px; background: var(--paper); border-top: 2px solid var(--hair); }
+.band .in { position: absolute; left: 160px; right: 160px; top: 56px; }
+.band h2 { font-size: 64px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap; }
+.band p { margin-top: 26px; font-size: 40px; color: var(--ink); white-space: nowrap; }
+.band p .gray { color: var(--gray); }
+</style>
+</head>
+<body>
+<div class="stage clear">
+  <div class="band abs" id="band">
+    <div class="in">
+      <h2>In LatAm and India, B2B deals happen in WhatsApp.</h2>
+      <!-- docs/research/impact-facts.md, fact 1.4: it says "chatting with businesses", not WhatsApp. -->
+      <p>91% of online adults in India chat with businesses every week. <span class="gray">Kantar 2025, via Meta Newsroom</span></p>
+    </div>
+  </div>
+</div>
+<script src="runtime.js"></script>
+<script>
+DH.clip({
+  duration: 6,
+  frame(t) {
+    DH.fade(document.getElementById("band"), t, 0.2, 5.65);
+  },
+});
+</script>
+</body>
+</html>

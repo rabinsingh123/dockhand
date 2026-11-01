@@ -14,7 +14,7 @@ import { mentionsEspo } from "../espocrm.ts";
 import { toWav, transcriptionKeywords } from "../intake.ts";
 import { CARAVELA, ESPOCRM, type PortalDirectory, SUPPLIER, startUrlFor } from "../portals.ts";
 import { MAX, promptText } from "../sanitize.ts";
-import { teachFrames, teachPhoneCardHtml } from "../tools/phone-cards.ts";
+import { draftCounts, teachFrames, teachPhoneCardHtml } from "../tools/phone-cards.ts";
 import { type FlowEnv, type JobCtx, sendText, trySend } from "./env.ts";
 
 export const TEACH_MODEL = "muse-wonder-1.0";
@@ -152,15 +152,16 @@ export async function runTeach(
     action.video,
   );
   const card = await env.phoneCards.render(job.id, teachPhoneCardHtml(draft, { portalName, ...frames }));
+  const n = draftCounts(draft);
 
   const { decision } = await env.approvals.open({
     jobId: job.id,
     kind: "skill_confirm",
     to: job.rep.phone,
     body: [
-      `I learned *${draft.title}*${draft.title.toLowerCase().includes(portalName.toLowerCase()) ? "" : ` on ${portalName}`}: ${draft.steps.length} steps, ${draft.params.length} values, submits with "${draft.commitStep}".`,
-      "Values from the video are shown on the card but never reused.",
-      "Look right? The next real request runs once with computer use, then becomes a skill.",
+      // The same counts as the card (draftCounts): steps written from the video, values typed or picked in it.
+      `I learned *${draft.title}*${draft.title.toLowerCase().includes(portalName.toLowerCase()) ? "" : ` on ${portalName}`}: ${n.steps} steps, ${n.values} values, submits with "${draft.commitStep}".`,
+      "Look right? The next real request runs once with computer use, then becomes a skill. Values seen in the video are never reused.",
     ].join("\n"),
     image: card,
     ttlMs: env.gateTtlMs,

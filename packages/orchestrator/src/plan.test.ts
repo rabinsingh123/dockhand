@@ -208,7 +208,7 @@ describe("buildPlan: register_deal", () => {
       },
     ]);
     expect(out.plan.approvalText).toContain("register_partner_deal v1");
-    expect(out.plan.approvalText).toContain("• Close date: 29 Jan 2027");
+    expect(out.type === "plan" && out.card?.rows).toContainEqual(["Close date", "29 Jan 2027"]);
   });
 
   it("runs computer use guided by the teach draft when no skill exists yet", () => {

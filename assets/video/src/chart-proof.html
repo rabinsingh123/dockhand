@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dockhand proof</title>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="charts.css">
+<style>
+.left { left: 160px; top: 132px; width: 760px; }
+.right { left: 1080px; top: 132px; width: 720px; }
+.rows { margin-top: 58px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="left abs">
+    <h2 class="ptitle">42 UI changes it never saw</h2>
+    <div class="psub">Handled out of 42, same cases</div>
+    <div class="rows" id="rows"></div>
+  </div>
+  <div class="right abs">
+    <h2 class="ptitle">Cost over 93 runs</h2>
+    <div class="psub">Cumulative, same task</div>
+  </div>
+  <svg id="chart" class="abs" width="1920" height="1080" viewBox="0 0 1920 1080" style="left:0;top:0"></svg>
+  <div class="source abs" id="source"></div>
+</div>
+<script src="data.js"></script>
+<script src="runtime.js"></script>
+<script src="charts.js"></script>
+<script>
+(() => {
+  const D = window.DOCKHAND_DATA;
+  const { fade } = DH;
+  const $ = (id) => document.getElementById(id);
+  // Accent once: Dockhand's 42/42.
+  const rows = DHC.unitRows($("rows"), DHC.baselineRows(D, true), { cell: 26, gap: 6 });
+  const c = DHC.costChart($("chart"), { L: 1170, R: 1760, T: 420, B: 846 }, D, { yMax: 12, yStep: 4, xTicks: [1, 50, 93] });
+  $("source").textContent = `Mock portal, held-out seeds ${D.heals.seeds[0]}–${D.heals.seeds.at(-1)}. No arm wrote wrong data. Costs: live calls at list prices.`;
+  DH.clip({
+    duration: 9,
+    frame(t) {
+      rows.forEach((r, i) => fade(r, t, 0.3 + i * 0.7));
+      fade(c.axes, t, 0);
+      fade(c.cuG, t, 2.6);
+      fade(c.cuLbl, t, 4.0);
+      fade(c.proj, t, 4.0);
+      fade(c.projLbl, t, 4.0);
+      fade(c.dock, t, 3.2);
+      fade(c.dockLbl, t, 3.2);
+      fade($("source"), t, 0);
+    },
+  });
+})();
+</script>
+</body>
+</html>

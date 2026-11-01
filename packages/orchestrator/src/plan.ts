@@ -13,7 +13,6 @@ import type {
   Transcript,
   Understanding,
 } from "@dockhand/core";
-import { cardBody } from "./messages.ts";
 import {
   type FileParam,
   humanize,
@@ -24,6 +23,7 @@ import {
 import { CARAVELA, ESPOCRM, type PortalInfo, parseInviteUrl, SUPPLIER, startUrlFor } from "./portals.ts";
 import { quoted } from "./sanitize.ts";
 import { addDaysIso, firstOfNextMonth, todayIso } from "./time.ts";
+import { label, type PlanCardView } from "./tools/phone-cards.ts";
 import {
   defaultPlan,
   formatMoney,
@@ -34,7 +34,7 @@ import {
 } from "./tools/quotes.ts";
 
 export type PlanOutcome =
-  | { type: "plan"; plan: Plan }
+  | { type: "plan"; plan: Plan; card?: PlanCardView }
   | { type: "ask"; missing: string[]; question: string }
   | { type: "reply"; text: string };
 
@@ -85,8 +85,13 @@ function plan(
   actions: PlanAction[],
   writes: boolean,
   approvalText: string,
+  card?: PlanCardView,
 ): PlanOutcome {
-  return { type: "plan", plan: { jobId: ctx.jobId, intent: u.intent, actions, writes, approvalText } };
+  return {
+    type: "plan",
+    plan: { jobId: ctx.jobId, intent: u.intent, actions, writes, approvalText },
+    ...(card ? { card } : {}),
+  };
 }
 
 function ask(
@@ -142,15 +147,53 @@ export function displayValue(v: ParamValue): string {
   return String(v);
 }
 
-function valueLines(params: Record<string, ParamValue>, max = 14): string[] {
-  const entries = Object.entries(params);
-  const lines = entries.slice(0, max).map(([k, v]) => `• ${capitalize(humanize(k))}: ${displayValue(v)}`);
-  if (entries.length > max) lines.push(`• …and ${entries.length - max} more`);
-  return lines;
+/** The plan card's table: every value, labelled, in the order the skill or run takes them. */
+export function valueRows(params: Record<string, ParamValue>): [string, string][] {
+  return Object.entries(params).map(([k, v]) => [label(k), displayValue(v)]);
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+/** Whom a deal registration is for: the first company or customer value, if any. */
+export function subjectOf(params: Record<string, ParamValue>): string | undefined {
+  const key = Object.keys(params).find((k) => /(^|_)(company|customer|account)(_|$)/.test(k));
+  const v = key ? params[key] : undefined;
+  return typeof v === "string" && v.trim() !== "" ? v : undefined;
+}
+
+const count = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+
+/**
+ * A deal registration's plan, as message lines and card. The message says what will be written where and that
+ * the filled form comes back before anything is submitted; the card lists the values.
+ */
+export function registerPlan(
+  portalName: string,
+  params: Record<string, ParamValue>,
+  via: { skill: { name: string; version: number } } | { firstRun: true },
+): { text: string; card: PlanCardView } {
+  const who = subjectOf(params);
+  const what = who ? `Register *${who}* on ${portalName}` : `Register this deal on ${portalName}`;
+  const n = Object.keys(params).length;
+  const text = [
+    "skill" in via
+      ? `${what} with ${via.skill.name} v${via.skill.version}.`
+      : `${what}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
+    `${count(n, "value")} from your message, listed on the card.`,
+    "I'll show you the filled form before anything is submitted.",
+  ].join("\n");
+  return {
+    text,
+    card: {
+      title: who ? `Register ${who}` : "Register this deal",
+      where: portalName,
+      how:
+        "skill" in via
+          ? `${via.skill.name} v${via.skill.version}, no model calls`
+          : "first run, computer use",
+      figure: { value: String(n), label: `values to write on ${portalName}` },
+      rows: valueRows(params),
+      foot: "Nothing is submitted until you approve the filled form",
+    },
+  };
 }
 
 // ---------- register_deal ----------
@@ -168,16 +211,14 @@ function planRegisterDeal(u: Understanding, ctx: BuildPlanContext): PlanOutcome 
         m.rejected,
       );
     }
+    const p = registerPlan(portal.name, m.params, { skill: { name: skill.name, version: skill.version } });
     return plan(
       ctx,
       u,
       [{ kind: "skill_replay", skill: skill.name, version: skill.version, params: m.params }],
       true,
-      cardBody(
-        [`Register this deal on ${portal.name} (${skill.name} v${skill.version}):`],
-        valueLines(m.params),
-        ["I'll fill the form and show it to you before submitting."],
-      ),
+      p.text,
+      p.card,
     );
   }
 
@@ -192,6 +233,7 @@ function planRegisterDeal(u: Understanding, ctx: BuildPlanContext): PlanOutcome 
         m.rejected,
       );
     }
+    const firstRun = registerPlan(portal.name, m.params, { firstRun: true });
     return plan(
       ctx,
       u,
@@ -207,13 +249,8 @@ function planRegisterDeal(u: Understanding, ctx: BuildPlanContext): PlanOutcome 
         },
       ],
       true,
-      cardBody(
-        [
-          `Register this deal on ${portal.name}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
-        ],
-        valueLines(m.params),
-        ["I'll show you the filled form before submitting."],
-      ),
+      firstRun.text,
+      firstRun.card,
     );
   }
 
@@ -251,16 +288,25 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
     };
   }
   const company = ctx.company;
-  const keyFacts = [
-    `• Legal name: ${company.legalName ?? "?"}`,
-    `• Tax ID: ${company.taxId ?? "?"}`,
-    `• Address: ${[company.street1, company.city, company.country].filter(Boolean).join(", ")}`,
-    `• Primary contact: ${company.primaryContactName ?? "?"} (${company.primaryContactEmail ?? "?"})`,
-    `• Bank: ${company.bankName ?? "?"}`,
-    `• Files: ${Object.values(files)
-      .map((f) => f.filename)
-      .join(", ")}`,
-  ];
+  const docs = Object.values(files).map((f) => f.filename);
+  const supplierCard = (params: Record<string, ParamValue>, how: string): PlanCardView => ({
+    title: `Register as a supplier for ${buyer}`,
+    where: `${portal.name}, invite ${inviteCode}`,
+    how,
+    figure: {
+      value: String(Object.keys(params).length),
+      label: `values from the company profile, ${docs.length} documents`,
+    },
+    rows: [
+      ["Legal name", company.legalName ?? "?"],
+      ["Tax ID", company.taxId ?? "?"],
+      ["Address", [company.street1, company.city, company.country].filter(Boolean).join(", ")],
+      ["Primary contact", `${company.primaryContactName ?? "?"} (${company.primaryContactEmail ?? "?"})`],
+      ["Bank", company.bankName ?? "?"],
+      ...docs.map((d): [string, string] => ["Document", d]),
+    ],
+    foot: "I stop before the final submit and show you the filled form",
+  });
 
   const skill = activeSkillFor(ctx.skills, SUPPLIER, SUPPLIER_SKILL);
   if (skill) {
@@ -277,10 +323,11 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
       [{ kind: "skill_replay", skill: skill.name, version: skill.version, params: m.params }],
       true,
       [
-        `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}) with ${skill.name} v${skill.version}: ${Object.keys(m.params).length} values from the company profile.`,
-        ...keyFacts,
+        `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}) with ${skill.name} v${skill.version}.`,
+        `${Object.keys(m.params).length} values and ${docs.length} documents from the company profile, listed on the card.`,
         "I'll stop before the final submit and show you the filled form.",
       ].join("\n"),
+      supplierCard(m.params, `${skill.name} v${skill.version}, no model calls`),
     );
   }
 
@@ -306,9 +353,9 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
     true,
     [
       `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}). First time on this portal: computer use fills every step from the company profile and uploads the documents.`,
-      ...keyFacts,
       "I'll stop before the final submit and show you the filled form.",
     ].join("\n"),
+    supplierCard(params, "first run, computer use"),
   );
 }
 
@@ -375,11 +422,23 @@ function planQuote(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
     true,
     [
       `Quote for ${u.company}: ${u.seats} seats of ${planName}, starting ${displayValue(startDate)}.`,
-      `• HubSpot company: ${u.company}${u.city ? ` (${u.city})` : ""}, found or created`,
-      `• HubSpot deal: "${dealName}", ${total}, close ${displayValue(closeDate)}`,
-      `• Quote PDF (${language}), ${total} for 12 months, attached to the deal`,
-      `• A reply in ${language === "pt-BR" ? "Portuguese" : "English"} for you to forward`,
+      `I'll write the company and a ${total} deal to HubSpot, attach the quote PDF, and draft a reply in ${language === "pt-BR" ? "Portuguese" : "English"} for you to forward.`,
     ].join("\n"),
+    {
+      title: `Quote for ${u.company}`,
+      where: "HubSpot",
+      how: "API, 4 writes",
+      figure: { value: total, label: `${u.seats} seats of ${planName}, 12 months` },
+      rows: [
+        ["HubSpot company", `${u.company}${u.city ? ` (${u.city})` : ""}, found or created`],
+        ["HubSpot deal", dealName],
+        ["Amount", total],
+        ["Close date", displayValue(closeDate)],
+        ["Quote PDF", `${language}, attached to the deal`],
+        ["Reply", `${language === "pt-BR" ? "Portuguese" : "English"}, for you to forward`],
+      ],
+      foot: "Nothing is written until you approve",
+    },
   );
 }
 

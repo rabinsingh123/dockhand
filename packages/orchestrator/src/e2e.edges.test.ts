@@ -101,17 +101,26 @@ describe("edge cases through WhatsApp", () => {
   it("a text at the plan card edits it; text at the submit card points at the card; 'cancel' stops it", async () => {
     await send({ file: { path: VILA, mime: "image/jpeg" } });
     const first = lastCard();
-    expect(first.body).toContain("Seats: 40");
+    expect(first.body).toContain("values from your message, listed on the card");
+    expect(first.headerImagePath).toBeTruthy();
     await send({ text: "make it 30 seats" });
     const edited = lastCard();
     expect(edited.waId).not.toBe(first.waId);
-    expect(edited.body, dump()).toContain("Seats: 30");
+    // The values live on the plan card; the edited plan the card was drawn from has the new seat count.
+    const seats = sys.db.raw
+      .prepare(
+        "SELECT json_extract(plan_json, '$.actions[0].params.seats') AS n FROM jobs WHERE n IS NOT NULL ORDER BY updated_at DESC, rowid DESC LIMIT 1",
+      )
+      .get() as { n: number } | undefined;
+    expect(seats?.n, dump()).toBe(30);
+    expect(edited.headerImagePath).toBeTruthy();
     await tap(first, "a");
     expect(last()?.body).toBe(REPLIES.alreadyResolved);
 
     await tap(edited, "a");
     const commit = lastCard();
-    expect(commit.body, dump()).toContain("Seats: 30");
+    expect(commit.body, dump()).toContain("Ready to submit on Caravela Partner Hub");
+    expect(commit.headerImagePath).toBeTruthy(); // the submit card shows the 30 seats read back from the page
     const before = jobs();
     await send({ text: "hmm, is that right?" });
     expect(last()?.body).toBe(WAITING_ON_CARD);
@@ -145,7 +154,7 @@ describe("edge cases through WhatsApp", () => {
       expect(question.body, dump()).toContain('"Partner tier"');
       await send({ text: "silver" });
       const commit = lastCard();
-      expect(commit.body, dump()).toContain("Partner tier: Silver");
+      expect(commit.body, dump()).toContain("Ready to submit");
       await tap(commit, "a");
       expect(sys.portals.partner.submissions().at(-1)?.fields.partnerTier, dump()).toBe("Silver");
       expect(sys.skills.active("register_partner_deal")?.params.some((p) => p.name === "partner_tier")).toBe(

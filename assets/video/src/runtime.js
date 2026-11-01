@@ -3,93 +3,50 @@
 // no transitions, no timers, no randomness). render.ts sets window.__DH_RENDER__ before the page loads, awaits
 // window.__dh.ready, then calls window.__dh.frame(n / fps) and screenshots each frame. Opened directly in a
 // browser, the clip plays in real time and loops; ?t=4.2 freezes it at 4.2 s.
+//
+// The motion vocabulary is deliberately small: hard cuts, overlays that fade in over 150 ms, and at most one
+// push-in per shot (ease-out, 500-700 ms, at most 1.15x). No blur, no bounce, no count-up.
 (() => {
   const clamp = (x, lo = 0, hi = 1) => (x < lo ? lo : x > hi ? hi : x);
   const lerp = (a, b, p) => a + (b - a) * p;
   const ease = {
     linear: (x) => x,
     out: (x) => 1 - (1 - x) ** 3,
-    out4: (x) => 1 - (1 - x) ** 4,
-    outExpo: (x) => (x >= 1 ? 1 : 1 - 2 ** (-10 * x)),
-    in: (x) => x ** 3,
-    inOut: (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2),
-    outBack: (x) => {
-      const c1 = 1.5;
-      const c3 = c1 + 1;
-      return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2;
-    },
   };
   /** Eased progress 0..1 of a segment that starts at `at` and lasts `dur` seconds. */
   const seg = (t, at, dur, e = ease.out) => e(clamp((t - at) / dur));
   const r2 = (v) => Math.round(v * 100) / 100;
 
-  /** Sets an element's look. o: opacity; x, y: px offsets; s: scale; b: blur in px. */
-  function fx(el, { o = 1, x = 0, y = 0, s = 1, b = 0 } = {}) {
+  /** Sets an element's look. o: opacity; x, y: px offsets; s: scale. */
+  function fx(el, { o = 1, x = 0, y = 0, s = 1 } = {}) {
     const op = clamp(o);
     el.style.opacity = op < 0.002 ? "0" : op > 0.998 ? "1" : op.toFixed(4);
     el.style.visibility = op < 0.002 ? "hidden" : "visible";
     el.style.transform = `translate(${r2(x)}px,${r2(y)}px)${s === 1 ? "" : ` scale(${s.toFixed(4)})`}`;
-    el.style.filter = b > 0.05 ? `blur(${r2(b)}px)` : "none";
   }
 
-  /**
-   * Enter (and optionally leave): rises `dy` px while fading in and sharpening; `out` fades it away upward.
-   * Returns the enter progress.
-   */
-  function rise(el, t, at, o = {}) {
-    const { dur = 0.6, dy = 30, dx = 0, blur = 10, s0 = 1, e = ease.out, out = null } = o;
-    const p = seg(t, at, dur, e);
-    let op = p;
-    let y = (1 - p) * dy;
-    let b = (1 - p) * blur;
-    if (out) {
-      const q = seg(t, out.at, out.dur ?? 0.5, ease.in);
-      op *= 1 - q;
-      y -= q * (out.dy ?? 24);
-      b += q * (out.blur ?? 8);
-    }
-    fx(el, { o: op, x: (1 - p) * dx, y, b, s: lerp(s0, 1, p) });
-    return p;
+  /** An overlay: fades in over 150 ms at `at`; with `out`, fades out over 150 ms at `out`. Returns the opacity. */
+  function fade(el, t, at, out = Number.POSITIVE_INFINITY) {
+    const o = seg(t, at, 0.15, ease.linear) * (1 - seg(t, out, 0.15, ease.linear));
+    fx(el, { o });
+    return o;
   }
 
-  let markN = 0;
-  /** The Dockhand "D" mark: the same drawing as the HUD, the recorder and the phone cards. */
-  function mark(size) {
-    markN += 1;
-    const id = `dmg${markN}`;
-    return (
-      `<svg class="dmark" width="${size}" height="${size}" viewBox="0 0 18 18" aria-hidden="true">` +
-      `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/>` +
-      `<stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>` +
-      `<g class="dm-tile" style="transform-origin:9px 9px"><rect width="18" height="18" rx="5" fill="url(#${id})"/>` +
-      `<path class="dm-d" pathLength="1" d="M5.2 4.6h3.6a4.4 4.4 0 0 1 0 8.8H5.2z" fill="none" stroke="#0b0d12" ` +
-      `stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="1 1"/>` +
-      `<circle class="dm-dot" cx="9.1" cy="9" r="1.35" fill="#0b0d12" style="transform-origin:9.1px 9px"/></g></svg>`
-    );
+  /** A hard cut: visible from `at` until `until`. */
+  function cut(el, t, at, until = Number.POSITIVE_INFINITY) {
+    fx(el, { o: t >= at && t < until ? 1 : 0 });
   }
-  /** Mark build: the tile pops in, the D strokes on, the dot lands. */
-  function drawMark(svg, t, at) {
-    const tile = svg.querySelector(".dm-tile");
-    const d = svg.querySelector(".dm-d");
-    const dot = svg.querySelector(".dm-dot");
-    const pt = seg(t, at, 0.5, ease.outBack);
-    const pd = seg(t, at + 0.18, 0.55, ease.inOut);
-    const pp = seg(t, at + 0.55, 0.35, ease.outBack);
-    tile.style.transform = `scale(${lerp(0.6, 1, pt).toFixed(4)})`;
-    svg.style.opacity = seg(t, at, 0.25, ease.linear).toFixed(4);
-    d.style.strokeDashoffset = (1 - pd).toFixed(4);
-    dot.style.transform = `scale(${pp.toFixed(4)})`;
+
+  /** The one push-in a shot may have: ease-out over 600 ms from 1 to `to` (at most 1.15), about `origin`. */
+  function push(el, t, at, to = 1.06, origin = "50% 50%") {
+    el.style.transformOrigin = origin;
+    el.style.transform = `scale(${lerp(1, Math.min(to, 1.15), seg(t, at, 0.6, ease.out)).toFixed(4)})`;
   }
 
   // No count-up helper on purpose: a number that ticks up shows values that are not in the results.
   const fmt = {
     usd: (v, digits = 2) => `$${v.toFixed(digits)}`,
     secs: (ms) => `${(ms / 1000).toFixed(1)} s`,
-    date: (iso) => {
-      const [y, m, d] = iso.split("-").map(Number);
-      const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1];
-      return `${mon} ${d}, ${y}`;
-    },
   };
 
   function clip(def) {
@@ -143,5 +100,5 @@
     });
   }
 
-  window.DH = { clamp, lerp, ease, seg, fx, rise, mark, drawMark, fmt, clip };
+  window.DH = { clamp, lerp, ease, seg, fx, fade, cut, push, fmt, clip };
 })();

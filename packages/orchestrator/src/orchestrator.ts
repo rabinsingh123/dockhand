@@ -54,7 +54,7 @@ import { buildPlan } from "./plan.ts";
 import { ESPOCRM, type PortalDirectory, type PortalInfo } from "./portals.ts";
 import { type CompanyKit, loadCompanyKit, repProfile } from "./profile.ts";
 import { createRepos, type JobRow, type MessageRow } from "./repo.ts";
-import { createPhoneCards, diffPhoneCardHtml } from "./tools/phone-cards.ts";
+import { createPhoneCards, diffPhoneCardHtml, planPhoneCardHtml } from "./tools/phone-cards.ts";
 import { createCardRenderer, type RenderHtml } from "./tools/receipts.ts";
 import { type KnownSkill, teachUnderstanding, type UnderstandInput, understand } from "./understand.ts";
 
@@ -501,11 +501,19 @@ export function createOrchestrator(deps: OrchestratorDeps): Orchestrator {
         return;
       }
       repos.jobs.apply(jobId, { type: "understood", missing: [], writes: true });
+      // The card carries the details (every value, where it goes); the message stays a few lines.
+      const card = outcome.card
+        ? await env.phoneCards.render(jobId, planPhoneCardHtml(outcome.card)).catch((err: unknown) => {
+            log.warn("plan card not rendered", { jobId, err });
+            return undefined;
+          })
+        : undefined;
       const { decision } = await approvals.open({
         jobId,
         kind: "plan",
         to: job.rep.phone,
         body: plan.approvalText,
+        ...(card ? { image: card } : {}),
         ttlMs: approvals.defaultTtlMs,
       });
       spawn("plan gate", () => afterPlanGate(jobId, decision));

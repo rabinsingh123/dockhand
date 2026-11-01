@@ -1,0 +1,26 @@
+/* Chart type and marks (with charts.js). Sizes are for 1080p: must-read text is 40 px or more. */
+.ctitle { font-size: 88px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.04; }
+.csub { margin-top: 18px; font-size: 44px; font-weight: 400; color: var(--gray); letter-spacing: -0.005em; }
+.ptitle { font-size: 60px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap; }
+.psub { margin-top: 14px; font-size: 40px; color: var(--gray); white-space: nowrap; }
+.source { left: 160px; right: 160px; bottom: 56px; font-size: 32px; color: var(--gray); white-space: nowrap; }
+
+svg text { font-family: var(--sans); font-variant-numeric: tabular-nums; }
+svg .tick { font-family: var(--mono); font-size: 36px; fill: var(--gray); letter-spacing: -0.01em; }
+svg .axis { font-size: 36px; fill: var(--gray); }
+svg .lbl { font-size: 40px; font-weight: 500; fill: var(--ink); }
+svg .val { font-size: 56px; font-weight: 600; letter-spacing: -0.02em; fill: var(--ink); }
+svg .note { font-size: 36px; fill: var(--gray); }
+svg .gray { fill: var(--gray); }
+svg .accent { fill: var(--accent); }
+
+.urow + .urow { margin-top: 52px; }
+.uhead { margin-bottom: 16px; white-space: nowrap; }
+.ubody { display: flex; align-items: center; gap: 28px; }
+.uname { font-size: 40px; font-weight: 500; color: var(--ink); }
+.uname .gray { font-weight: 400; color: var(--gray); }
+.ufig { font-size: 44px; font-weight: 600; color: var(--ink); }
+.ufig.accent { color: var(--accent); }
+.ugrid { display: grid; }
+.ugrid i { display: block; }
+.unote { margin-top: 14px; font-size: 36px; color: var(--gray); }

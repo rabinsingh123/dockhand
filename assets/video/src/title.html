@@ -5,172 +5,47 @@
 <title>Dockhand title card</title>
 <link rel="stylesheet" href="theme.css">
 <style>
-.bg {
-  background:
-    radial-gradient(1150px 820px at 4% 0%, rgba(167, 139, 250, 0.13), transparent 62%),
-    radial-gradient(900px 760px at 86% 60%, rgba(34, 211, 238, 0.07), transparent 70%),
-    var(--bg);
-}
-.copy { left: 150px; top: 172px; width: 1110px; }
-h1 { font: 700 106px/1.04 var(--display); letter-spacing: -2.6px; color: #fff; }
-h1 .w { display: inline-block; }
-.stat { margin-top: 78px; display: flex; align-items: center; gap: 46px; }
-.num { font: 700 206px/0.8 var(--display); letter-spacing: -7px; display: flex; align-items: baseline; padding-bottom: 10px; transform-origin: 30% 60%; }
-.num .pc { font-size: 150px; letter-spacing: -3px; margin-left: 8px; }
-.what { font: 600 48px/1.18 var(--sans); color: var(--text); letter-spacing: -0.3px; }
-.src { margin-top: 40px; font: 600 31px/1.35 var(--sans); color: var(--muted); }
-.src b { color: var(--text-2); font-weight: 700; }
-
-/* A thread of what reps get sent: voice notes, photos of signed forms, PDFs. Fictional, unbranded. */
-.thread {
-  right: 120px;
-  top: 96px;
-  bottom: 0;
-  padding-bottom: 128px; /* new messages rise from below the frame instead of out of a clip line */
-  width: 500px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 110px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 110px);
-}
-.msg { flex: none; height: 0; }
-.bub {
-  display: inline-flex;
-  align-items: center;
-  gap: 18px;
-  max-width: 470px;
-  padding: 20px 24px;
-  border-radius: 28px 28px 28px 10px;
-  background: #1b2029;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-  transform-origin: 0 100%;
-  font: 500 30px/1.32 var(--sans);
-  color: var(--text);
-}
-.voice .play { width: 58px; height: 58px; border-radius: 50%; background: #2b3240; display: grid; place-items: center; flex: none; }
-.voice .play svg { width: 22px; height: 22px; margin-left: 4px; }
-.voice .wave { display: flex; align-items: center; gap: 4px; height: 50px; }
-.voice .wave i { display: block; width: 6px; border-radius: 3px; background: #aab3c1; }
-.voice .dur { font: 600 26px/1 var(--sans); color: var(--muted); }
-.photo { flex-direction: column; align-items: flex-start; gap: 14px; padding: 12px 12px 18px; }
-.photo .img { width: 420px; height: 214px; border-radius: 18px; overflow: hidden; background: #252b35; }
-.photo .cap { padding: 0 12px; font-size: 28px; color: var(--text-2); }
-.doc .pdf {
-  width: 64px; height: 78px; border-radius: 10px; flex: none; display: grid; place-items: end center; padding-bottom: 10px;
-  background: linear-gradient(160deg, #fb7185, #e0475f); font: 800 19px/1 var(--sans); letter-spacing: 1px; color: #fff;
-}
-.doc .meta b { display: block; font-weight: 650; font-size: 28px; }
-.doc .meta span { display: block; font-size: 24px; color: var(--muted); margin-top: 2px; }
-.text { display: block; }
-
-.end { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 20px; }
-.end .lockup { gap: 44px; }
-.end .name { font-size: 156px; letter-spacing: -3.5px; }
-.end .tag { margin-top: 52px; font: 600 66px/1.1 var(--display); color: var(--text-2); letter-spacing: -0.8px; }
-.halo {
-  left: 260px; top: 90px; width: 1400px; height: 900px; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(139, 112, 250, 0.2), rgba(34, 211, 238, 0.06) 58%, transparent 100%);
-}
+/* Full-frame variant of the why card: the line, the sourced stat, then a hard cut to the wordmark. For text over
+   real footage, use title-band (a caption band with alpha). */
+.why { left: 160px; top: 168px; width: 1600px; }
+.why h1 { font-size: 104px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.04; }
+.stat { margin-top: 96px; display: flex; align-items: baseline; gap: 48px; }
+.stat .n { font-size: 200px; font-weight: 600; letter-spacing: -0.045em; line-height: 0.8; }
+.stat .w { font-size: 48px; line-height: 1.25; letter-spacing: -0.01em; }
+.src { margin-top: 64px; font-size: 40px; color: var(--gray); }
+.mark { left: 160px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+.mark .wordmark { font-size: 232px; margin-left: -10px; }
+.mark .tag { margin-top: 44px; font-size: 64px; font-weight: 500; letter-spacing: -0.02em; }
 </style>
 </head>
 <body>
 <div class="stage">
-  <div class="bg"></div>
-  <div class="halo abs" id="halo"></div>
-
-  <div class="thread abs" id="thread">
-    <div class="msg"><div class="bub voice"><span class="play"><svg viewBox="0 0 22 22"><path d="M4 2.5v17l15-8.5z" fill="#fff"/></svg></span><span class="wave" data-wave="12 20 30 16 34 42 24 18 38 46 30 20 14 26 40 32 22 44 34 24 16 28 20 12"></span><span class="dur">0:42</span></div></div>
-    <div class="msg"><div class="bub photo"><div class="img"><svg width="420" height="214" viewBox="0 0 420 214">
-      <g transform="rotate(-4 210 107)">
-        <rect x="96" y="-6" width="236" height="232" rx="6" fill="#d9dde4"/>
-        <rect x="116" y="16" width="120" height="12" rx="3" fill="#8b93a1"/>
-        <rect x="116" y="44" width="196" height="7" rx="3" fill="#b3b9c3"/>
-        <rect x="116" y="62" width="176" height="7" rx="3" fill="#b3b9c3"/>
-        <rect x="116" y="80" width="190" height="7" rx="3" fill="#b3b9c3"/>
-        <rect x="116" y="98" width="150" height="7" rx="3" fill="#b3b9c3"/>
-        <rect x="116" y="116" width="182" height="7" rx="3" fill="#b3b9c3"/>
-        <rect x="116" y="176" width="120" height="3" rx="1.5" fill="#8b93a1"/>
-        <path d="M122 168c10-22 18-26 20-14s-6 16 2 8 14-22 18-12 4 14 12 4 10-10 16-2 8 6 14 0" fill="none" stroke="#2f4a8a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>
-    </svg></div><div class="cap">Signed referral form</div></div></div>
-    <div class="msg"><div class="bub doc"><span class="pdf">PDF</span><span class="meta"><b>Supplier_registration.pdf</b><span>3 pages</span></span></div></div>
-    <div class="msg"><div class="bub voice"><span class="play"><svg viewBox="0 0 22 22"><path d="M4 2.5v17l15-8.5z" fill="#fff"/></svg></span><span class="wave" data-wave="16 26 18 34 44 30 22 14 28 40 36 24 18 30 46 38 26 16 22 34 28 18 12 20"></span><span class="dur">1:16</span></div></div>
-    <div class="msg"><div class="bub text">Pode mandar a cotação para 25 pessoas em São Paulo?</div></div>
-  </div>
-
-  <div class="copy abs" id="copy">
-    <h1 id="headline"><span class="w">In</span> <span class="w">LatAm</span> <span class="w">and</span> <span class="w">India,</span><br><span class="w">B2B</span> <span class="w">deals</span> <span class="w">happen</span><br><span class="w">in</span> <span class="w grad">WhatsApp</span></h1>
+  <div class="why abs" id="why">
+    <h1>In LatAm and India,<br>B2B deals happen in WhatsApp.</h1>
     <!-- docs/research/impact-facts.md, fact 1.4 (Meta Newsroom, 18 Sep 2025): "91% of online adults in India
          chatting with businesses weekly (Kantar 2025 report)". It says businesses, not WhatsApp. -->
-    <div class="stat" id="stat">
-      <div class="num grad" id="num"><span>91</span><span class="pc">%</span></div>
-      <div class="what" id="what">of online adults in India<br>chat with businesses weekly</div>
+    <div id="stat">
+      <div class="stat"><span class="n">91%</span><span class="w">of online adults in India<br>chat with businesses every week</span></div>
+      <div class="src">Kantar 2025 report, cited by Meta Newsroom, Sep 2025</div>
     </div>
-    <div class="src" id="src">Source: <b>Kantar 2025 report</b>, cited by Meta Newsroom, Sep 2025</div>
   </div>
-
-  <div class="end abs" id="end">
-    <div class="lockup"><span id="markSlot"></span><span class="name" id="name">Dockhand</span></div>
-    <div class="tag" id="tag">Automation that maintains itself.</div>
+  <div class="mark abs" id="mark">
+    <div class="wordmark">Dockhand</div>
+    <div class="tag">Automation that maintains itself.</div>
   </div>
-
-  <div class="grain"></div>
-  <div class="black" id="black"></div>
 </div>
 <script src="runtime.js"></script>
 <script>
 (() => {
-  const { fx, rise, seg, ease, lerp, drawMark, mark } = DH;
+  const { cut, fade } = DH;
   const $ = (id) => document.getElementById(id);
-  for (const w of document.querySelectorAll("[data-wave]")) {
-    w.innerHTML = w.dataset.wave.split(" ").map((h) => `<i style="height:${h}px"></i>`).join("");
-  }
-  $("markSlot").outerHTML = mark(168);
-  const svgMark = document.querySelector(".end .dmark");
-  const words = [...document.querySelectorAll("#headline .w")];
-  const msgs = [...document.querySelectorAll(".msg")];
-  const ARRIVE = [0.25, 0.8, 1.4, 2.1, 2.9];
-  const OUT = { at: 5.3, dur: 0.55 };
-  let heights = [];
-
+  const CUT = 5.2;
   DH.clip({
     duration: 8,
-    init() {
-      heights = msgs.map((m) => {
-        m.style.height = "auto";
-        const h = m.offsetHeight + 22;
-        m.style.height = "0px";
-        return h;
-      });
-    },
     frame(t) {
-      fx($("black"), { o: 1 - seg(t, 0, 0.45, ease.linear) });
-
-      // Messages arrive at the bottom and push the thread up.
-      msgs.forEach((m, i) => {
-        const p = seg(t, ARRIVE[i], 0.5, ease.out);
-        m.style.height = `${(heights[i] * p).toFixed(2)}px`;
-        fx(m.firstElementChild, { o: seg(t, ARRIVE[i], 0.28, ease.linear), y: (1 - p) * 28, s: lerp(0.9, 1, p) });
-      });
-      const q = seg(t, OUT.at, OUT.dur, ease.in);
-      fx($("thread"), { o: 1 - q, y: -q * 26, b: q * 8 });
-
-      // Headline word by word, then the sourced stat.
-      words.forEach((w, i) => rise(w, t, 0.45 + i * 0.075, { dur: 0.6, dy: 42, blur: 12 }));
-      // The stat appears whole (no count-up: no frame shows a number the source does not).
-      rise($("num"), t, 2.15, { dur: 0.7, dy: 30, blur: 14, s0: 0.82, e: ease.outBack });
-      rise($("what"), t, 2.45, { dur: 0.6, dy: 30, blur: 8 });
-      rise($("src"), t, 2.85, { dur: 0.6, dy: 20, blur: 6 });
-      fx($("copy"), { o: 1 - q, y: -q * 26, b: q * 8 });
-
-      // Brand: the mark draws, then the name and the one idea.
-      drawMark(svgMark, t, 5.7);
-      rise($("name"), t, 5.9, { dur: 0.65, dx: -30, dy: 0, blur: 10 });
-      rise($("tag"), t, 6.2, { dur: 0.7, dy: 30, blur: 10 });
-      fx($("halo"), { o: seg(t, 5.55, 1.0, ease.out) });
+      cut($("why"), t, 0, CUT);
+      fade($("stat"), t, 1.4);
+      cut($("mark"), t, CUT);
     },
   });
 })();

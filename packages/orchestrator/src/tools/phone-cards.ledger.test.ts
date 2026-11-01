@@ -77,14 +77,14 @@ function card(costUsd: number, usedOpenWeights: boolean, changes = 1, newParams 
 }
 
 describe("repair card numbers come from the ledger", () => {
-  it("fake, cassette and scripted heals: the ledger's $0.000 and no open-weights credit", () => {
+  it('fake and scripted heals record no cost: no cost figure (never "$0" for a paid rung), no credit', () => {
     for (const provider of ["fake", "cassette", "scripted"]) {
       const runId = `R-${provider}`;
       call(runId, provider, 0);
       const facts = diffCardLedger({ db, ledger: createLedger(db) }, "J1", runId);
       expect(facts).toEqual({ costUsd: 0, usedOpenWeights: false });
       const html = card(facts.costUsd, facts.usedOpenWeights);
-      expect(html).toContain("$0.000");
+      expect(html).not.toContain("to repair");
       expect(html).not.toContain("Built with Muse Spark Open");
     }
   });
@@ -95,7 +95,7 @@ describe("repair card numbers come from the ledger", () => {
     expect(facts.usedOpenWeights).toBe(true);
     expect(facts.costUsd).toBeCloseTo(0.0031, 6);
     const html = card(facts.costUsd, facts.usedOpenWeights);
-    expect(html).toContain("$0.003");
+    expect(html).toContain("$0.0031");
     expect(html).toContain("Built with Muse Spark Open");
   });
 });

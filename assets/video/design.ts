@@ -1,0 +1,211 @@
+// Design review: renders every phone card from a real rehearsal's data, the style frames and a still of every
+// clip, then a contact sheet, into var/design/. Nothing here calls a model; the cards are built by the same
+// functions the flows use (packages/orchestrator/src/tools/phone-cards.ts), fed with a rehearsal's own rows.
+//
+//   pnpm exec tsx assets/video/design.ts                       uses var/recordings/rh-cassette-2/var
+//   pnpm exec tsx assets/video/design.ts --from <var dir>      another session's var dir
+//   pnpm exec tsx assets/video/design.ts --cards               cards and style frames only (no clip stills)
+
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { chromium, type Page } from "playwright";
+import { openDb, type Skill, type SkillDraft, type StepResult } from "../../packages/core/src/index.ts";
+import { registerPlan } from "../../packages/orchestrator/src/plan.ts";
+import {
+  askPhoneCardHtml,
+  diffPhoneCardHtml,
+  PHONE_CARD_HEIGHT,
+  PHONE_CARD_SCALE,
+  PHONE_CARD_WIDTH,
+  planPhoneCardHtml,
+  receiptPhoneCardHtml,
+  skillCounts,
+  skillPhoneCardHtml,
+  submitPhoneCardHtml,
+  teachPhoneCardHtml,
+  videoDuration,
+  videoFrames,
+} from "../../packages/orchestrator/src/tools/phone-cards.ts";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, "..", "..");
+const OUT = join(ROOT, "var", "design");
+const args = process.argv.slice(2);
+const from = args.includes("--from") ? (args[args.indexOf("--from") + 1] as string) : join(ROOT, "var", "recordings", "rh-cassette-2", "var");
+const cardsOnly = args.includes("--cards");
+
+// A copy of the rehearsal database, so opening it never touches the session's own files.
+const tmp = mkdtempSync(join(os.tmpdir(), "dockhand-design-"));
+for (const ext of ["", "-wal", "-shm"]) {
+  const f = join(from, `dockhand.sqlite${ext}`);
+  if (existsSync(f)) copyFileSync(f, join(tmp, `dockhand.sqlite${ext}`));
+}
+const db = openDb(join(tmp, "dockhand.sqlite"));
+const q = <T>(sql: string, ...p: unknown[]) => db.raw.prepare(sql).all(...p) as T[];
+const one = <T>(sql: string, ...p: unknown[]) => db.raw.prepare(sql).get(...p) as T | undefined;
+const artifact = (id: string | null | undefined): Uint8Array | undefined => {
+  if (!id) return undefined;
+  const row = one<{ rel_path: string }>("SELECT rel_path FROM artifacts WHERE id = ?", id);
+  return row ? new Uint8Array(readFileSync(join(from, row.rel_path))) : undefined;
+};
+const skill = (name: string, v: number) =>
+  JSON.parse(one<{ json: string }>("SELECT json FROM skills WHERE name = ? AND version = ?", name, v)?.json ?? "null") as Skill;
+const cost = (runId: string) => one<{ c: number }>("SELECT COALESCE(SUM(cost_usd), 0) c FROM model_calls WHERE run_id = ?", runId)?.c ?? 0;
+const steps = (runId: string) =>
+  q<{ idx: number; step_id: string; status: string; rung: string | null; ms: number }>(
+    "SELECT idx, step_id, status, rung, ms FROM run_steps WHERE run_id = ? ORDER BY idx",
+    runId,
+  ).map((s) => ({ idx: s.idx, stepId: s.step_id, status: s.status, ms: s.ms, ...(s.rung ? { rung: s.rung } : {}) }) as StepResult);
+const PORTAL = "Caravela Partner Hub";
+
+interface RunRow {
+  id: string;
+  job_id: string;
+  mode: string;
+  skill_name: string;
+  skill_version: number | null;
+  outcome: string;
+  ms: number;
+  exec_cost_usd: number;
+  final_screenshot_id: string | null;
+  extracted_json: string | null;
+  params_json: string;
+}
+const runs = q<RunRow>("SELECT * FROM runs WHERE skill_name = 'register_partner_deal' ORDER BY started_at");
+const canary = (runId: string) => {
+  const n = q<{ id: string }>("SELECT id FROM artifacts WHERE run_id LIKE ?", `${runId}-canary-c%`).length;
+  return n;
+};
+
+// ---------- the cards ----------
+
+async function cards(): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  const draftRow = one<{ json: string; video_artifact_id: string }>("SELECT json, video_artifact_id FROM skill_drafts LIMIT 1");
+  const draft = JSON.parse(draftRow?.json ?? "null") as SkillDraft;
+  const videoRel = one<{ rel_path: string }>("SELECT rel_path FROM artifacts WHERE id = ?", draftRow?.video_artifact_id)?.rel_path;
+  const video = videoRel ? join(from, videoRel) : undefined;
+  const frames = video ? await videoFrames("ffmpeg", video, 3) : [];
+  const durationS = video ? await videoDuration("ffmpeg", video) : undefined;
+  out.teach = teachPhoneCardHtml(draft, { portalName: PORTAL, frames, ...(durationS ? { durationS } : {}) });
+
+  const v1 = skill("register_partner_deal", 1);
+  out.skill = skillPhoneCardHtml({ skill: v1, portalName: PORTAL, verified: { passed: 2, total: 2 }, draft });
+
+  // The replay of v1 (shot 4), then the v2 repair (shot 1) and the v3 -> v4 watch-style repair (shot 7).
+  const replay = runs.find((r) => r.mode === "replay" && r.skill_version === 1) as RunRow;
+  const params = JSON.parse(replay.params_json);
+  out.plan = planPhoneCardHtml(registerPlan(PORTAL, params, { skill: { name: "register_partner_deal", version: 1 } }).card);
+
+  const commit = one<{ body: string; image_artifact_id: string }>("SELECT body, image_artifact_id FROM gates WHERE job_id = ? AND kind = 'commit'", replay.job_id);
+  const readback = (commit?.body ?? "")
+    .split("\n")
+    .flatMap((l) => {
+      const m = /^• ([^:]+): (.*)$/.exec(l);
+      return m ? [{ label: m[1] as string, value: m[2] as string }] : [];
+    });
+  const shot = artifact(commit?.image_artifact_id);
+  out.submit = submitPhoneCardHtml({ portalName: PORTAL, ...(shot ? { screenshot: shot } : {}), readback, highlight: { x: 1004, y: 690, w: 132, h: 34 } });
+
+  const intake = (jobId: string) =>
+    one<{ c: number }>("SELECT COALESCE(SUM(cost_usd),0) c FROM model_calls WHERE job_id = ? AND purpose IN ('transcribe','extract','understand')", jobId)?.c ?? 0;
+  const repair = runs.find((r) => r.mode === "repair") as RunRow;
+  const id = Object.values(JSON.parse(repair.extracted_json ?? "{}"))[0] as string | undefined;
+  const conf = artifact(repair.final_screenshot_id);
+  out.receipt = receiptPhoneCardHtml({
+    title: v1.title,
+    tier: "repair",
+    ...(id ? { headline: id } : {}),
+    seconds: repair.ms / 1000,
+    execCostUsd: repair.exec_cost_usd,
+    intakeCostUsd: intake(repair.job_id),
+    skill: { name: "register_partner_deal", version: 1 },
+    verified: { matched: skillCounts(v1).fields, checked: skillCounts(v1).fields },
+    ...(conf ? { screenshot: conf } : {}),
+  });
+
+  const v2 = skill("register_partner_deal", 2);
+  out.diff = diffPhoneCardHtml({
+    portalName: PORTAL,
+    parent: v1,
+    saved: v2,
+    steps: steps(repair.id),
+    canary: { passed: 3, total: 3 },
+    costUsd: cost(repair.id),
+    usedOpenWeights: false, // cassette replay: the credit is for a live Baseten call only
+  });
+
+  const ask = one<{ body: string; image_artifact_id: string }>("SELECT body, image_artifact_id FROM gates WHERE kind = 'question' LIMIT 1");
+  const askShot = artifact(ask?.image_artifact_id);
+  out.ask = askPhoneCardHtml({ portalName: PORTAL, label: /"([^"]+)"/.exec(ask?.body ?? "")?.[1] ?? "Partner tier", options: ["Gold", "Silver", "Bronze"], ...(askShot ? { screenshot: askShot } : {}) });
+
+  const watchRun = runs.find((r) => r.outcome === "repaired" && r.skill_version === 3) as RunRow;
+  out.watch = diffPhoneCardHtml({
+    portalName: PORTAL,
+    parent: skill("register_partner_deal", 3),
+    saved: skill("register_partner_deal", 4),
+    steps: steps(watchRun.id),
+    canary: { passed: 5, total: 5 },
+    costUsd: cost(watchRun.id),
+    usedOpenWeights: false,
+    watch: { when: "overnight" },
+  });
+  void canary;
+  return out;
+}
+
+async function shoot(page: Page, html: string, file: string, size: { w: number; h: number }) {
+  await page.setViewportSize({ width: size.w, height: size.h });
+  await page.setContent(html, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  writeFileSync(file, await page.screenshot({ type: "png", scale: "device" }));
+  console.log(file);
+}
+
+async function main(): Promise<void> {
+  mkdirSync(join(OUT, "cards"), { recursive: true });
+  mkdirSync(join(OUT, "style-frames"), { recursive: true });
+  const browser = await chromium.launch({ headless: true, args: ["--force-color-profile=srgb", "--disable-lcd-text"] });
+  try {
+    const ctx = await browser.newContext({ deviceScaleFactor: PHONE_CARD_SCALE, colorScheme: "light" });
+    const page = await ctx.newPage();
+    const html = await cards();
+    for (const [name, h] of Object.entries(html))
+      await shoot(page, h, join(OUT, "cards", `${name}.png`), { w: PHONE_CARD_WIDTH, h: PHONE_CARD_HEIGHT });
+
+    // Style frame (b): the overnight card in a light WhatsApp chat, at the phone's true scale in a 1080p frame.
+    const frame = await browser.newContext({ deviceScaleFactor: 1, viewport: { width: 1920, height: 1080 } });
+    const fp = await frame.newPage();
+    const chat = pathToFileURL(join(HERE, "src", "frames", "phone.html")).href;
+    await fp.goto(`${chat}?card=${encodeURIComponent(pathToFileURL(join(OUT, "cards", "watch.png")).href)}`);
+    await fp.evaluate(() => document.fonts.ready.then(() => undefined));
+    await fp.waitForFunction(() => [...document.images].every((i) => i.complete));
+    writeFileSync(join(OUT, "style-frames", "b-overnight-card.png"), await fp.screenshot({ type: "png" }));
+    console.log(join(OUT, "style-frames", "b-overnight-card.png"));
+  } finally {
+    await browser.close();
+    db.close();
+    rmSync(tmp, { recursive: true, force: true });
+  }
+
+  // Style frames (a) and (c) are stills of the end card and the proof chart.
+  const stills = (clip: string, t: number) =>
+    spawnSync("pnpm", ["exec", "tsx", "assets/video/render.ts", clip, "--still", String(t), "--out", "var/design/stills"], {
+      cwd: ROOT,
+      stdio: "inherit",
+      shell: true,
+    });
+  stills("endcard", 1);
+  stills("chart-proof", 8.5);
+  copyFileSync(join(OUT, "stills", "endcard-1.00s.png"), join(OUT, "style-frames", "a-endcard-wordmark.png"));
+  copyFileSync(join(OUT, "stills", "chart-proof-8.50s.png"), join(OUT, "style-frames", "c-proof-chart.png"));
+  if (cardsOnly) return;
+}
+
+main().catch((e: unknown) => {
+  console.error(e);
+  process.exit(1);
+});

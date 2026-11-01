@@ -32,8 +32,15 @@ import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
 import { fitSpecsToValues, inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
-import { basetenHeal, diffCardLedger, diffPhoneCardHtml } from "../tools/phone-cards.ts";
-import { receiptCaption, skillCardHtml } from "../tools/receipts.ts";
+import {
+  basetenHeal,
+  diffCardLedger,
+  diffPhoneCardHtml,
+  draftCounts,
+  skillCounts,
+  skillPhoneCardHtml,
+} from "../tools/phone-cards.ts";
+import { receiptCaption } from "../tools/receipts.ts";
 import {
   type FlowEnv,
   gateHooks,
@@ -305,11 +312,19 @@ export async function runFirstRun(
   });
   await sendImage(env, job, receipt.image, receiptCaption(receipt));
   if (compiled.skill && compiled.card) {
+    // Counts from one source (phone-cards.ts): the same numbers as the card, the teach card and the code view.
+    const n = skillCounts(compiled.skill);
+    const from = draft ? draftCounts(draft) : undefined;
     await sendImage(
       env,
       job,
       compiled.card,
-      `New skill: ${compiled.skill.name} v${compiled.skill.version}. Next time it replays in seconds with no model calls.`,
+      [
+        `New skill: ${compiled.skill.name} v${compiled.skill.version}. Next time it replays in seconds with no model calls.`,
+        from
+          ? `Your ${from.steps} steps and ${from.values} values became a ${n.steps}-step program that takes ${n.values} values.`
+          : `A ${n.steps}-step program that takes ${n.values} values.`,
+      ].join("\n"),
     );
   }
   return { ok: true };
@@ -390,15 +405,9 @@ async function compileRun(
       };
     }
     const skill = env.skills.saveVersion(body, null, true, "compile", runId);
-    const card = await env.cards.card(
+    const card = await env.phoneCards.render(
       job.id,
-      skillCardHtml({
-        skill,
-        portalName: portal.name,
-        verified,
-        fromRun: runId,
-        ...(report.successDescription ? { successDescription: report.successDescription } : {}),
-      }),
+      skillPhoneCardHtml({ skill, portalName: portal.name, verified, ...(draft ? { draft } : {}) }),
     );
     return { skill, card, verified };
   } catch (err) {

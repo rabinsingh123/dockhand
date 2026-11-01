@@ -4,195 +4,62 @@
 <meta charset="utf-8">
 <title>Dockhand heal ladder</title>
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="charts.css">
 <style>
-.bg {
-  background:
-    radial-gradient(1200px 700px at 0% 100%, rgba(34, 211, 238, 0.07), transparent 68%),
-    radial-gradient(1200px 720px at 100% 0%, rgba(167, 139, 250, 0.1), transparent 66%),
-    var(--bg);
-}
-.head { left: 120px; top: 62px; }
-.head .sub { margin-top: 16px; }
-
-.rung {
-  left: 262px;
-  width: 1538px;
-  height: 164px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px 300px;
-  align-items: center;
-  column-gap: 28px;
-  padding: 0 46px 0 44px;
-  border-radius: 24px;
-  border: 1.5px solid color-mix(in srgb, var(--t) 34%, transparent);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--t) 13%, transparent) 0, transparent 62%), var(--panel);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-}
-.rung .name { font: 700 50px/1.08 var(--display); letter-spacing: -0.8px; color: #fff; white-space: nowrap; }
-.rung .desc { margin-top: 8px; font: 500 30px/1.25 var(--sans); color: var(--muted); white-space: nowrap; }
-.rung .cost { font: 700 42px/1.1 var(--display); color: var(--text); white-space: nowrap; letter-spacing: -0.4px; }
-.rung .cost-sub { margin-top: 6px; font: 600 27px/1.2 var(--sans); color: var(--muted); white-space: nowrap; }
-.rung .metric { text-align: right; }
-.rung .big { font: 700 88px/0.95 var(--display); letter-spacing: -2px; color: var(--t); white-space: nowrap; }
-.rung .big { transform-origin: 100% 60%; }
-.rung .unit { margin-top: 6px; font: 600 27px/1.2 var(--sans); color: var(--muted); white-space: nowrap; }
-
-.node {
-  left: 158px;
-  width: 66px;
-  height: 66px;
-  margin-top: -33px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--t);
-  color: #0b0d12;
-  font: 800 32px/1 var(--display);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--t) 22%, transparent), 0 0 26px color-mix(in srgb, var(--t) 50%, transparent);
-}
-.rail { left: 188px; width: 6px; border-radius: 3px; transform-origin: 50% 100%; }
-.chev { left: 174px; width: 34px; height: 34px; margin-top: -17px; }
-
-.verdict {
-  left: 120px;
-  width: 1680px;
-  top: 816px;
-  padding: 22px 36px 24px;
-  border-radius: 26px;
-  border: 2px solid rgba(74, 222, 128, 0.5);
-  background: linear-gradient(90deg, rgba(74, 222, 128, 0.16), rgba(74, 222, 128, 0.05));
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  column-gap: 28px;
-  align-items: center;
-}
-.verdict .check { width: 72px; height: 72px; border-radius: 50%; background: #22c55e; display: grid; place-items: center; }
-.verdict .check svg { width: 40px; height: 40px; }
-.verdict .main { font: 700 56px/1.08 var(--display); letter-spacing: -1px; color: #fff; white-space: nowrap; }
-.verdict .main b { color: var(--ok); font-weight: 700; }
-.verdict .main .sep { color: var(--muted); font-weight: 600; margin: 0 10px; }
-.verdict .note { margin-top: 8px; font: 600 29px/1.2 var(--sans); color: var(--text-2); white-space: nowrap; }
+.head { left: 160px; top: 96px; width: 1600px; }
+.ladder { left: 160px; top: 380px; width: 1600px; }
+.rung { display: grid; grid-template-columns: 700px 1fr; align-items: center; column-gap: 40px; }
+.rung + .rung { margin-top: 56px; }
+.rung .name { font-size: 44px; font-weight: 500; line-height: 1.15; }
+.rung .meta { margin-top: 8px; font-size: 40px; color: var(--gray); white-space: nowrap; }
+.rung .bar { display: flex; align-items: center; gap: 28px; white-space: nowrap; }
+.rung .bar i { display: block; height: 64px; }
+.rung .bar b { font-size: 72px; font-weight: 600; letter-spacing: -0.03em; }
+.rung .bar span { font-size: 40px; color: var(--gray); }
 </style>
 </head>
 <body>
 <div class="stage">
-  <div class="bg"></div>
-
-  <div class="head abs" id="head">
-    <div class="title">The heal ladder, on UI changes it never saw</div>
-    <div class="sub">Cheapest rung first: a broken step climbs only if the rung below can’t fix it</div>
+  <div class="head abs">
+    <h1 class="ctitle" id="title"></h1>
+    <div class="csub" id="sub"></div>
   </div>
-
-  <div class="rail abs" id="rail12" style="--t:var(--heal)"></div>
-  <div class="rail abs" id="rail23" style="--t:var(--cu)"></div>
-  <svg class="chev abs" id="chev12" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#0a0c10" stroke="#fbbf24" stroke-width="3"/><path d="M10.5 19.5l6.5-6.5 6.5 6.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  <svg class="chev abs" id="chev23" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#0a0c10" stroke="#a78bfa" stroke-width="3"/><path d="M10.5 19.5l6.5-6.5 6.5 6.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-
-  <div class="rung abs" id="rung3" style="--t:var(--cu)">
-    <div><div class="name">Muse Spark 1.3 computer use</div><div class="desc">Narrow goal, at most 8 actions</div></div>
-    <div><div class="cost" id="cost3"></div><div class="cost-sub">per attempt</div></div>
-    <div class="metric"><div class="big" id="big3"></div><div class="unit">steps healed</div></div>
-  </div>
-  <div class="rung abs" id="rung2" style="--t:var(--heal)">
-    <div><div class="name">Muse Spark Open</div><div class="desc">Text only: picks from the accessibility list</div></div>
-    <div><div class="cost" id="cost2"></div><div class="cost-sub">per attempt</div></div>
-    <div class="metric"><div class="big" id="big2"></div><div class="unit">steps healed</div></div>
-  </div>
-  <div class="rung abs" id="rung1" style="--t:var(--replay)">
-    <div><div class="name">Free</div><div class="desc">Other stored selector, fingerprint similarity</div></div>
-    <div><div class="cost" id="cost1"></div><div class="cost-sub">no model call</div></div>
-    <div class="metric"><div class="big" id="big1"></div><div class="unit">steps healed</div></div>
-  </div>
-  <div class="node abs" id="node1" style="--t:var(--replay)">1</div>
-  <div class="node abs" id="node2" style="--t:var(--heal)">2</div>
-  <div class="node abs" id="node3" style="--t:var(--cu)">3</div>
-
-  <div class="verdict abs" id="verdict">
-    <div class="check" id="check"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19.5 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-    <div><div class="main" id="verdictMain"></div><div class="note" id="verdictNote"></div></div>
-  </div>
-
-  <div class="caption" id="caption"></div>
-  <div class="grain"></div>
-  <div class="black" id="black"></div>
+  <div class="ladder abs" id="ladder"></div>
+  <div class="source abs" id="source"></div>
 </div>
 <script src="data.js"></script>
 <script src="runtime.js"></script>
+<script src="charts.js"></script>
 <script>
 (() => {
-  const { fx, rise, seg, ease, lerp, fmt } = DH;
   const D = window.DOCKHAND_DATA;
-  const Hd = D.heals;
+  const H = D.heals;
+  const { fade } = DH;
   const $ = (id) => document.getElementById(id);
-
-  // Text, all from data.js (evals/results/live-headline.json).
-  const cost = (r) => `${fmt.usd(r.costPerAttemptUsd, 4)} · ${fmt.secs(r.msPerAttempt)}`;
-  $("cost1").textContent = "$0";
-  $("cost2").textContent = cost(Hd.rung2);
-  $("cost3").textContent = cost(Hd.rung3);
-  // Final values only: no count-up, so no frame ever shows a number that is not in the results.
-  $("big1").textContent = String(Hd.freeHealed);
-  $("big2").textContent = `${Hd.rung2.healed}/${Hd.rung2.tried}`;
-  $("big3").textContent = `${Hd.rung3.healed}/${Hd.rung3.tried}`;
-  $("verdictMain").innerHTML =
-    `<b>${Hd.ok}/${Hd.cases}</b> unseen UI changes handled<span class="sep">·</span><b>${Hd.wrongWrites}</b> wrong writes`;
-  $("verdictNote").textContent =
-    `Including ${Hd.safeStops.correct}/${Hd.safeStops.of} must-stop cases (a new required field): stopped safely`;
-  $("caption").textContent = `Live Meta + Baseten calls · held-out seeds ${Hd.seeds.join(", ")} · ${fmt.date(D.date)} · list prices`;
-
-  // Rungs build up from the bottom: cheapest first.
-  const TOP = { 3: 240, 2: 428, 1: 616 };
-  const H = 164;
-  const mid = (k) => TOP[k] + H / 2;
-  const R = [
-    { k: 1, at: 0.7 },
-    { k: 2, at: 2.05 },
-    { k: 3, at: 3.35 },
+  // The accent once: the headline's key number.
+  $("title").innerHTML = `<span class="accent">${H.noClosedModel} of ${H.repairs}</span> repairs used no closed model`;
+  $("sub").textContent = `Steps healed on ${H.cases} held-out UI changes, cheapest rung first. ${H.wrongWrites} wrong writes.`;
+  const ms = (v) => `${(v / 1000).toFixed(1)} s`;
+  const rungs = [
+    { name: "Stored selector or similarity", meta: "free, no model", n: H.freeHealed, of: null, ink: true },
+    { name: "Muse Spark Open, text only", meta: `open weights · $${H.rung2.costPerAttemptUsd.toFixed(4)}, ${ms(H.rung2.msPerAttempt)} per try`, n: H.rung2.healed, of: H.rung2.tried, ink: true },
+    { name: "Muse computer use", meta: `at most 8 actions · $${H.rung3.costPerAttemptUsd.toFixed(4)}, ${ms(H.rung3.msPerAttempt)} per try`, n: H.rung3.healed, of: H.rung3.tried, ink: false },
   ];
-  for (const { k } of R) {
-    $(`rung${k}`).style.top = `${TOP[k]}px`;
-    $(`node${k}`).style.top = `${mid(k)}px`;
-  }
-  const rails = [
-    { id: "rail12", chev: "chev12", from: 1, to: 2, at: 1.75 },
-    { id: "rail23", chev: "chev23", from: 2, to: 3, at: 3.05 },
-  ];
-  for (const r of rails) {
-    const top = mid(r.to) + 40;
-    const bottom = mid(r.from) - 40;
-    Object.assign($(r.id).style, {
-      top: `${top}px`,
-      height: `${bottom - top}px`,
-      background: `linear-gradient(to top, var(--${r.from === 1 ? "replay" : "heal"}), var(--${r.to === 2 ? "heal" : "cu"}))`,
-    });
-    $(r.chev).style.top = `${(top + bottom) / 2}px`;
-  }
-
+  const max = Math.max(...rungs.map((r) => r.n));
+  const els = rungs.map((r) => {
+    const row = document.createElement("div");
+    row.className = "rung";
+    row.innerHTML = `<div><div class="name">${r.name}</div><div class="meta">${r.meta}</div></div>
+      <div class="bar"><i style="width:${Math.max(8, (r.n / max) * 600).toFixed(0)}px;background:${r.ink ? "#111111" : "#6B6B6B"}"></i><b class="mono">${r.n}</b>${r.of ? `<span>of ${r.of} tried</span>` : ""}</div>`;
+    $("ladder").appendChild(row);
+    return row;
+  });
+  $("source").textContent = `Live calls at list prices, ${D.dateShort}, seeds ${H.seeds.join(", ")}. live-headline.md, section 1`;
   DH.clip({
     duration: 8,
     frame(t) {
-      fx($("black"), { o: 1 - seg(t, 0, 0.4, ease.linear) });
-      rise($("head"), t, 0.1, { dur: 0.6, dy: 26, blur: 8 });
-      rise($("caption"), t, 0.5, { dur: 0.6, dy: 0, blur: 0 });
-
-      for (const { k, at } of R) {
-        const pn = seg(t, at, 0.45, ease.outBack);
-        fx($(`node${k}`), { o: seg(t, at, 0.2, ease.linear), s: lerp(0.4, 1, pn) });
-        rise($(`rung${k}`), t, at + 0.1, { dur: 0.6, dy: 46, dx: -24, blur: 10 });
-        const pb = seg(t, at + 0.35, 0.55, ease.outBack);
-        fx($(`big${k}`), { o: seg(t, at + 0.35, 0.25, ease.linear), s: lerp(0.7, 1, pb), b: (1 - seg(t, at + 0.35, 0.4)) * 8 });
-      }
-      for (const r of rails) {
-        const p = seg(t, r.at, 0.35, ease.inOut);
-        const el = $(r.id);
-        el.style.opacity = p > 0 ? "1" : "0";
-        el.style.transform = `scaleY(${p.toFixed(4)})`;
-        fx($(r.chev), { o: seg(t, r.at + 0.25, 0.25, ease.linear), y: (1 - seg(t, r.at + 0.25, 0.4, ease.out)) * 10 });
-      }
-
-      rise($("verdict"), t, 4.5, { dur: 0.65, dy: 40, blur: 12, s0: 0.97 });
-      fx($("check"), { o: seg(t, 4.6, 0.2, ease.linear), s: lerp(0.3, 1, seg(t, 4.6, 0.5, ease.outBack)) });
-      rise($("verdictNote"), t, 5.0, { dur: 0.55, dy: 14, blur: 6 });
+      els.forEach((e, i) => fade(e, t, 0.5 + i * 0.9));
+      fade($("source"), t, 0);
     },
   });
 })();

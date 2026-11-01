@@ -5,65 +5,74 @@
 <title>Dockhand end card</title>
 <link rel="stylesheet" href="theme.css">
 <style>
-.bg {
-  background:
-    radial-gradient(1200px 760px at 0% 0%, rgba(167, 139, 250, 0.12), transparent 64%),
-    radial-gradient(1100px 700px at 100% 100%, rgba(34, 211, 238, 0.08), transparent 68%),
-    var(--bg);
-}
-.top { left: 150px; right: 150px; top: 116px; display: flex; align-items: center; justify-content: space-between; }
-.top .lockup { gap: 30px; }
-.top .name { font-size: 96px; }
-.built { font: 650 44px/1 var(--display); color: var(--text-2); letter-spacing: -0.4px; white-space: nowrap; }
+/* Two states joined by a hard cut: the wordmark, then the credits. Left edge at 160 px throughout. */
+.mark { left: 160px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+.mark .wordmark { font-size: 232px; margin-left: -10px; }
+.mark .tag { margin-top: 44px; font-size: 64px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); }
+.mark .legal { margin-top: 72px; font-size: 40px; line-height: 60px; color: var(--gray); }
+.mark .legal .mono { font-size: 38px; }
 
-.cols { left: 150px; right: 150px; top: 318px; display: grid; grid-template-columns: 760px minmax(0, 1fr); column-gap: 50px; }
-.col .eyebrow { margin-bottom: 28px; }
-.item { display: flex; align-items: center; gap: 22px; height: 74px; font: 600 37px/1.1 var(--sans); color: var(--text); white-space: nowrap; }
-.ic { width: 40px; height: 40px; flex: none; }
-
-.rule { left: 150px; width: 1620px; top: 820px; height: 2px; background: var(--line-2); transform-origin: 0 50%; }
-.bottom { left: 150px; right: 150px; top: 868px; height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 60px; }
-.with { font: 600 46px/1 var(--display); color: var(--text-2); white-space: nowrap; letter-spacing: -0.4px; }
-.with b { font-weight: 700; color: #fff; }
-.url { font: 600 50px/1 var(--mono); color: #fff; white-space: nowrap; }
+.credits { inset: 0; }
+.head { left: 160px; right: 160px; top: 116px; display: flex; align-items: baseline; justify-content: space-between; }
+.head .wordmark { font-size: 96px; }
+.head .built { font-size: 44px; font-weight: 500; color: var(--ink); letter-spacing: -0.01em; }
+.hr { left: 160px; right: 160px; height: 2px; background: var(--hair); }
+.cols { left: 160px; right: 160px; top: 318px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 96px; }
+.cols h3 { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 22px; }
+.cols li { list-style: none; font-size: 40px; line-height: 64px; color: var(--ink); white-space: nowrap; }
+.cols li .gray { color: var(--gray); }
+.cols ul { margin: 0; padding: 0; }
+.foot { left: 160px; right: 160px; top: 882px; display: flex; align-items: baseline; justify-content: space-between; gap: 60px; }
+.foot .with { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
+.foot .url { font-size: 44px; color: var(--ink); white-space: nowrap; }
 </style>
 </head>
 <body>
 <div class="stage">
-  <div class="bg"></div>
-
-  <div class="top abs">
-    <div class="lockup"><span id="markSlot"></span><span class="name" id="name">Dockhand</span></div>
-    <div class="built" id="built">Built Oct 27–Nov 4, 2026</div>
-  </div>
-
-  <!-- From README.md, "What is real and what is simulated". -->
-  <div class="cols abs">
-    <div class="col">
-      <div class="eyebrow" id="hReal" style="--c:var(--ok)">Real</div>
-      <div class="item real">Every Meta model call</div>
-      <div class="item real">WhatsApp Cloud API</div>
-      <div class="item real">HubSpot test portal writes</div>
-      <div class="item real">EspoCRM 10.0.11, unmodified</div>
-      <div class="item real">Compiler, runner, heal ladder, evals</div>
-    </div>
-    <div class="col">
-      <div class="eyebrow" id="hSim" style="--c:var(--dry)">Simulated</div>
-      <div class="item sim">The two portals, built for this project</div>
-      <div class="item sim">All data: companies, people, documents</div>
-      <div class="item sim">WhatsApp emulator: dev and tests only</div>
-      <div class="item sim">Scripted computer-use model: CI only</div>
+  <div class="mark abs" id="mark">
+    <div class="wordmark">Dockhand</div>
+    <div class="tag">Automation that maintains itself.</div>
+    <div class="legal" id="legal">
+      <div>Built during the Meta AI Developer Hackathon, Oct 27–Nov 4, 2026</div>
+      <div class="mono" id="url2"></div>
+      <div>Built with Muse Spark Open</div>
     </div>
   </div>
 
-  <div class="rule abs" id="rule"></div>
-  <div class="bottom abs">
-    <div class="with" id="with">Built with <b>Muse Spark Open</b></div>
-    <div class="url" id="url"></div>
+  <div class="credits abs" id="credits">
+    <div class="head abs">
+      <div class="wordmark">Dockhand</div>
+      <div class="built">Built Oct 27 – Nov 4, 2026</div>
+    </div>
+    <div class="hr abs" style="top: 262px"></div>
+    <!-- From README.md, "What is real and what is simulated". -->
+    <div class="cols abs">
+      <div id="colReal">
+        <h3>Real</h3>
+        <ul>
+          <li>Every Meta model call</li>
+          <li>WhatsApp Cloud API</li>
+          <li>HubSpot test portal writes</li>
+          <li>EspoCRM 10.0.11, unmodified</li>
+          <li>Compiler, runner, heal ladder, evals</li>
+        </ul>
+      </div>
+      <div id="colSim">
+        <h3>Simulated</h3>
+        <ul>
+          <li>The two portals, built for this project</li>
+          <li>All data: companies, people, documents</li>
+          <li>WhatsApp emulator <span class="gray">(dev and tests only)</span></li>
+          <li>Scripted model <span class="gray">(CI only)</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="hr abs" style="top: 818px"></div>
+    <div class="foot abs" id="foot">
+      <div class="with">Built with Muse Spark Open</div>
+      <div class="url mono" id="url"></div>
+    </div>
   </div>
-
-  <div class="grain"></div>
-  <div class="black" id="black"></div>
 </div>
 <script src="runtime.js"></script>
 <script>
@@ -71,42 +80,27 @@
 const REPO_URL = "github.com/rabinsingh123/dockhand";
 
 (() => {
-  const { fx, rise, seg, ease, drawMark, mark } = DH;
+  const { cut, fade } = DH;
   const $ = (id) => document.getElementById(id);
-  const CHECK =
-    '<svg class="ic" viewBox="0 0 40 40"><circle cx="20" cy="20" r="19" fill="#22c55e"/><path d="M11.5 20.5l5.6 5.6L28.8 14" fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const SIM =
-    '<svg class="ic" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="rgba(96,165,250,.12)" stroke="#60a5fa" stroke-width="3" stroke-dasharray="5.2 4"/><circle cx="20" cy="20" r="5" fill="#60a5fa"/></svg>';
-  for (const el of document.querySelectorAll(".item")) el.insertAdjacentHTML("afterbegin", el.classList.contains("real") ? CHECK : SIM);
   $("url").textContent = REPO_URL;
-  $("markSlot").outerHTML = mark(112);
-  const svgMark = document.querySelector(".top .dmark");
-  const real = [...document.querySelectorAll(".item.real")];
-  const sim = [...document.querySelectorAll(".item.sim")];
+  $("url2").textContent = REPO_URL;
+  const CUT = 4.2;
 
   DH.clip({
-    duration: 6,
+    duration: 8,
     init() {
-      // A longer URL shrinks to fit the row instead of running into "Built with Muse Spark Open".
+      // A longer URL shrinks to fit its row instead of running into "Built with Muse Spark Open".
       const url = $("url");
-      const room = 1620 - $("with").getBoundingClientRect().width - 60;
+      const room = 1600 - document.querySelector(".foot .with").getBoundingClientRect().width - 60;
       const w = url.getBoundingClientRect().width;
-      if (w > room) url.style.fontSize = `${Math.floor((50 * room) / w)}px`;
+      if (w > room) url.style.fontSize = `${Math.floor((44 * room) / w)}px`;
     },
     frame(t) {
-      fx($("black"), { o: 1 - seg(t, 0, 0.35, ease.linear) });
-      drawMark(svgMark, t, 0.1);
-      rise($("name"), t, 0.3, { dur: 0.6, dx: -24, dy: 0, blur: 8 });
-      rise($("built"), t, 0.5, { dur: 0.6, dy: 20, blur: 8 });
-      rise($("hReal"), t, 0.75, { dur: 0.5, dy: 16, blur: 6 });
-      rise($("hSim"), t, 0.85, { dur: 0.5, dy: 16, blur: 6 });
-      real.forEach((el, i) => rise(el, t, 0.95 + i * 0.12, { dur: 0.5, dx: -20, dy: 0, blur: 6 }));
-      sim.forEach((el, i) => rise(el, t, 1.05 + i * 0.12, { dur: 0.5, dx: -20, dy: 0, blur: 6 }));
-      const pr = seg(t, 1.85, 0.6, ease.inOut);
-      $("rule").style.transform = `scaleX(${pr.toFixed(4)})`;
-      $("rule").style.opacity = pr > 0 ? "1" : "0";
-      rise($("with"), t, 2.1, { dur: 0.6, dy: 24, blur: 8 });
-      rise($("url"), t, 2.35, { dur: 0.6, dy: 24, blur: 8 });
+      cut($("credits"), t, 0, CUT);
+      fade($("colReal"), t, 0.4);
+      fade($("colSim"), t, 0.8);
+      fade($("foot"), t, 1.4);
+      cut($("mark"), t, CUT);
     },
   });
 })();

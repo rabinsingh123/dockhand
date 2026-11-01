@@ -25,11 +25,11 @@ import type {
 } from "@dockhand/core";
 import type { Page } from "playwright";
 import type { DockhandApprovalBroker, GateDecision } from "../approvals.ts";
-import { cardBody, clipText } from "../messages.ts";
+import { clipText } from "../messages.ts";
 import type { PortalDirectory } from "../portals.ts";
 import type { CompanyKit } from "../profile.ts";
 import type { Repos } from "../repo.ts";
-import type { PhoneCards } from "../tools/phone-cards.ts";
+import { askPhoneCardHtml, type PhoneCards, submitPhoneCardHtml } from "../tools/phone-cards.ts";
 import type { CardRenderer } from "../tools/receipts.ts";
 
 /** What a model source learns about the session it serves (scripted stand-ins script from it). */
@@ -177,21 +177,36 @@ export function gateHooks(
     });
     return { gateId, decision: await env.park(decision) };
   };
+  /** A card around the page's screenshot; the bare screenshot when the card cannot be drawn. */
+  const cardOr = async (shot: ArtifactRef, html: (bytes?: Uint8Array) => string): Promise<ArtifactRef> => {
+    try {
+      const bytes = await env.artifacts.read(shot).catch(() => undefined);
+      return await env.phoneCards.render(job.id, html(bytes));
+    } catch (err) {
+      env.log.warn("approval card not rendered", { jobId: job.id, err });
+      return shot;
+    }
+  };
   return {
     async approveCommit(r) {
       const lines = (r.readback ?? []).filter((f) => f.value.trim() !== "" && f.value !== "false");
-      const body = cardBody(
-        // A wizard's review page has no fields to read back: the screenshot is the form to check.
-        [
-          lines.length > 0
-            ? `Ready to submit on ${run.portalName}. Check the filled form:`
-            : `Ready to submit on ${run.portalName}. Check the review page in the screenshot.`,
-        ],
-        // Raw values: a field that reads "true" must look wrong, not like a ticked box.
-        lines.map((f) => `• ${f.label}: ${f.value}`),
-        ["", "Approve to submit. Nothing is sent until you tap."],
+      // The card shows the filled form and every value read back (raw: a field that reads "true" must look
+      // wrong, not like a ticked box); the message says where, and that nothing is sent before the tap.
+      const body = [
+        lines.length > 0
+          ? `Ready to submit on ${run.portalName}. ${lines.length} fields on the page, read back on the card.`
+          : `Ready to submit on ${run.portalName}. Check the review page on the card.`,
+        "Approve to submit. Nothing is sent until you tap.",
+      ].join("\n");
+      const card = await cardOr(r.screenshot, (shot) =>
+        submitPhoneCardHtml({
+          portalName: run.portalName,
+          readback: r.readback ?? [],
+          ...(shot ? { screenshot: shot } : {}),
+          ...(r.highlight ? { highlight: r.highlight } : {}),
+        }),
       );
-      const { decision } = await open("commit", body, r.screenshot);
+      const { decision } = await open("commit", body, card);
       return asDecision(decision);
     },
     async approveSafety(r) {
@@ -213,16 +228,23 @@ export function gateHooks(
         `${run.portalName} now asks for "${q.label}", and I have no value for it.`,
         options.length > 3 ? clipText(`Options: ${options.join(", ")}.`, 400) : "",
         buttons
-          ? 'Tap one, or reply with the value ("skip" stops here).'
-          : 'Reply with the value ("skip" stops here).',
-        "I'll remember it for next time.",
+          ? `Tap one, or reply with the value ("skip" stops here). I'll remember it.`
+          : `Reply with the value ("skip" stops here). I'll remember it.`,
       ]
         .filter(Boolean)
         .join("\n");
+      const card = await cardOr(q.screenshot, (shot) =>
+        askPhoneCardHtml({
+          portalName: run.portalName,
+          label: q.label,
+          options,
+          ...(shot ? { screenshot: shot } : {}),
+        }),
+      );
       const { gateId, decision } = await open(
         "question",
         body,
-        q.screenshot,
+        card,
         buttons ?? [{ id: "reject", title: "Skip" }],
       );
       if (decision.startsWith("opt")) return options[Number(decision.slice(3))] ?? null;

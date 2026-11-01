@@ -54,16 +54,19 @@ export { type CompanyKit, DEFAULT_REP, loadCompanyKit, repProfile } from "./prof
 export { createRepos, idemKey, type Repos } from "./repo.ts";
 export { createFakeCrm, type FakeCrm } from "./tools/crm-fake.ts";
 export { createHubSpotCrm, type HubSpotOptions, jobShortId } from "./tools/hubspot.ts";
-export { createQuoteService, PRICE_BOOK, priceQuote, renderQuotePdf } from "./tools/quotes.ts";
 export {
-  createCardRenderer,
-  diffCardHtml,
-  OPEN_WEIGHTS_CREDIT,
-  receiptCaption,
-  receiptHtml,
-  skillCardHtml,
-  teachCardHtml,
-} from "./tools/receipts.ts";
+  askPhoneCardHtml,
+  diffPhoneCardHtml,
+  draftCounts,
+  money,
+  planPhoneCardHtml,
+  skillCounts,
+  skillPhoneCardHtml,
+  submitPhoneCardHtml,
+  teachPhoneCardHtml,
+} from "./tools/phone-cards.ts";
+export { createQuoteService, PRICE_BOOK, priceQuote, renderQuotePdf } from "./tools/quotes.ts";
+export { createCardRenderer, OPEN_WEIGHTS_CREDIT, receiptCaption, receiptHtml } from "./tools/receipts.ts";
 export { Extraction, normalizeUnderstanding, understand, understandingRequest } from "./understand.ts";
 export {
   createOrchestratorFromDev,

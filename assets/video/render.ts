@@ -24,7 +24,18 @@ const ROOT = join(HERE, "..", "..");
 const SRC = join(HERE, "src");
 const RESULTS = join(ROOT, "evals", "results");
 const LIVE = join(RESULTS, "live");
-const CLIPS = ["title", "chart-cost", "chart-heals", "endcard"];
+const CLIPS = [
+  "title",
+  "title-band",
+  "chart-proof",
+  "chart-baseline",
+  "chart-cost",
+  "chart-heals",
+  "endcard",
+  "endcard-wordmark",
+];
+/** Overlays for real footage: rendered with an alpha channel (QuickTime Animation, .mov) instead of H.264. */
+const ALPHA = new Set(["title-band"]);
 const W = 1920;
 const H = 1080;
 
@@ -74,6 +85,20 @@ interface Headline {
     cumulativeUsd: { compileOnce: number; pureCuProjected: number };
     breakEvenRun: number;
   };
+}
+
+interface ArmCounts {
+  cases: number;
+  correct: number;
+  safeStop: number;
+  stopped: number;
+  wrongWrite: number;
+  handled: number;
+}
+interface Baseline {
+  measured: string;
+  cases: { count: number; seeds: number[]; sameAsHeadline: boolean };
+  arms: Record<"script" | "scriptPrimary" | "dockhand", { counts: ArmCounts }>;
 }
 
 function rows<T>(prefix: string): T[] {
@@ -139,14 +164,45 @@ function buildData() {
 
   const date = /(\d{4}-\d{2}-\d{2})\s*$/.exec(hl.label)?.[1];
   if (!date) throw new Error(`no date at the end of live-headline.json label: ${hl.label}`);
+
+  // Section 4 of live-headline.md: the recorded-script baseline on the same 42 cases.
+  const bl = JSON.parse(readFileSync(join(RESULTS, "baseline-recorded-script.json"), "utf8")) as Baseline;
+  const arm = (a: ArmCounts) => ({
+    cases: a.cases,
+    handled: a.handled,
+    correct: a.correct,
+    broke: a.stopped,
+    wrongWrites: a.wrongWrite,
+  });
+  expect("baseline cases", bl.cases.count, h.cases);
+  expect("baseline uses the headline's cases", bl.cases.sameAsHeadline, true);
+  expect("baseline seeds", bl.cases.seeds.join(","), h.seeds.join(","));
+  expect("Dockhand handled (baseline file)", bl.arms.dockhand.counts.handled, h.ok);
+  for (const k of ["script", "scriptPrimary", "dockhand"] as const) {
+    const a = bl.arms[k].counts;
+    expect(`${k}: cases`, a.cases, h.cases);
+    expect(`${k}: handled = correct + required stops`, a.handled, a.correct + a.safeStop);
+    expect(`${k}: every case accounted for`, a.correct + a.safeStop + a.stopped + a.wrongWrite, a.cases);
+  }
+  const free = h.freeHeals.fallback + h.freeHeals.similarity;
+  const repairs = free + h.rung2.healedSteps + h.rung3.healedSteps;
   const rung = (r: Rung) => ({
     healed: r.healedSteps,
     tried: r.attempts,
     costPerAttemptUsd: r.costPerAttemptUsd,
     msPerAttempt: r.msPerAttempt,
   });
+  const [yy, mm, dd] = date.split("-").map(Number);
+  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][(mm ?? 1) - 1];
   return {
     date,
+    dateShort: `${mon} ${dd}, ${yy}`,
+    baseline: {
+      measured: bl.measured,
+      script: arm(bl.arms.script.counts),
+      scriptPrimary: arm(bl.arms.scriptPrimary.counts),
+      dockhand: arm(bl.arms.dockhand.counts),
+    },
     cost: {
       totalRuns: c.totalRuns,
       measuredCuRuns: c.pureCu.runs,
@@ -163,9 +219,12 @@ function buildData() {
       wrongWrites: h.falseHeals,
       safeStops: h.safeStops,
       seeds: h.seeds,
-      freeHealed: h.freeHeals.fallback + h.freeHeals.similarity,
+      freeHealed: free,
       rung2: rung(h.rung2),
       rung3: rung(h.rung3),
+      // Every healed step, and those healed without a closed model (free rungs + Muse Spark Open, open weights).
+      repairs,
+      noClosedModel: free + h.rung2.healedSteps,
     },
   };
 }
@@ -217,6 +276,18 @@ const FFMPEG_OUT = [
   "4",
   "-an",
 ];
+
+// Overlays keep their alpha: QuickTime Animation (lossless RLE, small for flat graphics), which ffmpeg, Premiere,
+// Resolve and Final Cut all read with transparency.
+const FFMPEG_ALPHA = ["-c:v", "qtrle", "-pix_fmt", "argb", "-an"];
+
+/** A transparent page background for alpha clips (the page's own .stage.clear must be transparent too). */
+async function transparent(rig: Rig, on: boolean): Promise<void> {
+  await rig.cdp.send(
+    "Emulation.setDefaultBackgroundColorOverride",
+    on ? { color: { r: 0, g: 0, b: 0, a: 0 } } : {},
+  );
+}
 
 /** The clip page, a CDP session on it for fast lossless captures, and a blank page for comparing frames. */
 interface Rig {
@@ -276,8 +347,10 @@ function pixelDiff(rig: Rig, a: Buffer, b: Buffer): Promise<{ max: number; chang
 
 async function encode(rig: Rig, name: string): Promise<void> {
   const clip = await load(rig, name);
-  const out = join(HERE, `${name}.mp4`);
+  const alpha = ALPHA.has(name);
+  const out = join(HERE, `${name}.${alpha ? "mov" : "mp4"}`);
   const started = Date.now();
+  await transparent(rig, alpha);
   const ff = spawn(
     "ffmpeg",
     [
@@ -291,7 +364,7 @@ async function encode(rig: Rig, name: string): Promise<void> {
       String(clip.fps),
       "-c:v",
       "png",
-    ].concat(["-i", "pipe:0", ...FFMPEG_OUT, "-r", String(clip.fps), out]),
+    ].concat(["-i", "pipe:0", ...(alpha ? FFMPEG_ALPHA : FFMPEG_OUT), "-r", String(clip.fps), out]),
     { stdio: ["pipe", "ignore", "pipe"] },
   );
   let stderr = "";
@@ -327,7 +400,7 @@ async function encode(rig: Rig, name: string): Promise<void> {
     }
     redraw.push(d.changed ? `frame ${n}: ${d.changed} px within ${d.max}/255` : `frame ${n}: identical`);
   }
-  const probe = verify(out, clip);
+  const probe = verify(out, clip, alpha);
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   console.log(
     `${name}.mp4  ${probe.frames} frames, ${probe.seconds.toFixed(2)} s, ${W}x${H} ${probe.fps} fps ${probe.pixFmt}, ` +
@@ -335,7 +408,7 @@ async function encode(rig: Rig, name: string): Promise<void> {
   );
 }
 
-function verify(file: string, clip: ClipApi) {
+function verify(file: string, clip: ClipApi, alpha = false) {
   const r = spawnSync(
     "ffprobe",
     ["-v", "error", "-select_streams", "v:0", "-count_frames"]
@@ -359,10 +432,10 @@ function verify(file: string, clip: ClipApi) {
   if (!s) throw new Error(`${file}: no video stream`);
   const frames = Number(s.nb_read_frames);
   const ok =
-    s.codec_name === "h264" &&
+    s.codec_name === (alpha ? "qtrle" : "h264") &&
     s.width === W &&
     s.height === H &&
-    s.pix_fmt === "yuv420p" &&
+    s.pix_fmt === (alpha ? "argb" : "yuv420p") &&
     s.r_frame_rate === `${clip.fps}/1` &&
     frames === clip.frames;
   if (!ok) throw new Error(`${file}: unexpected output ${JSON.stringify(s)} (want ${clip.frames} frames)`);
@@ -371,6 +444,7 @@ function verify(file: string, clip: ClipApi) {
 
 async function stills(rig: Rig, name: string, times: number[], dir: string): Promise<void> {
   const clip = await load(rig, name);
+  await transparent(rig, ALPHA.has(name));
   mkdirSync(dir, { recursive: true });
   for (const t of times) {
     const at = Math.min(Math.max(0, t), clip.duration - 1 / clip.fps);
@@ -426,7 +500,7 @@ async function main(): Promise<void> {
     const context = await browser.newContext({
       viewport: { width: W, height: H },
       deviceScaleFactor: 1,
-      colorScheme: "dark",
+      colorScheme: "light",
     });
     await context.addInitScript(() => {
       window.__DH_RENDER__ = true;
