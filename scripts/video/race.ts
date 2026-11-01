@@ -139,10 +139,12 @@ function arg(name: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
-function loadFromSession(
+async function loadFromSession(
   dbPath: string,
   version: number,
-): { skill: Skill; params: Record<string, ParamValue> } {
+): Promise<{ skill: Skill; params: Record<string, ParamValue> }> {
+  // Loaded here, never in the script's process: its experimental-feature warning would land in the script's output.
+  const { DatabaseSync } = await import("node:sqlite");
   const db = new DatabaseSync(dbPath, { readOnly: true });
   try {
     const row = db
