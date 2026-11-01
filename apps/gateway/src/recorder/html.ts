@@ -1,6 +1,6 @@
 // HTML helpers for the flight recorder: escaping, the page shell, formatting and a small code highlighter.
 
-import { RECORDER_CSS } from "./style.ts";
+import { fontCss, RECORDER_CSS } from "./style.ts";
 
 /** A fragment that is already HTML (everything else is escaped). */
 export class Html {
@@ -38,7 +38,7 @@ function render(v: unknown): string {
 export const raw = (s: string) => new Html(s);
 
 export const LOGO = raw(
-  '<svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><defs><linearGradient id="dg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="18" height="18" rx="5" fill="url(#dg)"/><path d="M5.2 4.6h3.6a4.4 4.4 0 0 1 0 8.8H5.2z" fill="none" stroke="#0b0d12" stroke-width="1.9" stroke-linejoin="round"/><circle cx="9.1" cy="9" r="1.35" fill="#0b0d12"/></svg>',
+  '<svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" rx="4.5" fill="#111111"/><path d="M5.2 4.6h3.6a4.4 4.4 0 0 1 0 8.8H5.2z" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linejoin="round"/><circle cx="9.1" cy="9" r="1.35" fill="#FFFFFF"/></svg>',
 );
 
 export function page(o: {
@@ -46,15 +46,21 @@ export function page(o: {
   nav: "runs" | "skills" | "teach";
   body: Html;
   base: string;
+  /** Filming: no header, paper background, content inside the 1.15x push-in safe area. */
+  focus?: boolean;
 }): string {
   const b = o.base;
   const home = b.endsWith("/") ? b.slice(0, -1) : b; // "/recorder" (the mount path has no trailing slash)
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(o.title)} · Dockhand flight recorder</title><style>${RECORDER_CSS}</style></head><body>
-<header class="top"><a class="brand" href="${home}">${LOGO.value}<span>Dockhand</span><small>Flight recorder</small></a>
+<title>${esc(o.title)} · Dockhand flight recorder</title><style>${fontCss(b)}${RECORDER_CSS}</style></head><body${o.focus ? ' class="focus"' : ""}>
+${
+  o.focus
+    ? `<main class="stage">${o.body.value}</main>`
+    : `<header class="top"><a class="brand" href="${home}">${LOGO.value}<span>Dockhand</span><small>Flight recorder</small></a>
 <nav class="nav"><a href="${home}#runs" class="${o.nav === "runs" ? "on" : ""}">Runs</a><a href="${home}#skills" class="${o.nav === "skills" ? "on" : ""}">Skills</a><a href="${home}#teach" class="${o.nav === "teach" ? "on" : ""}">Teach</a></nav>
 <span class="note">Read-only view of the run ledger · synthetic data</span></header>
-<main class="wrap">${o.body.value}</main>
+<main class="wrap">${o.body.value}</main>`
+}
 <script>
 for (const t of document.querySelectorAll('[data-tabs]')) {
   const bs = t.querySelectorAll('button[data-tab]');
@@ -94,6 +100,13 @@ export function ms(v: number | null | undefined): string {
   if (v < 60_000) return `${(v / 1000).toFixed(v < 10_000 ? 2 : 1)} s`;
   const m = Math.floor(v / 60_000);
   return `${m} min ${Math.round((v % 60_000) / 1000)} s`;
+}
+
+/** A model call's latency from the ledger; a cassette answers in milliseconds, so it says "replayed". */
+export function latency(v: number | null | undefined, provider: string): string {
+  if (provider === "cassette") return "replayed";
+  if (provider === "fake" || provider === "scripted") return `${provider} model`;
+  return ms(v);
 }
 
 export function usd(v: number | null | undefined): string {

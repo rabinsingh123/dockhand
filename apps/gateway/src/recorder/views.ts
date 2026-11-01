@@ -19,6 +19,7 @@ import {
   highlight,
   html,
   int,
+  latency,
   MODE_COLOR,
   MODE_LABEL,
   ms,
@@ -234,7 +235,7 @@ function callsPanel(calls: ModelCallRow[]): Html {
       c,
       i,
     ) => html`<tr><td class="muted">${i + 1}</td><td class="mono">${c.purpose}${c.stepIdx !== null ? html` <span class="muted">· step ${c.stepIdx + 1}</span>` : ""}</td><td>${modelName(c)}${REAL_PROVIDERS.has(c.provider) ? "" : html` <span class="tag">${c.provider}</span>`}${c.status !== "ok" ? html` <span class="tag blocked">${c.status}</span>` : ""}</td>
-    <td class="num">${int(c.inputTokens)}${c.cachedInputTokens ? html`<div class="faint">${int(c.cachedInputTokens)} cached</div>` : ""}</td><td class="num">${int(c.outputTokens)}</td><td class="num">${c.images || "–"}</td><td class="num">${ms(c.latencyMs)}</td><td class="num">${usd(c.costUsd)}</td></tr>`,
+    <td class="num">${int(c.inputTokens)}${c.cachedInputTokens ? html`<div class="faint">${int(c.cachedInputTokens)} cached</div>` : ""}</td><td class="num">${int(c.outputTokens)}</td><td class="num">${c.images || "–"}</td><td class="num">${latency(c.latencyMs, c.provider)}</td><td class="num">${usd(c.costUsd)}</td></tr>`,
   )}</tbody></table></section>`;
 }
 
@@ -408,7 +409,7 @@ function agenticTimeline(
         );
       });
       return html`<div class="batch"><div>${b.shot ? html`<figure class="shot"><img src="${base}a/${b.shot.id}" alt="screenshot ${bi + 1}" loading="lazy">${overlay}<span class="cap">Screenshot ${bi + 1} · what the model saw</span></figure>` : html`<p class="empty">No screenshot.</p>`}</div>
-      <div><div class="bh"><b>Turn ${bi + 1}</b>${call ? html`<span>${modelName(call)}</span>${REAL_PROVIDERS.has(call.provider) ? "" : html`<span class="tag">${call.provider}</span>`}<span>${int(call.inputTokens)} in · ${int(call.outputTokens)} out</span><span>${ms(call.latencyMs)}</span><span>${usd(call.costUsd)}</span>` : ""}</div><ol class="acts">${rows}</ol></div></div>`;
+      <div><div class="bh"><b>Turn ${bi + 1}</b>${call ? html`<span>${modelName(call)}</span>${REAL_PROVIDERS.has(call.provider) ? "" : html`<span class="tag">${call.provider}</span>`}<span>${int(call.inputTokens)} in · ${int(call.outputTokens)} out</span><span>${latency(call.latencyMs, call.provider)}</span><span>${usd(call.costUsd)}</span>` : ""}</div><ol class="acts">${rows}</ol></div></div>`;
     },
   )}</section>`;
 }
@@ -427,7 +428,7 @@ export function runView(
   run: RunRow,
   trace: Trace | null,
   readbacks: ReadBackDoc[] = [],
-  picks: { id: string; doc: PickDoc }[] = [],
+  picks: { id: string; doc: PickDoc; call?: { provider: string; latencyMs: number } }[] = [],
 ): string {
   const steps = d.steps(run.id);
   const calls = d.modelCalls(run.id);
@@ -481,7 +482,7 @@ export function runView(
       picks.length
         ? html`<section class="panel"><h2>Open-weights picks <span>heal rung 2, text only</span></h2><table><tbody>${picks.map(
             (p) =>
-              html`<tr class="link" data-href="${base}picks/${p.id}"><td>Step ${p.doc.stepIdx + 1}<div class="muted" style="font-size:12px">${p.doc.chosen ? `now '${p.doc.chosen}'` : (p.doc.reason ?? "")}</div></td><td>${p.doc.ok ? chip("accepted", COLORS.ok) : chip("rejected", COLORS.bad)}</td><td class="num">${ms(p.doc.ms)}<div class="muted">${usd(p.doc.costUsd)}</div></td></tr>`,
+              html`<tr class="link" data-href="${base}picks/${p.id}"><td>Step ${p.doc.stepIdx + 1}<div class="muted" style="font-size:12px">${p.doc.chosen ? `now '${p.doc.chosen}'` : (p.doc.reason ?? "")}</div></td><td>${p.doc.ok ? chip("accepted", COLORS.ok) : chip("rejected", COLORS.bad)}</td><td class="num">${p.call ? latency(p.call.latencyMs, p.call.provider) : ms(p.doc.ms)}<div class="muted">${usd(p.doc.costUsd)}</div></td></tr>`,
           )}</tbody></table></section>`
         : ""
     }
@@ -598,7 +599,44 @@ function stepWithParams(text: string): Html {
   return html`${parts.map((p) => (/^\{\{.*\}\}$/.test(p) ? html`<span class="pchip">${p.slice(2, -2)}</span>` : p))}`;
 }
 
-export function teachView(d: RecorderData, base: string, t: DraftRow, frames: number): string {
+const TEACH_FOCUS_CSS = `
+body.focus{background:var(--paper)}
+.stage{position:fixed;inset:0;padding:44px 84px 40px;display:flex;flex-direction:column;gap:18px}
+.tk{font-size:22px;color:var(--muted)}
+.th{font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.tframes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tframes img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:var(--surface)}
+.tcols{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:36px;min-height:0}
+.tsteps li>span{overflow:hidden;text-overflow:ellipsis}
+.tsteps{list-style:none;margin:0;padding:0;counter-reset:s;border-top:1px solid var(--line)}
+.tsteps li{counter-increment:s;display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:26px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tsteps li::before{content:counter(s);color:var(--muted);font:400 22px var(--mono);padding-top:3px}
+.tsteps li.more::before{content:""}
+.tsteps li.more{color:var(--muted);font-size:22px}
+.tsteps .pchip,.tparams .pchip{font-size:.85em}
+.tparams{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.tparams li{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:24px}
+.tparams li span:last-child{color:var(--muted);font-size:20px;white-space:nowrap}
+`;
+
+/** Filming: what Muse saw (4 frames), the steps it wrote with typed params, the param list. */
+function teachFocus(d: RecorderData, base: string, t: DraftRow): string {
+  const draft = t.draft;
+  const video = d.draftVideo(t);
+  const n = 4;
+  const steps = draft.steps.slice(0, 6);
+  const more = draft.steps.length - steps.length;
+  const body = html`<style>${raw(TEACH_FOCUS_CSS)}</style>
+  <div class="tk">Taught from one screen recording · ${draft.steps.length} steps · ${draft.params.length} typed params</div>
+  <h1 class="th">${draft.title}</h1>
+  ${video ? html`<div class="tframes">${Array.from({ length: n }, (_, i) => html`<img src="${base}frames/${video}/${i}?n=${n}" alt="frame ${i + 1}">`)}</div>` : ""}
+  <div class="tcols"><ol class="tsteps">${steps.map((s) => html`<li><span>${stepWithParams(s)}</span></li>`)}${more > 0 ? html`<li class="more"><span>+${more} more steps</span></li>` : ""}</ol>
+  <ul class="tparams">${draft.params.slice(0, 5).map((p) => html`<li><span class="pchip">${p.name}</span><span>${p.type}${p.required ? ", required" : ""}</span></li>`)}${draft.params.length > 5 ? html`<li><span class="muted">+${draft.params.length - 5} more</span><span></span></li>` : ""}</ul></div>`;
+  return page({ title: draft.title, nav: "teach", body, base, focus: true });
+}
+
+export function teachView(d: RecorderData, base: string, t: DraftRow, frames: number, focus = false): string {
+  if (focus) return teachFocus(d, base, t);
   const draft = t.draft;
   const video = d.draftVideo(t);
   const compiled = d.skillFromDraft(t.id);

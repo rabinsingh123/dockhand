@@ -11,6 +11,7 @@ import { createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
+import { HUD_FONTS } from "@dockhand/browser";
 import type { ArtifactStore, Db, Trace } from "@dockhand/core";
 import { Hono } from "hono";
 import { createRecorderData } from "./data.ts";
@@ -77,10 +78,10 @@ export function createRecorder(deps: RecorderDeps): Hono {
         // a missing or unreadable read-back is shown as unknown
       }
     }
-    const picks: { id: string; doc: PickDoc }[] = [];
+    const picks: { id: string; doc: PickDoc; call?: { provider: string; latencyMs: number } }[] = [];
     for (const a of data.picks(r.id)) {
       const doc = await readJson<PickDoc>(a.id);
-      if (doc) picks.push({ id: a.id, doc });
+      if (doc) picks.push({ id: a.id, doc, call: data.healCall(doc.runId, doc.stepIdx) });
     }
     return new Response(runView(data, base, r, trace, readbacks, picks), { headers: htmlHeaders });
   });
@@ -89,7 +90,13 @@ export function createRecorder(deps: RecorderDeps): Hono {
     const name = c.req.param("name");
     const v = Number(c.req.query("v") ?? "");
     const out = ID.test(name)
-      ? codeRevealView(data, base, name, Number.isInteger(v) && v > 0 ? v : null)
+      ? codeRevealView(
+          data,
+          base,
+          name,
+          Number.isInteger(v) && v > 0 ? v : null,
+          c.req.query("full") === undefined,
+        )
       : null;
     return out ? new Response(out, { headers: htmlHeaders }) : notFound("Skill");
   });
@@ -99,7 +106,20 @@ export function createRecorder(deps: RecorderDeps): Hono {
     const doc =
       ID.test(id) && data.artifact(id)?.mime === "application/json" ? await readJson<PickDoc>(id) : null;
     if (!doc || !Array.isArray(doc.list) || !Array.isArray(doc.checks)) return notFound("Pick");
-    return new Response(pickView(base, doc), { headers: htmlHeaders });
+    const call = data.healCall(doc.runId, doc.stepIdx);
+    return new Response(pickView(base, doc, call, c.req.query("full") === undefined), {
+      headers: htmlHeaders,
+    });
+  });
+
+  // Geist and Geist Mono (SIL OFL 1.1), the same files the demo HUD inlines.
+  app.get("/fonts/:name", (c) => {
+    const bytes = { "geist.woff2": HUD_FONTS.sans, "geist-mono.woff2": HUD_FONTS.mono }[c.req.param("name")];
+    return bytes
+      ? new Response(Buffer.from(bytes), {
+          headers: { "content-type": "font/woff2", "cache-control": "public, max-age=86400" },
+        })
+      : new Response("not found", { status: 404 });
   });
 
   app.get("/skills/:name", (c) => {
@@ -113,7 +133,9 @@ export function createRecorder(deps: RecorderDeps): Hono {
     const id = c.req.param("id");
     const d = ID.test(id) ? data.draft(id) : undefined;
     if (!d) return notFound("Teach draft");
-    return new Response(teachView(data, base, d, 8), { headers: htmlHeaders });
+    return new Response(teachView(data, base, d, 8, c.req.query("focus") !== undefined), {
+      headers: htmlHeaders,
+    });
   });
 
   app.get("/a/:id", (c) => {

@@ -249,11 +249,18 @@ describe("flight recorder", () => {
     expect(code).toContain('"t":"add"'); // the heal's patched selector, as a diff line
     const run = await (await get("/runs/R2")).text();
     expect(run).toContain(`/recorder/picks/${pickId}`);
+    // Focus (what the camera films): the pick, its reason, the ledger's numbers, the checks; no header.
     const pick = await (await get(`/picks/${pickId}`)).text();
-    expect(pick).toContain("Muse Spark Open picks the element");
-    expect(pick).toContain("← its pick");
-    expect(pick).toContain("Customer account name");
-    expect(pick).toContain("Harness verification");
+    expect(pick).toContain("Muse Spark Open picked ‘Customer account name’");
+    expect(pick).toContain("its pick");
+    expect(pick).toContain("Its reason");
+    expect(pick).toContain("latency, from the ledger");
+    expect(pick).not.toContain('class="top"');
+    const full = await (await get(`/picks/${pickId}?full`)).text();
+    expect(full).toContain("Muse Spark Open picks the element");
+    expect(full).toContain("Customer account name");
+    expect(full).toContain("Harness verification");
+    expect((await get("/fonts/geist.woff2")).headers.get("content-type")).toBe("font/woff2");
     expect((await get("/picks/NOPE")).status).toBe(404);
   });
 

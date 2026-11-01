@@ -197,6 +197,20 @@ export function createRecorderData(db: Db) {
         status: String(r.status),
       }));
     },
+    /** The ledger row of a heal pick (rung 2): provider, latency and cost as recorded. */
+    healCall(
+      runId: string,
+      stepIdx: number,
+    ): { provider: string; latencyMs: number; costUsd: number } | undefined {
+      const r = one(
+        "SELECT provider, latency_ms, cost_usd FROM model_calls WHERE run_id = ? AND step_idx = ? AND purpose = 'heal_match' ORDER BY ts DESC, id DESC LIMIT 1",
+        runId,
+        stepIdx,
+      );
+      return r
+        ? { provider: String(r.provider), latencyMs: Number(r.latency_ms), costUsd: Number(r.cost_usd) }
+        : undefined;
+    },
     gates(runId: string): GateRow[] {
       return all("SELECT * FROM gates WHERE run_id = ? ORDER BY created_at", runId).map((r) => ({
         id: String(r.id),
