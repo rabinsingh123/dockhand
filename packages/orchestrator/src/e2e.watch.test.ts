@@ -172,15 +172,13 @@ describe("drift watch without a model rung", () => {
     await sys?.close();
   });
 
-  it("says in one line that it could not heal safely, and keeps the version", async () => {
+  it("repairs with computer use, still dry, and activates the next version", async () => {
     sys.portals.partner.setVersion("v2");
+    const before = sys.portals.partner.submissions().length;
     const [outcome] = await sys.orchestrator.watch({ trigger: "schedule" });
     await sys.orchestrator.drain();
-    expect(outcome).toMatchObject({ outcome: "broken" });
-    const body = sys.emulator.outbox(sys.rep).at(-1)?.body ?? "";
-    expect(body).toMatch(
-      /^Caravela Partner Hub changed overnight and I couldn't repair the '.+' step safely, so register_partner_deal v1 stays as it is\. The next real request will use computer use for that step\.$/,
-    );
-    expect(sys.skills.active("register_partner_deal")?.version).toBe(1);
+    expect(outcome).toMatchObject({ outcome: "repaired", activated: 2 });
+    expect(sys.skills.active("register_partner_deal")?.version).toBe(2);
+    expect(sys.portals.partner.submissions()).toHaveLength(before); // dry runs never submit
   }, 180_000);
 });

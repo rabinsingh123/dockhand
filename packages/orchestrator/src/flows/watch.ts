@@ -2,23 +2,25 @@
 // fresh page, up to the commit step only (the runner stops before it and the write guard holds every write, so
 // nothing is ever submitted).
 // - Every step resolves and reads back: the run is recorded as verified and the rep hears nothing.
-// - Steps broke: the free rungs and Muse Spark Open repair them, 5 canary dry runs check the fix, v(n+1) goes
+// - Steps broke: the whole ladder repairs them (free rungs, Muse Spark Open, computer use), 5 canary dry runs check the fix, v(n+1) goes
 //   live (older versions kept) and the rep gets one card with Roll back and Details buttons.
 // - The page needs something new (a required field): the rep is asked once, and the answer becomes the new
 //   param's default, so the next real request fills it without asking.
-// - It cannot be healed safely: one line; the next real request repairs it with computer use.
+// - It cannot be healed safely: one line; the next real request tries again before anything is submitted.
 
+import { runComputerUse } from "@dockhand/browser";
 import {
   type ArtifactRef,
   type HealRung,
   type ParamValue,
+  type Repairer,
   type RunResult,
   type Skill,
   type SkillBody,
   type StepResult,
   ulid,
 } from "@dockhand/core";
-import { createOpenWeightsRepairer, rebaseSkill, runSkill } from "@dockhand/skills";
+import { createCuRepairer, createOpenWeightsRepairer, rebaseSkill, runSkill } from "@dockhand/skills";
 import { repairSummary } from "../messages.ts";
 import { FILE_SLOTS, syntheticParamSets } from "../params.ts";
 import { writeGuardFor } from "../portals.ts";
@@ -26,7 +28,7 @@ import type { CompanyKit } from "../profile.ts";
 import { diffPhoneCardHtml } from "../tools/phone-cards.ts";
 import { usd } from "../tools/receipts.ts";
 import { canaryOn, leaseFor, realOpenWeights } from "./browser.ts";
-import type { FlowEnv } from "./env.ts";
+import { type CuSessionInfo, type FlowEnv, modelFor } from "./env.ts";
 
 export type WatchTrigger = "schedule" | "command";
 
@@ -142,16 +144,10 @@ export async function watchSkill(env: FlowEnv & { tmpDir: string }, w: WatchCtx)
         // A dry run stops before the commit; these never fire, and refusing them is the safe answer.
         approveCommit: async () => "rejected",
         approveSafety: async () => "rejected",
-        // Free rungs and Muse Spark Open only: computer use is left to the next real request.
-        repairers: env.models.hasOpenWeights()
-          ? [
-              createOpenWeightsRepairer(env.models, {
-                model: env.config.openWeights.model,
-                ledger: env.ledger,
-                artifacts: env.artifacts,
-              }),
-            ]
-          : [],
+        // The whole ladder, as on a real request. A dry run never submits and the write guard holds every write, so
+        // computer use (at most 8 actions) is safe here; without it a step Muse Spark Open declines (a field renamed
+        // and moved to another section) would wait for the rep's next request.
+        repairers: watchRepairers(env, lease.page, { runId, portalId: portal.id, params, portal }),
         async askRep(q) {
           lease.extend(env.gateTtlMs + 5 * 60_000);
           const options = (q.options ?? []).filter((o) => o.trim() !== "");
@@ -240,7 +236,7 @@ export async function watchSkill(env: FlowEnv & { tmpDir: string }, w: WatchCtx)
     const message =
       result.outcome === "needs_input"
         ? `${portal.name} now requires information ${stored.name} has no value for, so v${stored.version} stays as it is. The next real request will ask you.`
-        : `${portal.name} changed${when} and I couldn't repair ${brokenStep(result)} safely, so ${stored.name} v${stored.version} stays as it is. The next real request will use computer use for that step.`;
+        : `${portal.name} changed${when} and I couldn't repair ${brokenStep(result)} safely, so ${stored.name} v${stored.version} stays as it is. The next real request will try that step again before anything is submitted.`;
     await say(message);
     return done({ outcome: "broken", message });
   }
@@ -268,7 +264,7 @@ export async function watchSkill(env: FlowEnv & { tmpDir: string }, w: WatchCtx)
   );
   if (canary.passed < canary.total) {
     env.log.warn("drift watch fix failed the canary", { runId, failures: canary.failures });
-    const message = `${portal.name} changed${when}. My fix failed ${canary.total - canary.passed} of ${canary.total} dry runs, so ${stored.name} v${stored.version} stays active. The next real request will repair it with computer use.`;
+    const message = `${portal.name} changed${when}. My fix failed ${canary.total - canary.passed} of ${canary.total} dry runs, so ${stored.name} v${stored.version} stays active. The next real request will repair it again before anything is submitted.`;
     await say(message);
     return done({ outcome: "canary_failed", message });
   }
@@ -350,4 +346,42 @@ export function watchDetails(
     steps,
     costUsd: runId ? (env.repos.runs.get(runId)?.execCostUsd ?? 0) : 0,
   };
+}
+
+/** A watch's repair ladder after the free rungs: Muse Spark Open when configured, then computer use. */
+function watchRepairers(
+  env: FlowEnv,
+  page: CuSessionInfo["page"],
+  o: {
+    runId: CuSessionInfo["runId"];
+    portalId: string;
+    params: CuSessionInfo["params"];
+    portal: Parameters<typeof writeGuardFor>[0];
+  },
+): Repairer[] {
+  const repairers: Repairer[] = [];
+  if (env.models.hasOpenWeights())
+    repairers.push(
+      createOpenWeightsRepairer(env.models, {
+        model: env.config.openWeights.model,
+        ledger: env.ledger,
+        artifacts: env.artifacts,
+      }),
+    );
+  repairers.push(
+    createCuRepairer({
+      model: modelFor(env.repairCu, {
+        page,
+        purpose: "cu_repair",
+        runId: o.runId,
+        portalId: o.portalId,
+        params: o.params,
+      }),
+      runComputerUse,
+      artifacts: env.artifacts,
+      writeGuard: writeGuardFor(o.portal),
+      ledger: env.ledger,
+    }),
+  );
+  return repairers;
 }
