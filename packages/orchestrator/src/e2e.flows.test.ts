@@ -82,7 +82,7 @@ describe("quote flow (voice note -> HubSpot fake -> PDF -> drafted reply)", () =
     expect(reply?.body).toContain("Olá, Júlia! Segue a proposta da Tidewater Cloud para Café Aurora");
     const receipt = outbox().findLast((r) => r.type === "image");
     expect(receipt?.caption).toContain("API · ");
-    expect(receipt?.caption).toContain("execution $0 + intake");
+    expect(receipt?.caption).toContain("execution $0.00 + intake");
 
     await tap(plan, "a"); // double tap
     expect(outbox().at(-1)?.body).toBe(REPLIES.alreadyResolved);

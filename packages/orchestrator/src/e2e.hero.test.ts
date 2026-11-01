@@ -186,7 +186,7 @@ describe("hero loop through WhatsApp", () => {
     expect(sys.ledger.totals({ runId }).calls).toBe(0);
     const receipt = outbox().findLast((r) => r.type === "image");
     expect(receipt?.caption).toContain("Replay · compiled skill");
-    expect(receipt?.caption).toContain("execution $0 +");
+    expect(receipt?.caption).toContain("execution $0.00 +");
     expect(receipt?.caption).toMatch(/\d+\/\d+ fields verified/);
     expect(sys.portals.partner.submissions().at(-1)?.fields.companyName).toBe("Vila Nova Logística Ltda.");
   }, 120_000);

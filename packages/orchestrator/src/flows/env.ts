@@ -187,15 +187,24 @@ export function gateHooks(
       return shot;
     }
   };
+  /** Fields the rep answered during this run: their read-back values are named in the submit message. */
+  const answered = new Set<string>();
   return {
     async approveCommit(r) {
       const lines = (r.readback ?? []).filter((f) => f.value.trim() !== "" && f.value !== "false");
       // The card shows the filled form and every value read back (raw: a field that reads "true" must look
-      // wrong, not like a ticked box); the message says where, and that nothing is sent before the tap.
+      // wrong, not like a ticked box). The message says where, names the company and anything the rep just
+      // answered, as read back from the page (the rep's check), and that nothing is sent before the tap.
+      const company = lines.find((f) => /company|customer|account|legal name/i.test(f.label));
+      const named = [
+        ...(company ? [company] : []),
+        ...lines.filter((f) => answered.has(f.label) && f !== company),
+      ];
       const body = [
         lines.length > 0
           ? `Ready to submit on ${run.portalName}. ${lines.length} fields on the page, read back on the card.`
           : `Ready to submit on ${run.portalName}. Check the review page on the card.`,
+        ...named.map((f) => `${f.label}: ${f.value}`),
         "Approve to submit. Nothing is sent until you tap.",
       ].join("\n");
       const card = await cardOr(r.screenshot, (shot) =>
@@ -247,9 +256,13 @@ export function gateHooks(
         card,
         buttons ?? [{ id: "reject", title: "Skip" }],
       );
-      if (decision.startsWith("opt")) return options[Number(decision.slice(3))] ?? null;
-      if (decision === "approved") return env.textAnswers.get(gateId) ?? null;
-      return null;
+      const answer = decision.startsWith("opt")
+        ? (options[Number(decision.slice(3))] ?? null)
+        : decision === "approved"
+          ? (env.textAnswers.get(gateId) ?? null)
+          : null;
+      if (answer !== null) answered.add(q.label);
+      return answer;
     },
   };
 }

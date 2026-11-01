@@ -154,7 +154,7 @@ describe("edge cases through WhatsApp", () => {
       expect(question.body, dump()).toContain('"Partner tier"');
       await send({ text: "silver" });
       const commit = lastCard();
-      expect(commit.body, dump()).toContain("Ready to submit");
+      expect(commit.body, dump()).toContain("Partner tier: Silver"); // the answer, read back from the page
       await tap(commit, "a");
       expect(sys.portals.partner.submissions().at(-1)?.fields.partnerTier, dump()).toBe("Silver");
       expect(sys.skills.active("register_partner_deal")?.params.some((p) => p.name === "partner_tier")).toBe(

@@ -94,13 +94,13 @@ describe("receipts", () => {
     expect(caption.split("\n")).toEqual([
       "*Register a partner deal* `NW-REG-48219`",
       "Replay · compiled skill · 6.4 s · 12/12 fields verified · register_partner_deal v2",
-      "Cost: execution $0 + intake $0.0041 · Built with Muse Spark Open",
+      "Cost: execution $0.00 + intake $0.0041 · Built with Muse Spark Open",
     ]);
   });
 
   it("formats money and time the same way everywhere", () => {
     expect([0, 0.00004, 0.0041, 0.0149, 1.5].map(usd)).toEqual([
-      "$0",
+      "$0.00",
       "<$0.0001",
       "$0.0041",
       "$0.015",

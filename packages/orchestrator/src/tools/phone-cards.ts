@@ -63,10 +63,10 @@ export const esc = (s: unknown): string =>
 
 /**
  * Money as the ledger recorded it, with enough precision that a paid call never reads as free: $0.0029,
- * $0.096, $0.30. Only a true zero is "$0".
+ * $0.096, $0.30. Only a true zero is "$0.00".
  */
 export function money(v: number): string {
-  if (!Number.isFinite(v) || v <= 0) return "$0";
+  if (!Number.isFinite(v) || v <= 0) return "$0.00";
   if (v < 0.0001) return "<$0.0001";
   if (v < 0.01) return `$${v.toFixed(4)}`;
   if (v < 0.1) return `$${v.toFixed(3)}`;
@@ -631,7 +631,7 @@ export interface DiffCardInput {
 export function repairCost(v: Pick<DiffCardInput, "steps" | "costUsd">): string | undefined {
   const paid = v.steps.some((s) => s.rung && PAID.includes(s.rung));
   if (v.costUsd > 0) return money(v.costUsd);
-  return paid ? undefined : "$0";
+  return paid ? undefined : "$0.00";
 }
 
 /** "Built with Muse Spark Open" only when Baseten really served a heal for this job or run. */

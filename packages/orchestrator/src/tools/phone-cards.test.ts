@@ -75,7 +75,7 @@ describe("phone cards", () => {
 
   it("money keeps a paid call visible: $0.0029, $0.096, $0.30; only zero is $0", () => {
     expect([0, 0.00004, 0.0029, 0.0958, 0.3, 10.296].map(money)).toEqual([
-      "$0",
+      "$0.00",
       "<$0.0001",
       "$0.0029",
       "$0.096",
@@ -207,7 +207,7 @@ describe("phone cards", () => {
     expect(html).toContain("Built with Muse Spark Open");
     // A paid rung with no recorded cost (the fake stand-in) shows no figure, never "$0"; free rungs only is $0.
     expect(repairCost({ steps, costUsd: 0 })).toBeUndefined();
-    expect(repairCost({ steps: steps.slice(1), costUsd: 0 })).toBe("$0");
+    expect(repairCost({ steps: steps.slice(1), costUsd: 0 })).toBe("$0.00");
     const watch = diffPhoneCardHtml({
       portalName: "Caravela Partner Hub",
       parent,
