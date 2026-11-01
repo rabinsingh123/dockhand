@@ -244,8 +244,9 @@ function secs(ms: number): string {
   return ms < 10_000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 1000)} s`;
 }
 
+/** A true zero reads $0.00; paid calls keep four decimals (they are fractions of a cent). */
 function money(usd: number): string {
-  return usd >= 1 ? `$${usd.toFixed(2)}` : `$${usd.toFixed(4)}`;
+  return usd >= 1 || usd === 0 ? `${usd.toFixed(2)}` : `${usd.toFixed(4)}`;
 }
 
 /**
@@ -538,7 +539,8 @@ export class Hud {
     const notes = this.notes(modelPhase);
     if (this.waiting) return { ...base, stage: this.waiting.stage, model: this.waiting.model, notes };
     if (this.heal) {
-      return { ...base, stage: `Repairing step ${this.heal.idx + 1}`, model: this.heal.model, notes };
+      // The spotlight panel says which step; the strip only says who is working.
+      return { ...base, stage: "Replay", model: this.heal.model, notes };
     }
     if (run.mode === "cu") {
       const what = run.purpose === "cu_repair" ? "Computer use repair" : "Computer use";
@@ -1107,7 +1109,10 @@ export class Hud {
     void this.call("spot", {
       title: `Repairing step ${lad.stepIdx + 1}`,
       sub: `‘${lad.name}’ ${lad.why}`,
-      rungs: lad.rungs.map(({ name, status, detail }) => ({ name, status, detail })),
+      // Once a pick lands, only the rungs that ran: the panel stays short enough to clear the status strip.
+      rungs: lad.rungs
+        .filter((r) => !extra.pick || r.status === "fail" || r.status === "ok")
+        .map(({ name, status, detail }) => ({ name, status, detail })),
       ...extra,
     } satisfies SpotView);
   }

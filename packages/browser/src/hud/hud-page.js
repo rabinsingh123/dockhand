@@ -251,7 +251,7 @@
     fadeTo(ui.strip, s.visible ? 1 : 0);
     if (!s.visible) fadeCursor(0);
   }
-  function fmtCost(v) { return v >= 1 ? `$${v.toFixed(2)}` : `$${v.toFixed(4)}`; }
+  function fmtCost(v) { return v >= 1 || v === 0 ? `${v.toFixed(2)}` : `${v.toFixed(4)}`; }
   function fadeTo(node, to, ms = FADE) {
     const from = Number(node.style.opacity || 0), t0 = now();
     if (from === to) return;
@@ -260,6 +260,7 @@
   }
   function fadeCursor(to, ms = FADE) {
     if (!ui) return;
+    if (to > 0 && spotCard && !spotCard.dieAt) return;   // no cursor over the spotlight panel
     cur.shown = to > 0;
     fadeTo(ui.cursor, to, ms);
   }
@@ -477,6 +478,7 @@
   function spot(st) {
     if (!ensure()) return;
     if (!spotCard || spotCard.dieAt) { spotCard = card('spot', spotPlace); }
+    fadeCursor(0);
     const n = spotCard.node;
     n.innerHTML = '';
     n.appendChild(txt('div', 'sh', st.title));
