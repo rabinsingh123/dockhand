@@ -146,15 +146,31 @@ export function activeSkills(dbPath: string): Record<string, number> {
 }
 
 /** The newest open-weights pick (heal rung 2) since `since`, for the recorder's pick view. */
-export function latestPick(dbPath: string, since: number): string | null {
+export function latestPick(dbPath: string, since: number, until = Number.MAX_SAFE_INTEGER): string | null {
   const db = open(dbPath);
   if (!db) return null;
   try {
     const r = db
       .prepare(
-        "SELECT id FROM artifacts WHERE kind = 'heal_pick' AND created_at >= ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        "SELECT id FROM artifacts WHERE kind = 'heal_pick' AND created_at >= ? AND created_at <= ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
       )
-      .get(since) as { id: string } | undefined;
+      .get(since, until) as { id: string } | undefined;
+    return r?.id ?? null;
+  } finally {
+    db.close();
+  }
+}
+
+/** The newest teach draft since `since`, for the recorder's teach view. */
+export function latestDraft(dbPath: string, since: number, until = Number.MAX_SAFE_INTEGER): string | null {
+  const db = open(dbPath);
+  if (!db) return null;
+  try {
+    const r = db
+      .prepare(
+        "SELECT id FROM skill_drafts WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+      )
+      .get(since, until) as { id: string } | undefined;
     return r?.id ?? null;
   } finally {
     db.close();

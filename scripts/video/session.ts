@@ -40,6 +40,7 @@ import { type CueState, startCue } from "./cue.ts";
 import {
   activeSkills,
   type GateRow,
+  latestDraft,
   latestPick,
   type Msg,
   providerCalls,
@@ -64,6 +65,8 @@ interface Args {
   keepDrift: boolean;
   /** Live: the "use" take on the referral photo instead of the voice note (if the transcript came out wrong). */
   usePhoto: boolean;
+  /** Film the recorder close-ups again for takes already done (the recorder's views changed); nothing else. */
+  refilm: boolean;
   /** Live models: stop the session once its spend passes this (USD, list price). */
   maxUsd: number;
 }
@@ -79,6 +82,7 @@ function parseArgs(argv: string[]): Args {
     keepDrift: false,
     usePhoto: false,
     maxUsd: 6,
+    refilm: false,
   };
   const ids = new Set(TAKES.map((t) => t.id));
   for (let i = 0; i < argv.length; i++) {
@@ -108,6 +112,7 @@ function parseArgs(argv: string[]): Args {
     else if (k === "--keep-drift") a.keepDrift = true;
     else if (k === "--use-photo") a.usePhoto = true;
     else if (k === "--max-usd") a.maxUsd = Number(v());
+    else if (k === "--refilm") a.refilm = true;
     else if (k === "--help" || k === "-h") {
       process.stdout.write(readFileSync(new URL(import.meta.url), "utf8").split("\n\n")[0] ?? "");
       process.exit(0);
@@ -308,7 +313,7 @@ async function main(): Promise<number> {
   };
   const dbPath = join(dirs.var, "dockhand.sqlite");
   const cutPath = join(sessionDir, "cutlist.json");
-  if (existsSync(dbPath) && !a.from)
+  if (existsSync(dbPath) && !a.from && !a.refilm)
     throw new Error(
       `session ${a.session} already exists: pass --from <take> to resume it, or a new --session`,
     );
@@ -485,7 +490,7 @@ async function main(): Promise<number> {
       log("tunnel up: webhook registered");
     }
     // EspoCRM starts cold in ~40 s and its first form load is slow: bring it up now, long before its take.
-    if (takes.some((t) => t.id === "espocrm"))
+    if (!a.refilm && takes.some((t) => t.id === "espocrm"))
       void ensureEspo().catch((e) => log(`EspoCRM: ${(e as Error).message}`));
 
     // Rehearsal: the emulator page plays Rabin, filmed as the phone's stand-in (labeled simulated in any cut).
@@ -513,7 +518,7 @@ async function main(): Promise<number> {
       await page.locator("#from").waitFor();
       return page;
     };
-    if (!live) {
+    if (!live && !a.refilm) {
       gradeFor(repOptions.mode);
       const page = await openChat();
       chatCapture = await startScreencast(page, {
@@ -699,7 +704,8 @@ async function main(): Promise<number> {
           const shots = take.camera(ctx, {
             since: attempt.startedAt,
             skills: activeSkills(dbPath),
-            pick: latestPick(dbPath, attempt.startedAt),
+            pick: latestPick(dbPath, attempt.startedAt, Date.now()),
+            draft: latestDraft(dbPath, attempt.startedAt),
           });
           for (const s of shots) {
             set("done", `Filming the close-up: ${s.label}`);
@@ -753,6 +759,34 @@ async function main(): Promise<number> {
     };
 
     let i = startIdx;
+    if (a.refilm && camera) {
+      // Close-ups only: each from its own take's window (a later take's pick is not this one's).
+      for (const take of takes) {
+        const at = [...cut.takes].reverse().find((x) => x.id === take.id && x.status === "done");
+        if (!at || !take.camera) continue;
+        const end = at.endedAt ?? Date.now();
+        const shots = take.camera(ctx, {
+          since: at.startedAt,
+          skills: activeSkills(dbPath),
+          pick: latestPick(dbPath, at.startedAt, end),
+          draft: latestDraft(dbPath, at.startedAt, end),
+        });
+        at.camera = [];
+        for (const s of shots) {
+          log(`refilming ${take.id}: ${s.label}`);
+          at.camera.push(
+            await camera.film({
+              url: `${base}${s.path}`,
+              view: s.view,
+              label: `${take.id}__${s.label}`,
+              dir: dirs.camera,
+            }),
+          );
+        }
+      }
+      saveCut();
+      i = takes.length;
+    }
     while (i < takes.length) {
       const take = takes[i] as Take;
       const pill = cueState.takes.find((t) => t.id === take.id);

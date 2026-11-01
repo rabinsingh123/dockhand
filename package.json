@@ -22,7 +22,8 @@
     "video:session": "tsx scripts/video/session.ts",
     "video:sync": "tsx scripts/video/phone-sync.ts",
     "video:cut": "tsx scripts/video/cut.ts",
-    "video:overnight": "tsx scripts/video/overnight.ts"
+    "video:overnight": "tsx scripts/video/overnight.ts",
+    "video:cut2": "tsx scripts/video/cut2.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",

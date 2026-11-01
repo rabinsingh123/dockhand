@@ -44,7 +44,7 @@ export interface TakeCtx {
 }
 
 export interface CameraShot {
-  view: "code" | "pick";
+  view: "code" | "pick" | "teach";
   /** Path under the gateway, e.g. /recorder/skills/x/code?v=1 */
   path: string;
   label: string;
@@ -80,7 +80,7 @@ export interface Take {
   done(msgs: Msg[], now: number): boolean;
   camera?(
     c: TakeCtx,
-    ctx: { since: number; skills: Record<string, number>; pick: string | null },
+    ctx: { since: number; skills: Record<string, number>; pick: string | null; draft: string | null },
   ): CameraShot[];
   speed?: SpeedRule[];
 }
@@ -182,9 +182,16 @@ export const TAKES: Take[] = [
     },
     rehearse: (c) => c.steps("teach", "first run (computer use) compiles v1"),
     done: (msgs) => !!out(msgs, "image", /^New skill: \S+ v1\b/),
-    camera: (_c, { skills }) => {
+    camera: (_c, { skills, draft }) => {
       const name = caravelaSkill(skills);
-      return name ? [{ view: "code", path: `/recorder/skills/${name}/code?v=1`, label: "code-v1" }] : [];
+      return [
+        ...(draft
+          ? [{ view: "teach" as const, path: `/recorder/teach/${draft}?focus`, label: "teach" }]
+          : []),
+        ...(name
+          ? [{ view: "code" as const, path: `/recorder/skills/${name}/code?v=1`, label: "code-v1" }]
+          : []),
+      ];
     },
     speed: [
       { from: { kind: "run_start", mode: "agentic" }, to: { kind: "gate", gateKind: "commit" }, factor: 8 },

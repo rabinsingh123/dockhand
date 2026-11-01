@@ -14,7 +14,7 @@ export interface Filmed {
 }
 
 export interface Camera {
-  film(o: { url: string; view: "code" | "pick"; label: string; dir: string }): Promise<Filmed>;
+  film(o: { url: string; view: "code" | "pick" | "teach"; label: string; dir: string }): Promise<Filmed>;
   close(): Promise<void>;
 }
 
@@ -60,18 +60,6 @@ async function glide(page: Page, selector: string | null, to: number | "end", ms
     .catch(() => {});
 }
 
-/** Scroll position that centers `selector`'s first match in the window. */
-async function centerOf(page: Page, selector: string): Promise<number | null> {
-  return page
-    .evaluate((sel) => {
-      const el = document.querySelector(sel) as HTMLElement | null;
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return Math.max(0, window.scrollY + r.top - (window.innerHeight - r.height) / 2);
-    }, selector)
-    .catch(() => null);
-}
-
 async function codeShot(page: Page): Promise<void> {
   // Restart the typing so the clip has it from the first line (the page began typing on load).
   await page
@@ -93,18 +81,10 @@ async function codeShot(page: Page): Promise<void> {
   await sleep(2500);
 }
 
-async function pickShot(page: Page): Promise<void> {
-  await sleep(1800);
-  const picked = await centerOf(page, ".plist li.picked");
-  if (picked !== null) {
-    await glide(page, null, picked, 1500);
-    await sleep(3200);
-  }
-  const verdict = await centerOf(page, ".verdict");
-  if (verdict !== null) {
-    await glide(page, null, verdict, 1500);
-    await sleep(2800);
-  }
+/** The focus views (pick, teach) fit one screen: let them settle, then hold for the edit. */
+async function holdShot(page: Page): Promise<void> {
+  await settle(page, () => document.body.innerText.length, 1200, 15_000);
+  await sleep(8000);
 }
 
 export async function openCamera(): Promise<Camera> {
@@ -127,7 +107,7 @@ export async function openCamera(): Promise<Camera> {
           meta: { url: o.url, view: o.view },
         });
         if (o.view === "code") await codeShot(page);
-        else await pickShot(page);
+        else await holdShot(page);
         const info = await cap.stop();
         return {
           label: o.label,
