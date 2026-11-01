@@ -97,7 +97,10 @@ export function cameraShot(s: Session, label: string): Clip | undefined {
   return s.camera.filter((c) => c.info.label.endsWith(label)).at(-1);
 }
 
-/** The open-weights heal of a run: when the model call started and ended (wall ms), and the element it fixed. */
+/**
+ * The step open weights repaired in a run (a run can also try it on a step computer use then fixed): when its
+ * model call started and ended (wall ms), and the element it fixed.
+ */
 export function healOf(
   s: Session,
   runId: string,
@@ -105,20 +108,21 @@ export function healOf(
   if (!existsSync(s.dbPath)) return null;
   const db = new DatabaseSync(s.dbPath, { readOnly: true });
   try {
-    const call = db
-      .prepare(
-        "SELECT ts, latency_ms FROM model_calls WHERE run_id = ? AND purpose = 'heal_match' ORDER BY ts LIMIT 1",
-      )
-      .get(runId) as { ts: number; latency_ms: number } | undefined;
-    if (!call) return null;
     const step = db
       .prepare(
-        "SELECT target_json FROM run_steps WHERE run_id = ? AND rung = 'open_weights' ORDER BY idx LIMIT 1",
+        "SELECT idx, target_json FROM run_steps WHERE run_id = ? AND rung = 'open_weights' AND status IN ('repaired', 'healed') ORDER BY idx LIMIT 1",
       )
-      .get(runId) as { target_json: string | null } | undefined;
+      .get(runId) as { idx: number; target_json: string | null } | undefined;
+    if (!step) return null;
+    const call = db
+      .prepare(
+        "SELECT ts, latency_ms FROM model_calls WHERE run_id = ? AND purpose = 'heal_match' AND step_idx = ? ORDER BY ts DESC LIMIT 1",
+      )
+      .get(runId, step.idx) as { ts: number; latency_ms: number } | undefined;
+    if (!call) return null;
     let bbox: { x: number; y: number; w: number; h: number } | null = null;
     try {
-      const t = JSON.parse(step?.target_json ?? "null") as { fingerprint?: { bbox?: typeof bbox } } | null;
+      const t = JSON.parse(step.target_json ?? "null") as { fingerprint?: { bbox?: typeof bbox } } | null;
       bbox = t?.fingerprint?.bbox ?? null;
     } catch {
       bbox = null;

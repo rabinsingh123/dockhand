@@ -1,88 +1,55 @@
 // Type for the video, rendered by a headless Chromium as 1920x1080 PNGs (transparent unless a slate) and laid over
 // the footage by ffmpeg. HTML sets Geist with real kerning and wraps captions; ffmpeg's drawtext does neither.
-// The one module to swap for the design system (packages/design) once it lands. Style: paper #F6F5F1, ink #111, gray #6B6B6B, hairline #E3E1DB, one accent #FF4F00 at most once per frame,
-// Geist, no gradients, glows or emoji, anything readable at least 40 px.
+// Colors, type and radii come from @dockhand/design; anything readable is at least 40 px, the accent appears at
+// most once per frame, and there are no gradients, glows, pills or emoji.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Browser, chromium } from "playwright";
-import { workspaceRoot } from "../../../packages/core/src/index.ts";
+import { COLOR, fontFaceCss, RADIUS, TYPE } from "../../../packages/design/src/index.ts";
 
-export const PAPER = "#F6F5F1";
-export const INK = "#111111";
-export const GRAY = "#6B6B6B";
-export const HAIRLINE = "#E3E1DB";
-export const ACCENT = "#FF4F00";
-
-// Geist (SIL Open Font License) from its npm package, pinned; cached under var/fonts (git-ignored).
-const GEIST = "https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts";
-const FACES: { file: string; family: string; weight: number; url: string }[] = [
-  {
-    file: "Geist-Regular.woff2",
-    family: "Geist",
-    weight: 400,
-    url: `${GEIST}/geist-sans/Geist-Regular.woff2`,
-  },
-  { file: "Geist-Medium.woff2", family: "Geist", weight: 500, url: `${GEIST}/geist-sans/Geist-Medium.woff2` },
-  {
-    file: "Geist-SemiBold.woff2",
-    family: "Geist",
-    weight: 600,
-    url: `${GEIST}/geist-sans/Geist-SemiBold.woff2`,
-  },
-  {
-    file: "GeistMono-Regular.woff2",
-    family: "Geist Mono",
-    weight: 400,
-    url: `${GEIST}/geist-mono/GeistMono-Regular.woff2`,
-  },
-];
-
-async function fontCss(): Promise<string> {
-  const dir = join(workspaceRoot(), "var", "fonts");
-  mkdirSync(dir, { recursive: true });
-  const rules: string[] = [];
-  for (const f of FACES) {
-    const path = join(dir, f.file);
-    if (!existsSync(path)) {
-      const res = await fetch(f.url);
-      if (!res.ok) throw new Error(`could not fetch ${f.url}: HTTP ${res.status}`);
-      writeFileSync(path, Buffer.from(await res.arrayBuffer()));
-    }
-    const b64 = readFileSync(path).toString("base64");
-    rules.push(
-      `@font-face{font-family:"${f.family}";font-weight:${f.weight};src:url(data:font/woff2;base64,${b64}) format("woff2")}`,
-    );
-  }
-  return rules.join("\n");
-}
+export const PAPER = COLOR.paper;
+export const INK = COLOR.ink;
+export const GRAY = COLOR.gray;
+export const HAIRLINE = COLOR.hair;
+export const ACCENT = COLOR.accent;
 
 const esc = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
 
 const BASE = `*{box-sizing:border-box;margin:0}html,body{width:1920px;height:1080px;background:transparent;
-font-family:"Geist",sans-serif;color:${INK};-webkit-font-smoothing:antialiased;font-feature-settings:"ss01"}`;
+font-family:${TYPE.family.sans};color:${INK};-webkit-font-smoothing:antialiased;font-feature-settings:"ss01"}`;
 
 /**
  * A caption: at most two lines of a sentence-case voiceover line on a paper box, bottom center; "top" puts it top
  * left (under the label, clear of the HUD on the right) when the shot's subject is low on the screen.
  */
-export function captionHtml(text: string, pos: "bottom" | "top" = "bottom"): string {
-  const place =
-    pos === "top"
-      ? "left:48px;top:128px;width:max-content;max-width:1300px;text-align:left"
-      : "left:50%;bottom:48px;transform:translateX(-50%);width:max-content;max-width:1560px;text-align:center";
+export function captionHtml(text: string, pos: CaptionPos = "bottom"): string {
+  const place = {
+    top: "left:48px;top:128px;width:max-content;max-width:1300px;text-align:left",
+    bottom:
+      "left:50%;bottom:48px;transform:translateX(-50%);width:max-content;max-width:1560px;text-align:center",
+    // under the race's two panes, left aligned, clear of the speed label at the right
+    band: "left:24px;bottom:40px;width:max-content;max-width:1500px;text-align:left",
+  }[pos];
   return `<style>${BASE}.c{position:absolute;${place};
-background:${PAPER};border:1px solid ${HAIRLINE};border-radius:4px;padding:16px 28px 18px;font-size:42px;
+background:${PAPER};border:1px solid ${HAIRLINE};border-radius:${RADIUS.max}px;padding:16px 28px 18px;font-size:${TYPE.film.label}px;
 line-height:1.22;font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
 overflow:hidden}</style><div class="c">${esc(text)}</div>`;
 }
 
-/** A small label top left: "8× speed", "Replay 0.25×", "Simulated chat (rehearsal)". Accent marks one per frame. */
-export function labelHtml(text: string, o: { accent?: boolean; right?: boolean } = {}): string {
-  return `<style>${BASE}.l{position:absolute;top:${o.right ? 132 : 40}px;${o.right ? "right" : "left"}:48px;background:${o.accent ? ACCENT : PAPER};
-color:${o.accent ? "#fff" : INK};border:1px solid ${o.accent ? ACCENT : HAIRLINE};border-radius:4px;padding:8px 20px 10px;
-font-size:40px;font-weight:600;letter-spacing:-0.01em}</style><div class="l">${esc(text)}</div>`;
+export type CaptionPos = "bottom" | "top" | "band";
+/** Where a label sits: tl, tr (never on a browser shot: the HUD's status panel is there), br (the race's band). */
+export type LabelSlot = "tl" | "tr" | "br";
+
+/** A small label: "8× speed", "Replay 0.25×", "Simulated chat (rehearsal)". Accent marks one per frame. */
+export function labelHtml(text: string, o: { accent?: boolean; slot?: LabelSlot } = {}): string {
+  const at = { tl: "top:40px;left:48px", tr: "top:40px;right:48px", br: "bottom:48px;right:48px" }[
+    o.slot ?? "tl"
+  ];
+  return `<style>${BASE}.l{position:absolute;${at};background:${o.accent ? ACCENT : PAPER};
+color:${o.accent ? "#fff" : INK};border:1px solid ${o.accent ? ACCENT : HAIRLINE};border-radius:${RADIUS.max}px;padding:8px 20px 10px;
+font-size:${TYPE.film.label}px;font-weight:600;letter-spacing:-0.01em}</style><div class="l">${esc(text)}</div>`;
 }
 
 /** A sourced stat as a lower third (bottom left, above the caption band). */
@@ -113,7 +80,7 @@ export function terminalHtml(o: {
   lines: { text: string; error?: boolean }[];
   foot?: string;
 }): string {
-  return `<style>${BASE}html,body{background:${PAPER}}.p{position:absolute;left:32px;top:32px;width:520px;height:860px;
+  return `<style>${BASE}html,body{background:${PAPER}}.p{position:absolute;left:24px;top:24px;width:528px;height:816px;
 background:${INK};border-radius:6px;overflow:hidden;display:flex;flex-direction:column}.b{padding:22px 26px 18px;
 border-bottom:1px solid #2a2a2a;color:#D9D9D9;font:600 40px/1.15 "Geist"}.st{padding:16px 26px 0;color:#BDBDBD;
 font:400 40px/1.2 "Geist Mono"}.x{padding:16px 26px;font:400 40px/1.25 "Geist Mono";color:${PAPER};white-space:pre-wrap;
@@ -135,7 +102,7 @@ export interface Overlay {
 /** Renders overlays to `<dir>/<name>`; a file already rendered from the same HTML is kept. */
 export async function renderOverlays(dir: string, overlays: Overlay[]): Promise<void> {
   mkdirSync(dir, { recursive: true });
-  const css = await fontCss();
+  const css = fontFaceCss();
   let browser: Browser | null = null;
   try {
     for (const o of overlays) {
