@@ -184,7 +184,7 @@ export function codeRevealView(
     <div class="rfoot">${
       parent
         ? html`<span>${fixedBy || `+${added} −${removed} lines`}</span><span>Highlighted: the patch · struck through: what it replaced</span>`
-        : html`<span><b>${sel.skill.steps.length}</b> steps</span><span><b>${params}</b> typed params, like <span class="pp">p.name</span></span><span>No model calls when this runs</span>`
+        : html`<span><b>${sel.skill.steps.length}</b> steps</span><span><b>${params}</b> values, like <span class="pp">p.name</span></span><span>No model calls when this runs</span>`
     }</div>
   </div>
   <script>

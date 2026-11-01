@@ -139,7 +139,7 @@ export function indexView(d: RecorderData, base: string): string {
           ? html`<p class="empty">No recordings taught yet.</p>`
           : html`<table><tbody>${drafts.map(
               (t) =>
-                html`<tr class="link" data-href="${base}teach/${t.id}"><td><b>${t.draft.title}</b><div class="muted">${t.draft.steps.length} steps · ${t.draft.params.length} params · ${when(t.createdAt)}</div></td><td class="num">${chip(t.status, t.status === "compiled" ? COLORS.ok : t.status === "draft" ? COLORS.agentic : COLORS.muted)}</td></tr>`,
+                html`<tr class="link" data-href="${base}teach/${t.id}"><td><b>${t.draft.title}</b><div class="muted">${t.draft.steps.length} steps · ${t.draft.params.length} values · ${when(t.createdAt)}</div></td><td class="num">${chip(t.status, t.status === "compiled" ? COLORS.ok : t.status === "draft" ? COLORS.agentic : COLORS.muted)}</td></tr>`,
             )}</tbody></table>`
       }</section>
     </aside>
@@ -561,7 +561,7 @@ export function skillView(d: RecorderData, base: string, name: string, v: number
   const body = html`
   <div class="crumbs"><a href="${base.slice(0, -1)}#skills">Skills</a> / <span class="mono">${name}</span></div>
   <div class="head"><div><h1 class="title">${sel.skill.title} ${chip(`v${sel.version}`, COLORS.replay, { lg: true })}${sel.active ? chip("active", COLORS.ok, { lg: true }) : chip("inactive (kept for rollback)", COLORS.muted, { lg: true })}</h1>
-  <p class="sub"><span class="mono">${name}</span> · ${sel.skill.portalId} · ${sel.skill.params.length} params · ${sel.skill.steps.length} steps · source: ${sel.source}${sel.sourceRunId ? html` (<a href="${base}runs/${sel.sourceRunId}">run</a>)` : ""} · ${when(sel.createdAt)}</p></div></div>
+  <p class="sub"><span class="mono">${name}</span> · ${sel.skill.portalId} · ${sel.skill.params.length} values · ${sel.skill.steps.length} steps · source: ${sel.source}${sel.sourceRunId ? html` (<a href="${base}runs/${sel.sourceRunId}">run</a>)` : ""} · ${when(sel.createdAt)}</p></div></div>
   <div class="versions" style="margin-bottom:20px">${versions.map(
     (x) =>
       html`<a class="ver${x.version === sel.version ? " on" : ""}" href="${base}skills/${name}?v=${x.version}"><b>v${x.version}${x.active ? html` <span class="ok" style="font-size:12px">active</span>` : ""}</b><span>${x.source === "compile" ? "compiled from a run" : x.source === "heal" ? "healed" : x.source === "ask_rep" ? "asked the rep" : x.source}${x.parentVersion ? ` · from v${x.parentVersion}` : ""}</span><span>${when(x.createdAt)}</span></a>`,
@@ -619,7 +619,7 @@ body.focus{background:var(--paper)}
 .tparams li span:last-child{color:var(--muted);font-size:20px;white-space:nowrap}
 `;
 
-/** Filming: what Muse saw (4 frames), the steps it wrote with typed params, the param list. */
+/** Filming: what Muse saw (4 frames), the steps it wrote with its values by name, the value list. */
 function teachFocus(d: RecorderData, base: string, t: DraftRow): string {
   const draft = t.draft;
   const video = d.draftVideo(t);
@@ -627,7 +627,7 @@ function teachFocus(d: RecorderData, base: string, t: DraftRow): string {
   const steps = draft.steps.slice(0, 6);
   const more = draft.steps.length - steps.length;
   const body = html`<style>${raw(TEACH_FOCUS_CSS)}</style>
-  <div class="tk">Taught from one screen recording · ${draft.steps.length} steps · ${draft.params.length} typed params</div>
+  <div class="tk">Taught from one screen recording · ${draft.steps.length} steps · ${draft.params.length} values</div>
   <h1 class="th">${draft.title}</h1>
   ${video ? html`<div class="tframes">${Array.from({ length: n }, (_, i) => html`<img src="${base}frames/${video}/${i}?n=${n}" alt="frame ${i + 1}">`)}</div>` : ""}
   <div class="tcols"><ol class="tsteps">${steps.map((s) => html`<li><span>${stepWithParams(s)}</span></li>`)}${more > 0 ? html`<li class="more"><span>+${more} more steps</span></li>` : ""}</ol>
