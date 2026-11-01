@@ -136,7 +136,7 @@ describe("hero loop through WhatsApp", () => {
     await send({ file: { path: inbound("referral-cafe-aurora.jpg"), mime: "image/jpeg" } });
     const plan = lastCard();
     expect(plan.body).toContain("First time: computer use");
-    expect(plan.body).toContain("Register *Café Aurora Ltda.* on Caravela Partner Hub");
+    expect(plan.body).toMatch(/: Café Aurora Ltda\.$/m); // the company stays in the text, labelled
     expect(plan.headerImagePath).toBeTruthy(); // the plan card lists every value
     await tap(plan, "a");
 

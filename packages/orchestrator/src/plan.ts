@@ -152,11 +152,11 @@ export function valueRows(params: Record<string, ParamValue>): [string, string][
   return Object.entries(params).map(([k, v]) => [label(k), displayValue(v)]);
 }
 
-/** Whom a deal registration is for: the first company or customer value, if any. */
-export function subjectOf(params: Record<string, ParamValue>): string | undefined {
+/** Whom a deal registration is for: the first company or customer value and its label, if any. */
+export function subjectOf(params: Record<string, ParamValue>): { label: string; value: string } | undefined {
   const key = Object.keys(params).find((k) => /(^|_)(company|customer|account)(_|$)/.test(k));
   const v = key ? params[key] : undefined;
-  return typeof v === "string" && v.trim() !== "" ? v : undefined;
+  return key && typeof v === "string" && v.trim() !== "" ? { label: label(key), value: v } : undefined;
 }
 
 const count = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
@@ -171,19 +171,19 @@ export function registerPlan(
   via: { skill: { name: string; version: number } } | { firstRun: true },
 ): { text: string; card: PlanCardView } {
   const who = subjectOf(params);
-  const what = who ? `Register *${who}* on ${portalName}` : `Register this deal on ${portalName}`;
   const n = Object.keys(params).length;
+  // The company stays in the text, with its field label: the rep's check that the right one gets registered.
   const text = [
     "skill" in via
-      ? `${what} with ${via.skill.name} v${via.skill.version}.`
-      : `${what}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
-    `${count(n, "value")} from your message, listed on the card.`,
-    "I'll show you the filled form before anything is submitted.",
+      ? `Register this deal on ${portalName} with ${via.skill.name} v${via.skill.version}.`
+      : `Register this deal on ${portalName}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
+    ...(who ? [`${who.label}: ${who.value}`] : []),
+    `${count(n, "value")} from your message, listed on the card. I'll show you the filled form before anything is submitted.`,
   ].join("\n");
   return {
     text,
     card: {
-      title: who ? `Register ${who}` : "Register this deal",
+      title: who ? `Register ${who.value}` : "Register this deal",
       where: portalName,
       how:
         "skill" in via
