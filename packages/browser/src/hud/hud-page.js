@@ -21,7 +21,8 @@
   if (window.__dockhandHud) return;
 
   const FONTS = /*__DOCKHAND_FONTS__*/null;
-  const C = { paper: '#F6F5F1', surface: '#FFFFFF', ink: '#111111', gray: '#6B6B6B', hair: '#E3E1DB', accent: '#FF4F00', error: '#B42318' };
+  // The palette of @dockhand/design (packages/design/src/tokens.ts).
+  const C = { paper: '#F6F5F1', surface: '#FFFFFF', ink: '#111111', gray: '#6B6B6B', faint: '#8F8C85', hair: '#E3E1DB', rule: '#CFCCC4', accent: '#FF4F00', error: '#B42318' };
   const SAFE = { x: 84, y: 52 };
   const FADE = 150;
   const css = `
@@ -30,81 +31,64 @@
 .root{position:fixed;inset:0;pointer-events:none;overflow:hidden;font:500 20px/1.25 "Dockhand Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:${C.ink};-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .root *{pointer-events:none}
 .mono{font-family:"Dockhand Geist Mono",ui-monospace,Consolas,monospace;letter-spacing:0}
-.card{position:absolute;left:0;top:0;background:${C.surface};border:1px solid ${C.hair};border-radius:14px;box-shadow:0 1px 2px rgba(17,17,17,.05),0 10px 30px rgba(17,17,17,.07);opacity:0}
+.card{position:absolute;left:0;top:0;background:${C.surface};border:1px solid ${C.rule};border-top:2px solid ${C.ink};border-radius:2px;opacity:0}
 .strip{right:${SAFE.x}px;top:${SAFE.y}px;left:auto;max-width:700px;padding:13px 22px 14px}
 .s1{display:flex;align-items:baseline;gap:14px;white-space:nowrap;min-width:0}
 .stage{font-weight:600;font-size:30px;line-height:1.15;letter-spacing:-.02em}
 .stage.fail{color:${C.error}}
-.model{font-weight:500;font-size:30px;line-height:1.15;letter-spacing:-.02em;color:${C.gray};overflow:hidden;text-overflow:ellipsis;min-width:0}
+.model{font-weight:500;font-size:30px;line-height:1.15;letter-spacing:-.02em;color:${C.gray};min-width:0}
 .model.mono{font-weight:500;font-size:28px;color:${C.ink};letter-spacing:-.01em}
 .s2{display:flex;align-items:baseline;gap:26px;margin-top:6px;font-size:30px;font-weight:500;line-height:1.15;letter-spacing:-.01em;white-space:nowrap}
 .s2 .held{color:${C.gray}}
 .s2 .fact.bad{color:${C.error}}
 .s3{margin-top:8px;font-size:20px;line-height:1.35;color:${C.gray};max-width:654px}
 .s3:empty{display:none}
-.s3 .tk{display:inline-block;width:15px;height:15px;margin-right:6px;vertical-align:-1px}
 .cursor{position:absolute;left:0;top:0;width:0;height:0;opacity:0;will-change:transform}
-.cursor svg{position:absolute;left:-3px;top:-2px;width:26px;height:30px;filter:drop-shadow(0 1px 1.5px rgba(17,17,17,.35))}
-.ripple{position:absolute;left:0;top:0;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid ${C.ink}}
-.outline{position:absolute;left:0;top:0;border-radius:8px;border:2px solid var(--c)}
+.cursor svg{position:absolute;left:-3px;top:-2px;width:26px;height:30px}
+.ripple{position:absolute;left:0;top:0;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:2px;border:2px solid ${C.ink}}
+.outline{position:absolute;left:0;top:0;border-radius:2px;border:2px solid var(--c)}
 .outline.dash{border-style:dashed}
-.tag{position:absolute;left:0;top:0;padding:6px 12px 7px;border-radius:8px;background:${C.surface};border:1px solid ${C.hair};box-shadow:0 1px 2px rgba(17,17,17,.06);color:${C.ink};font-size:22px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;max-width:560px;overflow:hidden;text-overflow:ellipsis}
+.tag{position:absolute;left:0;top:0;padding:6px 12px 7px;border-radius:2px;background:${C.surface};border:1px solid ${C.rule};color:${C.ink};font-size:22px;font-weight:600;letter-spacing:-.01em;max-width:560px}
 .tag .sub{display:block;margin-top:1px;font-size:18px;font-weight:500;color:${C.gray}}
 .tag.ink{background:${C.ink};border-color:${C.ink};color:#fff}.tag.ink .sub{color:#c9c7c1}
 .tag.fail{color:${C.error}}
-.tick{position:absolute;left:0;top:0;width:22px;height:22px;margin:-11px 0 0 -11px;color:${C.gray}}
-.check{position:absolute;left:0;top:0;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;display:grid;place-items:center;background:${C.ink};box-shadow:0 0 0 2px ${C.surface}}
-.check.bad{background:${C.error}}
-.check svg{width:14px;height:14px;color:#fff}
+.mark{position:absolute;left:0;top:0;height:3px;background:${C.ink}}
+.mark.free{background:${C.rule}}
+.mark.bad{background:${C.error}}
 .scrim{position:absolute;inset:0;width:100%;height:100%;opacity:0}
 .spot{width:620px;padding:20px 24px 18px}
 .sh{font-size:30px;font-weight:600;line-height:1.15;letter-spacing:-.02em}
 .ss{margin-top:4px;font-size:22px;line-height:1.3;color:${C.gray}}
 .rungs{margin-top:14px;border-top:1px solid ${C.hair}}
-.rung{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:12px;height:50px;border-bottom:1px solid ${C.hair}}
-.rung .ri{width:26px;height:26px;border-radius:50%;display:grid;place-items:center}
-.rung .ri svg{width:15px;height:15px}
-.rung .rn{font-size:30px;font-weight:600;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rung .rd{font-size:22px;color:${C.gray};white-space:nowrap}
-.rung.ok .ri{background:${C.ink};color:#fff}
-.rung.fail .ri{border:2px solid ${C.gray};color:${C.gray}}
-.rung.fail .rn{color:${C.gray};text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(107,107,107,.55)}
-.rung.trying .ri{color:${C.ink}}
-.rung.pending .ri{border:2px solid ${C.hair}}
-.rung.pending .rn{color:${C.ink}}
-.rung.off .ri,.rung.na .ri{border:2px dashed ${C.hair}}
-.rung.off .rn,.rung.na .rn{color:#a3a19b;font-weight:500}
+.rung{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;column-gap:16px;padding:9px 0 8px;border-bottom:1px solid ${C.hair}}
+.rung .rn{font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.15}
+.rung .rs{font-size:24px;font-weight:600;letter-spacing:-.01em;text-align:right;white-space:nowrap}
+.rung .rd{grid-column:1/-1;margin-top:2px;font-size:20px;color:${C.gray}}
+.rung .rd:empty{display:none}
+.rung.fail .rn,.rung.fail .rs{color:${C.gray};font-weight:500}
+.rung.off .rn,.rung.na .rn,.rung.off .rs,.rung.na .rs,.rung.pending .rs{color:${C.faint};font-weight:500}
+.rung.ok .rs{color:${C.ink}}
 .pick{margin-top:16px}
 .pick .ph{font-size:30px;font-weight:600;line-height:1.15;letter-spacing:-.02em}
-.pick .pr{margin-top:8px;font-size:26px;line-height:1.3;color:${C.ink};display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.pick .pr{margin-top:8px;font-size:24px;line-height:1.3;color:${C.ink}}
 .pick .pm{margin-top:10px;font-size:22px;color:${C.gray}}
-.verified{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid ${C.hair};font-size:24px;font-weight:600;letter-spacing:-.01em}
-.verified .ri{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:${C.ink};color:#fff;flex:none}
-.verified .ri svg{width:15px;height:15px}
-.verified.fail{color:${C.ink};font-weight:500}
-.verified.fail .ri{background:${C.surface};border:2px solid ${C.gray};color:${C.gray}}
+.verified{margin-top:14px;padding-top:12px;border-top:1px solid ${C.ink};font-size:24px;line-height:1.3;font-weight:500;letter-spacing:-.01em}
+.verified b{font-weight:600}
+.verified.fail b{color:${C.gray}}
 .rb{width:560px;padding:20px 24px 14px}
 .rows{margin-top:12px;border-top:1px solid ${C.hair}}
-.row{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr) 26px;align-items:center;gap:14px;height:34px;border-bottom:1px solid ${C.hair};opacity:.32}
+.row{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr) auto;align-items:baseline;gap:14px;padding:5px 0 4px;border-bottom:1px solid ${C.hair};opacity:.32}
 .row.on{opacity:1}
-.row .rl{font-size:18px;color:${C.gray};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .rv{font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .rl{font-size:18px;color:${C.gray};line-height:1.25}
+.row .rv{font-size:21px;line-height:1.25;overflow-wrap:anywhere}
 .row .rv.bad{color:${C.error}}
-.row .rc{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:${C.ink};color:#fff;opacity:0}
+.row .rc{font-size:18px;font-weight:600;opacity:0;white-space:nowrap}
 .row.on .rc{opacity:1}
-.row .rc.bad{background:${C.error}}
-.row .rc svg{width:13px;height:13px}
+.row .rc.bad{color:${C.error}}
 .row.cur{box-shadow:inset 3px 0 0 ${C.accent}}
-.hint{position:absolute;left:0;top:0;padding:6px 12px;border-radius:8px;background:${C.surface};border:1px solid ${C.hair};color:${C.ink};font-size:22px;font-weight:600;white-space:nowrap}
+.hint{position:absolute;left:0;top:0;padding:6px 12px;border-radius:2px;background:${C.surface};border:1px solid ${C.rule};color:${C.ink};font-size:22px;font-weight:600;white-space:nowrap}
 .flash{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 0 3px ${C.ink}}
 `;
-  const ICON = {
-    check: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.3l2.3 2.3 4.7-4.9"/></svg>',
-    cross: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.2 3.2l5.6 5.6M8.8 3.2l-5.6 5.6"/></svg>',
-    tick: '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 11.4l3.6 3.6 7.4-7.6"/></svg>',
-    spin: '<svg viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="10" stroke="#E3E1DB" stroke-width="2.4"/><path d="M13 3a10 10 0 0 1 10 10" stroke="#111111" stroke-width="2.4" stroke-linecap="round"/></svg>',
-    dash: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 6h5"/></svg>',
-  };
   const ARROW = '<svg viewBox="0 0 26 30"><path d="M2.5 2v22.4l6-5.7 4 8.9 3.8-1.7-3.9-8.7h8.3z" fill="#111111" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 
   function loadFonts() {
@@ -261,7 +245,6 @@
     ui.s3.innerHTML = '';
     (s.notes || []).forEach((n, i) => {
       if (i) ui.s3.appendChild(document.createTextNode('  ·  '));
-      if (n.tick) ui.s3.appendChild(el('span', 'tk', ICON.tick));
       ui.s3.appendChild(document.createTextNode(n.text));
     });
     lastClockText = '';
@@ -372,13 +355,12 @@
   }
   function activeOff() { const prev = items.get('active'); if (prev) { items.delete('active'); prev.dieAt = now() + FADE; items.set('active~' + now(), prev); kick(); } }
 
-  // A mark at a field's top-right corner: a quiet gray tick (fixed free) or an ink check / error cross (read back).
+  // A mark under a field: a short hairline-gray rule (fixed free), ink (read back), error (mismatch). No glyphs.
   function mark(target, key, kind, delay = 0) {
     if (!ensure()) return;
     const prev = items.get('m:' + key);
     const node = prev ? prev.node : el('div');
-    node.className = kind === 'free' ? 'tick' : 'check' + (kind === 'bad' ? ' bad' : '');
-    node.innerHTML = kind === 'free' ? ICON.tick : kind === 'bad' ? ICON.cross : ICON.check;
+    node.className = 'mark' + (kind === 'free' ? ' free' : kind === 'bad' ? ' bad' : '');
     if (!node.isConnected) ui.under.appendChild(node);
     const t0 = now() + delay;
     put('m:' + key, {
@@ -388,9 +370,9 @@
         const vis = onScreen(r) && t >= this.t0;
         node.style.display = vis ? '' : 'none';
         if (!vis) return true;
-        const small = r.w < 44;
-        const x = small ? r.x - 18 : r.x + r.w, y = small ? r.y + r.h / 2 : r.y;
-        place(node, x, y);
+        const w = Math.max(14, Math.min(r.w, 56));
+        node.style.width = `${w}px`;
+        place(node, r.x, r.y + r.h + 3);
         node.style.opacity = String(Math.min(1, (t - this.t0) / FADE));
         return true;
       },
@@ -417,7 +399,7 @@
     const W = innerWidth, H = innerHeight;
     let d = `M0 0H${W}V${H}H0Z`;
     for (const r of holes()) {
-      const p = 12, x = r.x - p, y = r.y - p, w = r.w + 2 * p, h = r.h + 2 * p, rr = 10;
+      const p = 12, x = r.x - p, y = r.y - p, w = r.w + 2 * p, h = r.h + 2 * p, rr = 2;
       d += `M${x + rr} ${y}H${x + w - rr}Q${x + w} ${y} ${x + w} ${y + rr}V${y + h - rr}Q${x + w} ${y + h} ${x + w - rr} ${y + h}H${x + rr}Q${x} ${y + h} ${x} ${y + h - rr}V${y + rr}Q${x} ${y} ${x + rr} ${y}Z`;
     }
     ui.scPath.setAttribute('d', d);
@@ -473,6 +455,8 @@
       { x: cx(anchor.x - 40 - w), y: cy(mid) },
       { x: cx(anchor.x + anchor.w / 2 - w / 2), y: cy(anchor.y - 30 - h) },
       { x: cx(anchor.x + anchor.w / 2 - w / 2), y: cy(anchor.y + anchor.h + 30) },
+      { x: maxX, y: cy(strip.bottom + 16) },
+      { x: minX, y: cy(strip.bottom + 16) },
       { x: minX, y: cy(anchor.y - 30 - h) },
       { x: maxX, y: cy(anchor.y - 30 - h) },
       { x: minX, y: cy(anchor.y + anchor.h + 30) },
@@ -480,10 +464,13 @@
     ];
     return tries.find(ok) ?? tries.find((p) => !hits(p.x, p.y, anchor, 18)) ?? tries[0];
   }
+  // Status is a word: Fixed, No match, Trying, Next, Not needed.
+  const RUNG_WORD = { ok: 'Fixed', fail: 'No match', trying: 'Trying', pending: 'Next', off: 'Off', na: 'Not needed' };
   function rungRow(r) {
     const row = el('div', 'rung ' + r.status);
-    const icon = el('span', 'ri', r.status === 'ok' ? ICON.check : r.status === 'fail' ? ICON.cross : r.status === 'trying' ? ICON.spin : r.status === 'na' || r.status === 'off' ? ICON.dash : '');
-    row.append(icon, txt('span', 'rn', r.name), txt('span', 'rd', r.detail || ''));
+    const word = RUNG_WORD[r.status] || '';
+    const detail = (r.detail || '').toLowerCase() === word.toLowerCase() ? '' : r.detail || '';
+    row.append(txt('span', 'rn', r.name), txt('span', 'rs', word), txt('span', 'rd', detail));
     return row;
   }
   // st = {title, sub, rungs:[{name,status,detail}], pick:{title, reason, meta}, verified:{ok,text}}
@@ -504,11 +491,9 @@
     }
     if (st.verified) {
       const v = el('div', 'verified' + (st.verified.ok ? '' : ' fail'));
-      v.append(el('span', 'ri', st.verified.ok ? ICON.check : ICON.dash), txt('span', '', st.verified.text));
+      v.append(txt('b', '', st.verified.ok ? 'Verified. ' : 'Not verified. '), txt('span', '', st.verified.text));
       n.appendChild(v);
     }
-    const spin = n.querySelector('.rung.trying .ri svg');
-    if (spin) anims.add(t => { if (!spin.isConnected) return false; spin.style.transform = `rotate(${((t / 2.4) % 360).toFixed(1)}deg)`; return true; });
     kick();
   }
   function spotOff() { if (spotCard) spotCard.close(); spotCard = null; }
@@ -526,7 +511,7 @@
     const rows = st.rows.map(r => {
       const row = el('div', 'row');
       const v = txt('span', 'rv' + (r.ok ? '' : ' bad'), r.value === '' ? '(empty)' : r.value);
-      row.append(txt('span', 'rl', r.label), v, el('span', 'rc' + (r.ok ? '' : ' bad'), r.ok ? ICON.check : ICON.cross));
+      row.append(txt('span', 'rl', r.label), v, txt('span', 'rc' + (r.ok ? '' : ' bad'), r.ok ? 'Match' : 'Mismatch'));
       list.appendChild(row);
       return row;
     });

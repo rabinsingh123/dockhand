@@ -50,7 +50,7 @@ function stat(k: string, v: Html | string, n?: Html | string): Html {
 }
 
 function shortId(id: string): string {
-  return id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-5)}` : id;
+  return id.length > 12 ? id.slice(-8) : id;
 }
 
 function cand(c: Candidate): string {
@@ -221,7 +221,7 @@ function readbackPanel(rows: ReadbackRow[]): Html {
   return html`<section class="panel"><h2>Read-back before submit <span class="${matched === checked.length ? "ok" : "bad"}">${matched}/${checked.length} verified</span></h2>
   <table class="rb"><thead><tr><th></th><th>Field</th><th>On the page</th></tr></thead><tbody>${rows.map(
     (r) =>
-      html`<tr><td style="width:26px">${r.ok === null ? html`<span class="faint">–</span>` : html`<span class="ic ${r.ok ? "ok" : "bad"}">${r.ok ? "✓" : "✕"}</span>`}</td><td>${r.label}${
+      html`<tr><td style="width:84px">${r.ok === null ? html`<span class="faint">–</span>` : html`<span class="ic ${r.ok ? "ok" : "bad"}">${r.ok ? "Match" : "Mismatch"}</span>`}</td><td>${r.label}${
         r.ok === false ? html`<div class="bad" style="font-size:12px">expected ${r.expected}</div>` : ""
       }</td><td class="v">${r.actual}</td></tr>`,
   )}</tbody></table></section>`;
@@ -297,7 +297,7 @@ function replayTimeline(
       return html`<li class="st"><span class="i" style="--c:${raw(color)}">${s.idx + 1}</span><span><span class="op">${s.op}</span></span>
       <div class="what"><b>${step?.intent ?? s.stepId}</b>${target ? html` <span class="muted">· ${displayName(target.fingerprint)}</span>` : ""}
         <div class="t">${step ? stepValue(step, run.params) : ""}</div>
-        ${moved ? html`<div class="chg"><span class="cand" style="text-decoration:line-through">${cand(stepTarget(before)?.candidates[0] as Candidate)}</span><span>→</span><span class="cand">${cand(target?.candidates[0] as Candidate)}</span></div>` : ""}
+        ${moved ? html`<div class="chg"><span class="cand" style="text-decoration:line-through">${cand(stepTarget(before)?.candidates[0] as Candidate)}</span><span class="muted">now</span><span class="cand">${cand(target?.candidates[0] as Candidate)}</span></div>` : ""}
         ${s.error ? html`<div class="err">${s.errorCode ? html`<b>${s.errorCode}</b> ` : ""}${s.error}</div>` : ""}</div>
       <div class="rung">${chip(s.status, color)}${rung ? chip(`rung ${rung.n} · ${rung.how}`, rung.color) : ""}</div>
       <div class="ms-col"><div class="ms">${ms(s.ms)}</div><div class="bar"><i style="width:${raw(pct(s.ms, max))};--c:${raw(color)}"></i></div></div></li>`;
@@ -316,7 +316,7 @@ function describeAction(s: TraceStep): string {
     case "double_click":
       return `Double-click ${name || `(${a.x}, ${a.y})`}`;
     case "type":
-      return `Type “${a.text.length > 48 ? `${a.text.slice(0, 47)}…` : a.text}”${name ? ` into ${name}` : ""}`;
+      return `Type “${a.text}”${name ? ` into ${name}` : ""}`;
     case "keypress":
       return `Press ${a.keys.join("+")}`;
     case "scroll":
@@ -526,14 +526,14 @@ function targetPairs(parent: SkillRow, sel: SkillRow, notes: Map<string, string>
     if (!o) {
       const how = notes.get(s.id);
       pairs.push(
-        html`<div class="pair"><div class="side-a" style="opacity:.55"><h4>v${parent.version}</h4><span class="muted">no such step</span></div><div class="arrow">→</div><div class="side-b"><h4>v${sel.version} · new step ${s.id}${how ? html` · ${RUNG[how] ? `rung ${RUNG[how]?.n} · ${RUNG[how]?.how}` : how}` : ""}</h4><b>${s.intent}</b>${cands(b, 2)}</div></div>`,
+        html`<div class="pair"><div class="side-a" style="opacity:.55"><h4>v${parent.version}</h4><span class="muted">no such step</span></div><div class="arrow">now</div><div class="side-b"><h4>v${sel.version} · new step ${s.id}${how ? html` · ${RUNG[how] ? `rung ${RUNG[how]?.n} · ${RUNG[how]?.how}` : how}` : ""}</h4><b>${s.intent}</b>${cands(b, 2)}</div></div>`,
       );
       continue;
     }
     if (!a || JSON.stringify(a.candidates) === JSON.stringify(b.candidates)) continue;
     const how = notes.get(s.id);
     pairs.push(
-      html`<div class="pair"><div class="side-a"><h4>v${parent.version} · ${s.id}</h4><b>${displayName(a.fingerprint)}</b>${cands(a, 3)}</div><div class="arrow">→</div><div class="side-b"><h4>v${sel.version}${how ? html` · ${RUNG[how] ? `rung ${RUNG[how]?.n} · ${RUNG[how]?.how}` : how}` : ""}</h4><b>${displayName(b.fingerprint)}</b>${cands(b, 3)}</div></div>`,
+      html`<div class="pair"><div class="side-a"><h4>v${parent.version} · ${s.id}</h4><b>${displayName(a.fingerprint)}</b>${cands(a, 3)}</div><div class="arrow">now</div><div class="side-b"><h4>v${sel.version}${how ? html` · ${RUNG[how] ? `rung ${RUNG[how]?.n} · ${RUNG[how]?.how}` : how}` : ""}</h4><b>${displayName(b.fingerprint)}</b>${cands(b, 3)}</div></div>`,
     );
   }
   return html`${pairs}`;
@@ -564,10 +564,10 @@ export function skillView(d: RecorderData, base: string, name: string, v: number
   <p class="sub"><span class="mono">${name}</span> · ${sel.skill.portalId} · ${sel.skill.params.length} params · ${sel.skill.steps.length} steps · source: ${sel.source}${sel.sourceRunId ? html` (<a href="${base}runs/${sel.sourceRunId}">run</a>)` : ""} · ${when(sel.createdAt)}</p></div></div>
   <div class="versions" style="margin-bottom:20px">${versions.map(
     (x) =>
-      html`<a class="ver${x.version === sel.version ? " on" : ""}" href="${base}skills/${name}?v=${x.version}"><b>v${x.version}${x.active ? html` <span class="ok" style="font-size:12px">● active</span>` : ""}</b><span>${x.source === "compile" ? "compiled from a run" : x.source === "heal" ? "healed" : x.source === "ask_rep" ? "asked the rep" : x.source}${x.parentVersion ? ` · from v${x.parentVersion}` : ""}</span><span>${when(x.createdAt)}</span></a>`,
+      html`<a class="ver${x.version === sel.version ? " on" : ""}" href="${base}skills/${name}?v=${x.version}"><b>v${x.version}${x.active ? html` <span class="ok" style="font-size:12px">active</span>` : ""}</b><span>${x.source === "compile" ? "compiled from a run" : x.source === "heal" ? "healed" : x.source === "ask_rep" ? "asked the rep" : x.source}${x.parentVersion ? ` · from v${x.parentVersion}` : ""}</span><span>${when(x.createdAt)}</span></a>`,
   )}</div>
   <div class="grid"><div style="display:flex;flex-direction:column;gap:20px;min-width:0">
-    ${parent ? html`<section class="panel"><h2>What changed: v${parent.version} → v${sel.version} <span>${notes.length ? `${notes.length} step${notes.length === 1 ? "" : "s"} fixed in the run` : ""}</span></h2>${diffLines(parent, sel, notes)}${targetPairs(parent, sel, new Map(notes.map((n) => [n.stepId, n.rung])))}</section>` : ""}
+    ${parent ? html`<section class="panel"><h2>What changed from v${parent.version} to v${sel.version} <span>${notes.length ? `${notes.length} step${notes.length === 1 ? "" : "s"} fixed in the run` : ""}</span></h2>${diffLines(parent, sel, notes)}${targetPairs(parent, sel, new Map(notes.map((n) => [n.stepId, n.rung])))}</section>` : ""}
     <section class="panel"><div class="ph"><span style="display:flex;gap:12px;align-items:center;color:var(--text)">Compiled program <a class="chip" style="--c:var(--replay)" href="${base}skills/${name}/code?v=${sel.version}">▶ code reveal</a></span><div class="tabs" data-tabs="prog"><button data-tab="steps" class="on">Steps</button><button data-tab="json">JSON</button><button data-tab="ts">Playwright export</button></div></div>
       <div data-pane="prog" data-name="steps">${programTable(sel.skill)}</div>
       <div data-pane="prog" data-name="json" hidden><pre class="code">${highlight(json, "json")}</pre></div>
@@ -605,11 +605,11 @@ body.focus{background:var(--paper)}
 .tk{font-size:22px;color:var(--muted)}
 .th{font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
 .tframes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.tframes img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:var(--surface)}
+.tframes img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:2px;border:1px solid var(--line);display:block;background:var(--surface)}
 .tcols{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:36px;min-height:0}
-.tsteps li>span{overflow:hidden;text-overflow:ellipsis}
+.tsteps li>span{;overflow-wrap:anywhere}
 .tsteps{list-style:none;margin:0;padding:0;counter-reset:s;border-top:1px solid var(--line)}
-.tsteps li{counter-increment:s;display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:26px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tsteps li{counter-increment:s;display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:26px;line-height:1.25;overflow-wrap:anywhere}
 .tsteps li::before{content:counter(s);color:var(--muted);font:400 22px var(--mono);padding-top:3px}
 .tsteps li.more::before{content:""}
 .tsteps li.more{color:var(--muted);font-size:22px}

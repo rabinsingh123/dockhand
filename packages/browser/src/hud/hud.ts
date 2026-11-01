@@ -4,7 +4,7 @@
 // second it waits is logged so the runner can leave it out of reported timings.
 //
 // What it shows (the video's design spec): a status strip with five facts (stage, model, elapsed, spend,
-// verified) plus quiet notes; free fixes as gray ticks and one counter; the model heals as a spotlight (the page
+// verified) plus quiet notes; free fixes as a gray rule under the field and one counter; the model heals as a spotlight (the page
 // dims, the ladder shows each rung tried and its result, then Muse Spark Open's pick with its reason, real latency
 // and cost, then what code checked); the read-back before submit, field by field.
 
@@ -230,8 +230,14 @@ function nameOf(fp: ElementDescriptor | undefined): string {
   return raw.replace(/^[\s*]+|[\s*:]+$/g, "").slice(0, 48);
 }
 
+/**
+ * Keeps a label to about `n` characters without an ellipsis: whole words, and never shorter than the first word
+ * (labels this long are rare; the HUD wraps rather than truncating what the viewer reads).
+ */
 function clip(s: string, n: number): string {
-  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+  if (s.length <= n + 12) return s;
+  const cut = s.slice(0, n + 1).replace(/\s+\S*$/, "");
+  return cut.length > 0 ? cut : s.slice(0, n);
 }
 
 function secs(ms: number): string {
@@ -242,12 +248,18 @@ function money(usd: number): string {
   return usd >= 1 ? `$${usd.toFixed(2)}` : `$${usd.toFixed(4)}`;
 }
 
-/** A model's reason, for the spotlight: parentheticals out, one paragraph (the card clamps it to three lines). */
+/**
+ * A model's reason, for the spotlight: parentheticals out, one paragraph, and only its first sentence when the
+ * whole would run past three lines. Never an ellipsis: a shorter true sentence beats a cut one.
+ */
 export function spotlightReason(reason: string): string {
-  return reason
+  const flat = reason
     .replace(/\s*\([^)]*\)/g, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (flat.length <= 150) return flat;
+  const first = /^(.{20,}?[.;:])(\s|$)/.exec(flat)?.[1];
+  return first && first.length <= 170 ? first.replace(/[;:]$/, ".") : flat;
 }
 
 /** The open-weights repairer's note ("now 'X' (reason)") split into the chosen element and the model's reason. */
@@ -607,7 +619,7 @@ export class Hud {
 
   /**
    * The step's element was found; the action is about to run. A free heal (another stored selector or the
-   * fingerprint found it at once) leaves a quiet gray tick and counts; the step gets the accent; the cursor
+   * fingerprint found it at once) leaves a quiet gray rule under the field and counts; the step gets the accent; the cursor
    * travels there. Awaited only when pacing is on.
    */
   async before(
@@ -821,7 +833,7 @@ export class Hud {
     if (pt && pointerClick) {
       void this.call("ripple", pt.x, pt.y);
     } else if (pt && a.type === "scroll") {
-      void this.call("hint", a.scroll_y > 0 ? "Scroll ↓" : "Scroll ↑", pt.x, pt.y, 800);
+      void this.call("hint", a.scroll_y > 0 ? "Scrolling down" : "Scrolling up", pt.x, pt.y, 800);
     } else if (a.type === "keypress") {
       void this.call("hintBottom", `Key: ${a.keys.join("+")}`, 800);
     }

@@ -117,7 +117,7 @@ body.focus .tab{font-size:28px;letter-spacing:-.01em}
 body.focus .rbar .chip{height:38px;font-size:24px;padding:0 14px}
 .rbar .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
 body.focus .rbar .sp{display:none}
-.rbar button{all:unset;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:500;font-size:14px}
+.rbar button{all:unset;cursor:pointer;padding:6px 12px;border-radius:2px;border:1px solid var(--line);background:var(--surface);font-weight:500;font-size:14px}
 .editor{overflow:auto;padding:14px 0 40vh;font:16px/1.6 var(--mono);color:var(--ink);tab-size:2}
 body.focus .editor{padding:10px 64px 30vh;font-size:24px;line-height:1.55}
 body.focus.diff .editor{font-size:27px}
@@ -125,7 +125,7 @@ body.focus.diff .editor{font-size:27px}
 body.focus .ln{grid-template-columns:60px 30px minmax(0,1fr)}
 .ln .no{color:#B4B1A8;text-align:right;padding-right:14px;user-select:none}
 .ln .mk{font-weight:600;user-select:none}
-.ln .tx{overflow:hidden;text-overflow:ellipsis}
+.ln .tx{;overflow-wrap:anywhere}
 .ln.add{background:#FFF1EA}.ln.add .mk{color:var(--accent)}
 .ln.del .mk{color:var(--muted)}.ln.del .tx{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(107,107,107,.5)}
 .ln.del .tx span{color:inherit!important}
@@ -133,7 +133,7 @@ body.focus .ln{grid-template-columns:60px 30px minmax(0,1fr)}
 .ln.gap:empty::before{content:"⋯"}
 .ln.typing .tx::after{content:"";display:inline-block;width:.5em;height:1.1em;margin-left:1px;vertical-align:-.18em;background:var(--ink);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
-.pp{padding:0 4px;border-radius:5px;background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-2)}
+.pp{padding:0 4px;border-radius:2px;background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-2)}
 .rfoot{display:flex;gap:20px;align-items:center;padding:12px 32px;border-top:1px solid var(--line);background:var(--paper);font-size:14px;color:var(--muted)}
 body.focus .rfoot{padding:16px 84px 40px;font-size:22px;border-top:0}
 .rfoot b{color:var(--ink);font-weight:600}
@@ -177,7 +177,7 @@ export function codeRevealView(
   const body = html`<style>${raw(REVEAL_CSS)}</style>
   <div class="reveal">
     <div class="rbar"><span class="tab">${name}.v${sel.version}.ts</span>
-      ${chip(parent ? `v${parent.version} → v${sel.version}` : "compiled from one computer-use run", COLORS.muted)}
+      ${chip(parent ? `v${parent.version} to v${sel.version}` : "compiled from one computer-use run", COLORS.muted)}
       ${parent && !focus ? chip(`+${added} −${removed} lines`, COLORS.muted) : ""}
       <span class="sp"><button id="again">Replay</button><button id="all">Show all</button><a class="muted" href="${base}skills/${name}?v=${sel.version}">skill view</a></span></div>
     <div class="editor" id="ed"></div>
@@ -299,9 +299,9 @@ const PICK_CSS = `
 .ask .k{color:var(--muted)}
 .checks{list-style:none;margin:0;padding:8px 0}
 .checks li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;padding:7px 16px;font-size:14.5px}
-.checks .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
-.checks .ic.ok{background:var(--ink)}.checks .ic.bad{background:var(--error)}
-.verdict{margin:6px 16px 16px;padding:12px 14px;border-radius:10px;font-size:15px;font-weight:500;border:1px solid var(--line);background:var(--paper)}
+.checks .ic{min-width:64px;font-size:13px;font-weight:600;color:var(--ink)}
+.checks .ic.ok{color:var(--ink)}.checks .ic.bad{color:var(--error)}
+.verdict{margin:6px 16px 16px;padding:12px 14px;border-radius:2px;font-size:15px;font-weight:500;border:1px solid var(--line);background:var(--paper)}
 .verdict.bad{color:var(--error)}
 body.focus{background:var(--paper)}
 .stage{position:fixed;inset:0;padding:44px 84px 40px;display:flex;flex-direction:column;gap:22px}
@@ -312,19 +312,19 @@ body.focus{background:var(--paper)}
 .flist{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
 .flist li{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:9px 12px 9px 14px;border-bottom:1px solid var(--line);border-left:3px solid transparent;font-size:27px;line-height:1.25}
 .flist li .ix{font:400 22px var(--mono);color:var(--faint)}
-.flist li .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flist li .nm{;overflow-wrap:anywhere}
 .flist li .tg{font-size:20px;color:var(--muted)}
 .flist li.picked{background:var(--surface);border-left-color:var(--accent)}
 .flist li.picked .ix{color:var(--ink)}
 .flist li.picked .tg{color:var(--ink);font-weight:600}
 .flist li.more{font-size:20px;color:var(--muted);border-left:0}
-.freason{font-size:28px;line-height:1.32;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.freason{font-size:28px;line-height:1.32;overflow:hidden}
 .fmeta{display:flex;gap:34px;font-size:30px;font-weight:600;letter-spacing:-.01em}
 .fmeta span small{display:block;font-size:20px;font-weight:400;color:var(--muted);letter-spacing:0}
 .fchecks{list-style:none;margin:0;padding:0;font-size:22px;display:flex;flex-direction:column;gap:6px}
 .fchecks li{display:flex;gap:10px;align-items:center}
-.fchecks .ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;color:#fff;background:var(--ink);flex:none}
-.fchecks .ic.bad{background:var(--error)}
+.fchecks .ic{min-width:96px;font-size:22px;font-weight:600;color:var(--ink);flex:none}
+.fchecks .ic.bad{color:var(--error)}
 .fnote{font-size:18px;color:var(--muted)}
 `;
 
@@ -371,7 +371,7 @@ export function pickView(base: string, doc: PickDoc, call?: PickCall, focus = fa
       <div class="fcol"><div class="fk">Its reason</div>
         <div class="freason">${plainReason(doc.pick.reason)}</div>
         <div class="fmeta"><span>${lat}<small>latency, from the ledger</small></span><span>${cost}<small>cost, list price</small></span></div>
-        <ul class="fchecks">${doc.checks.map((c) => html`<li><span class="ic ${c.ok ? "" : "bad"}">${c.ok ? "✓" : "✕"}</span><span>${c.check}</span></li>`)}</ul>
+        <ul class="fchecks">${doc.checks.map((c) => html`<li><span class="ic ${c.ok ? "" : "bad"}">${c.ok ? "Passed" : "Failed"}</span><span>${c.check}</span></li>`)}</ul>
         ${call?.provider === "cassette" ? html`<div class="fnote">Rehearsal: the recorded live answer, replayed</div>` : ""}
       </div>
     </div>`;
@@ -402,7 +402,7 @@ export function pickView(base: string, doc: PickDoc, call?: PickCall, focus = fa
     </div></section>
     <section class="panel"><h2>Its answer</h2><div class="pb"><div class="mono" style="font-size:14px">{ "index": ${picked === null ? "null" : picked}, "confidence": ${doc.pick.confidence} }</div><p style="margin-top:8px;color:var(--text-2)">${doc.pick.reason}</p></div></section>
     <section class="panel"><h2>Harness verification <span>the model proposes, code decides</span></h2>
-      <ul class="checks">${doc.checks.map((c) => html`<li><span class="ic ${c.ok ? "ok" : "bad"}">${c.ok ? "✓" : "✕"}</span><span>${c.check}</span></li>`)}</ul>
+      <ul class="checks">${doc.checks.map((c) => html`<li><span class="ic ${c.ok ? "ok" : "bad"}">${c.ok ? "Passed" : "Failed"}</span><span>${c.check}</span></li>`)}</ul>
       <div class="verdict ${doc.ok ? "ok" : "bad"}">${doc.ok ? `Accepted: the step now uses '${doc.chosen ?? "the pick"}'. The replay continues and every field is read back before submit.` : `Rejected: ${doc.reason ?? "a check failed"}. The ladder moves to the next rung.`}</div>
     </section>
     ${call?.provider === "cassette" ? html`<p class="muted" style="font-size:13px">Rehearsal: the recorded live answer, replayed from a cassette.</p>` : ""}

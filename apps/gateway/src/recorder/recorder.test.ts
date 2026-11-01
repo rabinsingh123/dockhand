@@ -233,7 +233,7 @@ describe("flight recorder", () => {
 
   it("shows a skill version with its diff against the parent and the Playwright export", async () => {
     const page = await (await get("/skills/register_partner_deal?v=2")).text();
-    expect(page).toContain("What changed: v1 → v2");
+    expect(page).toContain("What changed from v1 to v2");
     expect(page).toContain("testid=company");
     expect(page).toContain("testid=account-name");
     expect(page).toContain("Playwright export");
@@ -243,7 +243,7 @@ describe("flight recorder", () => {
   it("types the compiled program in, a healed version as a diff, and shows an open-weights pick", async () => {
     const code = await (await get("/skills/register_partner_deal/code?v=2")).text();
     expect(code).toContain("register_partner_deal.v2.ts");
-    expect(code).toContain("v1 → v2");
+    expect(code).toContain("v1 to v2");
     expect(code).toContain("const ops = ");
     expect(code).toContain('class=\\"pp\\">p.company_name'); // params as chips in the typed lines
     expect(code).toContain('"t":"add"'); // the heal's patched selector, as a diff line
