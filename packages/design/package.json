@@ -1,0 +1,10 @@
+{
+  "name": "@dockhand/design",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./charts.js": "./src/charts.js",
+    "./fonts/*": "./fonts/*"
+  }
+}

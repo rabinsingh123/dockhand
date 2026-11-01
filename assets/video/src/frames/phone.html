@@ -7,7 +7,7 @@
 <style>
 /* Style frame only: a light WhatsApp chat as the phone records its own screen (1080 x 2400), shown full height in
    a 1080p frame, so the card appears at the size the film shows it. ?card=<file URL of a card PNG>. */
-.screen { left: 735px; top: 40px; width: 450px; height: 1000px; border-radius: 34px; overflow: hidden; background: #efeae2;
+.screen { left: 735px; top: 40px; width: 450px; height: 1000px; border-radius: 4px; overflow: hidden; background: #efeae2;
   border: 1px solid var(--hair); font-family: system-ui, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
 .status { height: 30px; padding: 8px 22px 0; display: flex; justify-content: space-between; font: 600 13px/1 system-ui; color: #111; background: #fff; }
 .head { height: 58px; background: #fff; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid #e9edef; }
@@ -17,13 +17,13 @@
 .head span { display: block; font: 400 12.5px/1.2 system-ui; color: #667781; }
 .chat { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; overflow: hidden; }
 .day { align-self: center; padding: 4px 10px; border-radius: 7px; background: #fff; font: 500 12px/1.2 system-ui; color: #54656f; margin-bottom: 4px; }
-.in { align-self: flex-start; width: 330px; background: #fff; border-radius: 8px; padding: 3px 3px 6px; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
+.in { align-self: flex-start; width: 330px; background: #fff; border-radius: 4px; padding: 3px 3px 6px; border: 1px solid #DED9D0; }
 .in img { display: block; width: 100%; border-radius: 6px; }
 .in p { margin: 6px 6px 0; font: 400 14px/1.35 system-ui; color: #111b21; }
 .in .t { display: block; text-align: right; margin: 2px 6px 0; font: 400 11px/1 system-ui; color: #667781; }
-.btn { align-self: flex-start; width: 330px; background: #fff; border-radius: 8px; padding: 10px; text-align: center; font: 500 14.5px/1 system-ui; color: #027eb5; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
+.btn { align-self: flex-start; width: 330px; background: #fff; border-radius: 4px; padding: 10px; text-align: center; font: 500 14.5px/1 system-ui; color: #027eb5; border: 1px solid #DED9D0; }
 .compose { height: 58px; display: flex; align-items: center; gap: 8px; padding: 0 8px 6px; background: #efeae2; }
-.compose .box { flex: 1; height: 44px; border-radius: 22px; background: #fff; display: flex; align-items: center; padding: 0 16px; font: 400 15px/1 system-ui; color: #8696a0; }
+.compose .box { flex: 1; height: 44px; border-radius: 4px; background: #fff; display: flex; align-items: center; padding: 0 16px; font: 400 15px/1 system-ui; color: #8696a0; }
 .compose .mic { width: 44px; height: 44px; border-radius: 50%; background: #1daa61; }
 </style>
 </head>
@@ -31,14 +31,14 @@
 <div class="stage">
   <div class="screen abs">
     <div class="status"><span>3:04</span><span>5G</span></div>
-    <div class="head"><span class="back">‹</span><span class="av">D</span><div><b>Dockhand</b><span>business account</span></div></div>
+    <div class="head"><div><b>Dockhand</b><span>business account</span></div></div>
     <div class="chat">
       <div class="day">Today</div>
-      <div class="in"><img id="card" alt=""><p>Caravela Partner Hub changed overnight. I repaired it and checked it with 5 dry runs. v4 is active, v3 is kept. Nothing to do.</p><span class="t">3:04 AM</span></div>
+      <div class="in"><img id="card" alt=""><p>Caravela Partner Hub changed overnight. I repaired 4 steps and checked them with 5 dry runs. v4 is active, v3 is kept. Nothing to do.</p><span class="t">3:04 AM</span></div>
       <div class="btn">Roll back</div>
       <div class="btn">Details</div>
     </div>
-    <div class="compose"><div class="box">Message</div><div class="mic"></div></div>
+    <div class="compose"><div class="box">Message</div></div>
   </div>
 </div>
 <script>

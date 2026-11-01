@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium, type Page } from "playwright";
 import { openDb, type Skill, type SkillDraft, type StepResult } from "../../packages/core/src/index.ts";
+import { referenceSheetHtml, tells } from "../../packages/design/src/index.ts";
 import { registerPlan } from "../../packages/orchestrator/src/plan.ts";
 import {
   askPhoneCardHtml,
@@ -173,6 +174,7 @@ async function main(): Promise<void> {
     const ctx = await browser.newContext({ deviceScaleFactor: PHONE_CARD_SCALE, colorScheme: "light" });
     const page = await ctx.newPage();
     const html = await cards();
+    for (const [name, h] of Object.entries(html)) checkTells(name, h);
     for (const [name, h] of Object.entries(html))
       await shoot(page, h, join(OUT, "cards", `${name}.png`), { w: PHONE_CARD_WIDTH, h: PHONE_CARD_HEIGHT });
 
@@ -205,6 +207,7 @@ async function main(): Promise<void> {
   stills("chart-proof", 8.5);
   copyFileSync(join(OUT, "stills", "endcard-wordmark-1.00s.png"), join(OUT, "style-frames", "a-endcard-wordmark.png"));
   copyFileSync(join(OUT, "stills", "chart-proof-8.50s.png"), join(OUT, "style-frames", "c-proof-chart.png"));
+  await systemSheet();
   if (cardsOnly) return;
 
   // A still of every clip at the moments that matter, then the contact sheet of everything.
@@ -245,6 +248,46 @@ img{width:100%;display:block;background:#F6F5F1}figure{margin:0}figcaption{paddi
   } finally {
     await b2.close();
   }
+  await systemSheet(); // again, now with this run's stills
+}
+
+/** var/design/system.png: the reference sheet, with the real cards and the film frames. */
+async function systemSheet(): Promise<void> {
+  const url = (f: string) => pathToFileURL(f).href;
+  const cards = ["teach", "plan", "submit", "ask", "receipt", "skill", "diff", "watch"].map((n) => ({
+    name: n,
+    src: url(join(OUT, "cards", `${n}.png`)),
+  }));
+  const frames = [
+    ["Proof chart", join(OUT, "style-frames", "c-proof-chart.png")],
+    ["Overnight card at phone scale", join(OUT, "style-frames", "b-overnight-card.png")],
+    ["End card", join(OUT, "style-frames", "a-endcard-wordmark.png")],
+    ...["chart-cost-9.90s", "chart-heals-7.90s", "chart-baseline-7.90s", "title-band-3.00s", "endcard-7.90s"].map(
+      (s) => [s, join(OUT, "stills", `${s}.png`)],
+    ),
+  ]
+    .filter(([, f]) => existsSync(f as string))
+    .map(([name, f]) => ({ name: name as string, src: url(f as string) }));
+  const file = join(OUT, "tmp", "system.html");
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, referenceSheetHtml({ cards, frames }));
+  const b = await chromium.launch({ headless: true });
+  try {
+    const p = await b.newPage({ viewport: { width: 2400, height: 1200 } });
+    await p.goto(url(file));
+    await p.evaluate(() => document.fonts.ready.then(() => undefined));
+    await p.waitForFunction(() => [...document.images].every((i) => i.complete));
+    writeFileSync(join(OUT, "system.png"), await p.screenshot({ type: "png", fullPage: true }));
+    console.log(join(OUT, "system.png"));
+  } finally {
+    await b.close();
+  }
+}
+
+/** Fails loudly when a card carries a pattern the design system forbids (docs/DESIGN.md, "Don't"). */
+export function checkTells(name: string, html: string): void {
+  const found = tells(html.replace(/url(data:[^)]*)/g, "").replace(/src="data:[^"]*"/g, ""));
+  if (found.length) throw new Error(`${name}: ${found.join(", ")}`);
 }
 
 main().catch((e: unknown) => {

@@ -1,15 +1,12 @@
 // Phone cards: every image Dockhand sends in WhatsApp (teach, plan, submit, question, receipt, new skill, repair,
-// drift watch). One design system, one renderer: a 4:5 card, 540 x 675 CSS px at 2x, so the PNG is 1080 x 1350,
-// exactly what WhatsApp shows uncropped in the chat bubble.
+// drift watch). Drawn with @dockhand/design (docs/DESIGN.md): a 4:5 card, 540 x 675 CSS px at 2x, so the PNG is
+// 1080 x 1350, exactly what WhatsApp shows uncropped in the chat bubble.
 //
-// Light and editorial, like every real surface in the film: paper, ink, one gray, hairlines, Geist and Geist Mono
-// (bundled in packages/orchestrator/assets/fonts, SIL OFL, inlined so a render never touches the network). In the
-// demo video a card is seen at phone scale inside a 1080p frame, about a third of its size, so each card has one
-// big figure the viewer can read there; the rest is for the rep on the phone. The accent appears at most once
-// per card and only where Dockhand acted. No gradients, glows, shadows, icons or emoji.
+// Each card reads like a product update or a receipt, not a dashboard: a masthead, a title, one line big enough
+// to read when the phone fills a 1080p frame, one summary sentence, then hairline tables. Status is a word,
+// numbers are tabular, and the accent marks at most one thing per card, only what Dockhand did.
 
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { promisify } from "node:util";
 import type {
   ArtifactRef,
@@ -23,9 +20,26 @@ import type {
   SkillDraft,
   StepResult,
 } from "@dockhand/core";
+import {
+  type Change,
+  changes,
+  display,
+  esc,
+  FIT_SCRIPT,
+  facts,
+  footnote,
+  masthead,
+  num,
+  section,
+  summary,
+  title,
+  uiCss,
+} from "@dockhand/design";
 import { displayName, stepTarget } from "@dockhand/skills";
 
 const run = promisify(execFile);
+
+export { esc };
 
 export const PHONE_CARD_WIDTH = 540;
 export const PHONE_CARD_HEIGHT = 675;
@@ -58,9 +72,6 @@ export function createPhoneCards(deps: { artifacts: ArtifactStore; render: Phone
 
 // ---------- shared formatting ----------
 
-export const esc = (s: unknown): string =>
-  String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
 /**
  * Money as the ledger recorded it, with enough precision that a paid call never reads as free: $0.0029,
  * $0.096, $0.30. Only a true zero is "$0.00".
@@ -84,6 +95,11 @@ export function seconds(s: number): string {
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** A param name as a label: "end_customer_company" -> "End customer company". */
 export const label = (name: string) => cap(name.replace(/_/g, " "));
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+/** Small counts in words, as a sentence would have them ("two controls"); larger ones as numerals. */
+const spelled = (n: number) => WORDS[n] ?? String(n);
 
 // ---------- counts: one source for every number about a draft or a skill ----------
 
@@ -122,137 +138,28 @@ export function skillCounts(s: Pick<Skill, "steps" | "params">): {
   };
 }
 
-// ---------- fonts and styles ----------
+// ---------- the card ----------
 
-function font(file: string): string {
-  try {
-    const bytes = readFileSync(new URL(`../../assets/fonts/${file}`, import.meta.url));
-    return `url(data:font/woff2;base64,${bytes.toString("base64")}) format("woff2")`;
-  } catch {
-    return "local(Arial)"; // the font files ship with the repo; this only keeps a broken checkout rendering
-  }
+/** A whole card document: masthead, then the body. */
+export function cardHtml(meta: string, body: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${uiCss()}html,body{margin:0;background:#F6F5F1}</style></head><body class="dh"><main class="dh-card">${masthead(meta)}${body}</main>${FIT_SCRIPT}</body></html>`;
 }
 
-let fontCss: string | undefined;
-function fonts(): string {
-  fontCss ??=
-    `@font-face{font-family:"Geist";src:${font("Geist-Variable.woff2")};font-weight:100 900;font-display:block}` +
-    `@font-face{font-family:"Geist Mono";src:${font("GeistMono-Variable.woff2")};font-weight:100 900;font-display:block}`;
-  return fontCss;
-}
-
-/** The palette. ACCENT: at most once per card, only where Dockhand acted. ERROR: only for a real failure. */
-export const INK = "#111111";
-export const GRAY = "#6B6B6B";
-export const PAPER = "#F6F5F1";
-export const HAIR = "#E3E1DB";
-export const ACCENT = "#FF4F00";
-export const ERROR = "#B42318";
-
-const CSS = `
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{background:${PAPER}}
-body{width:${PHONE_CARD_WIDTH}px;height:${PHONE_CARD_HEIGHT}px;overflow:hidden;font:400 16px/1.4 "Geist",system-ui,sans-serif;color:${INK};-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
-.card{height:${PHONE_CARD_HEIGHT}px;padding:26px 30px 22px;display:flex;flex-direction:column}
-.card>*{flex-shrink:0}
-.top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:13px;border-bottom:1px solid ${HAIR};white-space:nowrap}
-.wm{font-weight:600;font-size:19px;letter-spacing:-.045em}
-.ctx{font-size:15px;font-weight:500;color:${GRAY};overflow:hidden;text-overflow:ellipsis}
-h1{margin-top:18px;font-weight:600;font-size:28px;line-height:1.12;letter-spacing:-.02em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.sub{margin-top:6px;font-size:16px;color:${GRAY};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mono{font-family:"Geist Mono",ui-monospace,monospace;letter-spacing:-.01em}
-.fig{margin-top:18px}
-.fig b{display:block;font-weight:600;font-size:92px;line-height:.9;letter-spacing:-.045em;white-space:nowrap}
-.fig b.m{font-family:"Geist Mono",ui-monospace,monospace;font-size:62px;line-height:1;letter-spacing:-.045em}
-.fig b.t{font-size:68px;line-height:.98;letter-spacing:-.04em}
-.fig span{display:block;margin-top:8px;font-size:17px;color:${GRAY}}
-.a{color:${ACCENT}}
-.facts{display:flex;margin-top:18px;border-top:1px solid ${HAIR};border-bottom:1px solid ${HAIR}}
-.facts div{flex:1;padding:10px 0 9px;min-width:0}
-.facts div+div{padding-left:14px;border-left:1px solid ${HAIR}}
-.facts b{display:block;font:600 20px/1.15 "Geist Mono",ui-monospace,monospace;letter-spacing:-.02em;white-space:nowrap}
-.facts span{display:block;margin-top:2px;font-size:13.5px;color:${GRAY};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.h{margin-top:18px;margin-bottom:7px;font-size:14px;font-weight:500;color:${GRAY}}
-.list{background:#fff;border:1px solid ${HAIR};border-radius:8px;overflow:hidden}
-.row{display:grid;grid-template-columns:44% minmax(0,1fr);gap:10px;padding:6px 12px;font-size:14.5px;line-height:1.35}
-.row+.row{border-top:1px solid ${HAIR}}
-.row .k{color:${GRAY};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row.more .k{grid-column:1/-1}
-.cols{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}
-.cols div{padding:5px 0;font-size:14.5px;border-top:1px solid ${HAIR};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cols div i{font-style:normal;color:${GRAY}}
-.frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px}
-.frames figure{line-height:0}
-.frames img{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;border:1px solid ${HAIR};border-radius:6px;background:#fff}
-.frames figcaption{margin-top:5px;font:500 12.5px/1.2 "Geist Mono",ui-monospace,monospace;color:${GRAY}}
-.shot{position:relative;margin-top:16px;border:1px solid ${HAIR};border-radius:8px;overflow:hidden;background:#fff;line-height:0}
-.shot img{width:100%;display:block;object-fit:cover;object-position:top}
-.shot .hl{position:absolute;border:2.5px solid ${ACCENT};border-radius:4px}
-.chg{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:12px;padding:8px 12px;font-size:15.5px}
-.chg+.chg{border-top:1px solid ${HAIR}}
-.chg.on{box-shadow:inset 3px 0 0 ${ACCENT}}
-.chg .w{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chg .old{color:${GRAY};text-decoration:line-through;text-decoration-thickness:1px}
-.chg .to{color:${GRAY};margin:0 6px}
-.chg .new{font-weight:600}
-.chg .r{font-size:13.5px;color:${GRAY};white-space:nowrap}
-.opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.opts span{padding:6px 12px;border:1px solid ${HAIR};border-radius:999px;background:#fff;font-size:15px;font-weight:500}
-.note{margin-top:14px;font-size:15px;color:${GRAY};line-height:1.4}
-.note b{color:${INK};font-weight:500}
-.err{color:${ERROR}}
-.foot{margin-top:auto;padding-top:11px;border-top:1px solid ${HAIR};display:flex;justify-content:space-between;align-items:baseline;gap:14px;font-size:13.5px;color:${GRAY};white-space:nowrap}
-.foot span{overflow:hidden;text-overflow:ellipsis}
-.foot .mono{color:${INK}}
-`;
-
-// ---------- the skeleton ----------
-
+/** The generic card (tests and one-off notices): a title, an optional line and summary. */
 export interface PhoneCardSpec {
-  /** Right of the wordmark, sentence case: "Learned from your video", "Drift watch". */
   context: string;
   title: string;
-  sub?: string;
-  /** The one figure a viewer can read at phone scale in the film. `accent` only where Dockhand acted. */
-  figure?: { value: string; label?: string; style?: "number" | "mono" | "text"; accent?: boolean };
-  /** Trusted markup built with the helpers below (escape any data in it). */
-  body?: string;
-  /** Left and right of the bottom line. Trusted markup. */
-  foot?: [string, (string | undefined)?];
+  line?: string;
+  summary?: string;
 }
 
-/** The reusable 4:5 card. Returns a full HTML document. */
 export function phoneCardHtml(c: PhoneCardSpec): string {
-  const f = c.figure;
-  const fig = f
-    ? `<div class="fig"><b class="${f.style === "mono" ? "m" : f.style === "text" ? "t" : ""}${f.accent ? " a" : ""}">${esc(f.value)}</b>${f.label ? `<span>${esc(f.label)}</span>` : ""}</div>`
-    : "";
-  const foot = c.foot
-    ? `<div class="foot"><span>${c.foot[0]}</span>${c.foot[1] ? `<span>${c.foot[1]}</span>` : ""}</div>`
-    : "";
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${fonts()}${CSS}</style></head><body><div class="card">
-<div class="top"><span class="wm">Dockhand</span><span class="ctx">${esc(c.context)}</span></div>
-<h1>${esc(c.title)}</h1>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ""}
-${fig}${c.body ?? ""}
-${foot}
-</div></body></html>`;
-}
-
-/** A label/value table; past `max` rows, a "+N more" row. */
-export function rowsHtml(rows: [string, string][], max: number): string {
-  const shown = rows.length > max ? rows.slice(0, max - 1) : rows;
-  const more = rows.length - shown.length;
-  return `<div class="list">${shown
-    .map(
-      ([k, v]) => `<div class="row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`,
-    )
-    .join("")}${more > 0 ? `<div class="row more"><span class="k">+${more} more</span></div>` : ""}</div>`;
-}
-
-/** Facts in a row between hairlines: [value, label]. Values are set in Geist Mono. */
-export function factsHtml(facts: [string, string][]): string {
-  return `<div class="facts">${facts.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
+  return cardHtml(
+    c.context,
+    title(c.title) +
+      (c.line ? display(c.line, { kind: "small" }) : "") +
+      (c.summary ? summary(esc(c.summary)) : ""),
+  );
 }
 
 const png = (b: Uint8Array) => `data:image/png;base64,${Buffer.from(b).toString("base64")}`;
@@ -266,15 +173,15 @@ export function pngSize(b: Uint8Array): { w: number; h: number } | undefined {
 }
 
 /**
- * A real screenshot of the page, cropped to `height` CSS px from `focusY` (0..1 of the image). `highlight`
+ * A real screenshot of the page, cropped to `height` CSS px around `focusY` (0..1 of the image). `highlight`
  * outlines the control Dockhand will act on, in the accent.
  */
 export function shotHtml(
   bytes: Uint8Array,
-  o: { height: number; focusY?: number; highlight?: BBox; width?: number },
+  o: { height: number; focusY?: number; highlight?: BBox },
 ): string {
   const size = pngSize(bytes);
-  const w = o.width ?? PHONE_CARD_WIDTH - 60 - 2;
+  const w = PHONE_CARD_WIDTH - 56 - 2;
   const scale = size ? w / size.w : 1;
   const fullH = size ? size.h * scale : o.height;
   const top = Math.max(0, Math.min(fullH - o.height, (o.focusY ?? 0) * fullH - o.height / 2));
@@ -282,7 +189,7 @@ export function shotHtml(
     o.highlight && size
       ? `<span class="hl" style="left:${(o.highlight.x * scale - 4).toFixed(1)}px;top:${(o.highlight.y * scale - top - 4).toFixed(1)}px;width:${(o.highlight.w * scale + 8).toFixed(1)}px;height:${(o.highlight.h * scale + 8).toFixed(1)}px"></span>`
       : "";
-  return `<div class="shot" style="height:${o.height}px"><img src="${png(bytes)}" style="width:${w}px;height:${fullH.toFixed(1)}px;margin-top:${(-top).toFixed(1)}px">${hl}</div>`;
+  return `<div class="dh-shot" style="height:${o.height}px"><img src="${png(bytes)}" style="width:${w}px;height:${fullH.toFixed(1)}px;margin-top:${(-top).toFixed(1)}px">${hl}</div>`;
 }
 
 // ---------- frames from a video ----------
@@ -350,7 +257,7 @@ function clock(s: number): string {
   return `${m}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
-/** "{{company_name}}" in a step becomes the value's label; the rest is escaped. */
+/** "{{company_name}}" in a step becomes the value's label in bold; the rest is escaped. */
 export function withParams(text: string): string {
   return text
     .split(/(\{\{[a-z][a-z0-9_]*(?:\|[^}]*)?\}\})/g)
@@ -360,74 +267,83 @@ export function withParams(text: string): string {
     .join("");
 }
 
+/** Two columns of value names, required ones first, in a hairline table. */
+function valueNames(params: { name: string; required: boolean }[], max: number): string {
+  const ordered = [...params.filter((p) => p.required), ...params.filter((p) => !p.required)];
+  const shown = ordered.length > max ? ordered.slice(0, max - 1) : ordered;
+  const cells = shown.map(
+    (p) => `${esc(label(p.name))}${p.required ? "" : ' <span class="was">(optional)</span>'}`,
+  );
+  if (ordered.length > shown.length)
+    cells.push(`<span class="was">${ordered.length - shown.length} more</span>`);
+  const rows: string[] = [];
+  for (let i = 0; i < cells.length; i += 2)
+    rows.push(`<tr><td>${cells[i]}</td><td>${cells[i + 1] ?? ""}</td></tr>`);
+  return `<table class="dh-table"><tbody>${rows.join("")}</tbody></table>`;
+}
+
 // ---------- teach: what Muse saw ----------
 
 export interface TeachCardOptions {
   portalName: string;
   /** Frames sampled evenly from the recording (videoFrames). */
   frames?: Uint8Array[];
-  /** Recording length in seconds, for the frame timestamps and the subtitle. */
+  /** Recording length in seconds, for the frame timestamps and the summary. */
   durationS?: number;
 }
-
-/** Values listed on the card, required ones first. */
-const TEACH_VALUES = 8;
 
 export function teachPhoneCardHtml(d: SkillDraft, o: TeachCardOptions): string {
   const n = draftCounts(d);
   const frames = (o.frames ?? []).slice(0, 3);
-  const ordered = [...d.params.filter((p) => p.required), ...d.params.filter((p) => !p.required)];
-  const shown = ordered.length > TEACH_VALUES ? ordered.slice(0, TEACH_VALUES - 1) : ordered;
-  const more = ordered.length - shown.length;
   const strip = frames.length
-    ? `<div class="frames">${frames
+    ? `<div class="dh-frames">${frames
         .map(
           (f, i) =>
-            `<figure><img src="${jpeg(f)}"><figcaption>${o.durationS ? clock(((i + 0.5) / frames.length) * o.durationS) : `${i + 1}/${frames.length}`}</figcaption></figure>`,
+            `<figure><img src="${jpeg(f)}"><span>${o.durationS ? clock(((i + 0.5) / frames.length) * o.durationS) : `${i + 1} of ${frames.length}`}</span></figure>`,
         )
         .join("")}</div>`
     : "";
-  const values = `<div class="h">Values it will ask for, required first</div><div class="cols">${shown
-    .map((p) => `<div>${esc(label(p.name))}${p.required ? "" : " <i>optional</i>"}</div>`)
-    .join("")}${more > 0 ? `<div><i>+${more} more</i></div>` : ""}</div>`;
-  const from = o.durationS ? `your ${Math.round(o.durationS)} s video` : "your video";
-  return phoneCardHtml({
-    context: "Learned from your video",
-    title: d.title,
-    sub: `on ${o.portalName}`,
-    figure: {
-      value: String(n.values),
-      label: `values seen in ${from} · ${n.required} required · ${n.steps} steps`,
-      accent: true,
-    },
-    body: strip + values,
-    foot: [`Submits with “${esc(d.commitStep)}” only after your tap`],
-  });
+  const video = o.durationS ? `your ${Math.round(o.durationS)} s recording` : "your recording";
+  return cardHtml(
+    "Learned from your video",
+    title(`${d.title} on ${o.portalName}`) +
+      display(plural(n.values, "value"), { accent: true }) +
+      summary(
+        `Seen in ${esc(video)}: ${n.required} required, done in ${plural(n.steps, "step")}. It submits with “${esc(d.commitStep)}”, only after your tap.`,
+      ) +
+      strip +
+      section("Values it will ask for") +
+      valueNames(d.params, 8) +
+      footnote(
+        "Values typed in the video are never reused. The first real request runs once with computer use.",
+      ),
+  );
 }
 
 // ---------- plan: what will be written where ----------
 
 export interface PlanCardView {
+  /** "Register Vila Nova Logística Ltda." */
   title: string;
   /** "Caravela Partner Hub", "HubSpot". */
   where: string;
-  /** "Replay of register_partner_deal v1, no model calls". */
+  /** "register_partner_deal v1, no model calls". */
   how: string;
   figure: { value: string; label: string };
   rows: [string, string][];
-  /** Bottom line: the safety fact ("Nothing is submitted until you approve the filled form"). */
+  /** The safety fact ("Nothing is submitted until you approve the filled form"). */
   foot: string;
 }
 
 export function planPhoneCardHtml(v: PlanCardView): string {
-  return phoneCardHtml({
-    context: "Plan · needs your OK",
-    title: v.title,
-    sub: `${v.where} · ${v.how}`,
-    figure: { value: v.figure.value, label: v.figure.label },
-    body: `<div class="h">What I will write</div>${rowsHtml(v.rows, 8)}`,
-    foot: [esc(v.foot)],
-  });
+  return cardHtml(
+    "Plan, waiting for your approval",
+    title(`${v.title}`) +
+      display(v.figure.value, { kind: "small" }) +
+      summary(`${esc(cap(v.figure.label))}. Written on ${esc(v.where)} with ${esc(v.how)}. ${esc(v.foot)}.`) +
+      section(`What I will write on ${v.where}`) +
+      facts(v.rows, { max: 9 }),
+  );
 }
 
 // ---------- submit: the filled form, before the tap ----------
@@ -444,32 +360,32 @@ export interface SubmitCardView {
 
 export function submitPhoneCardHtml(v: SubmitCardView): string {
   const lines = v.readback.filter((f) => f.value.trim() !== "" && f.value !== "false");
+  const size = v.screenshot ? pngSize(v.screenshot) : undefined;
   const shot = v.screenshot
     ? shotHtml(v.screenshot, {
-        height: lines.length ? 150 : 330,
-        focusY:
-          v.highlight && pngSize(v.screenshot)
-            ? (v.highlight.y + v.highlight.h / 2) / (pngSize(v.screenshot)?.h ?? 1)
-            : 0.5,
+        height: lines.length ? 140 : 330,
+        focusY: v.highlight && size ? (v.highlight.y + v.highlight.h / 2) / size.h : 0.5,
         ...(v.highlight ? { highlight: v.highlight } : {}),
       })
     : "";
-  return phoneCardHtml({
-    context: "Ready to submit",
-    title: `Filled on ${v.portalName}`,
-    figure: lines.length
-      ? { value: String(lines.length), label: "fields read back from the page, listed below" }
-      : { value: "Review page", label: "a wizard's last page has nothing to read back", style: "text" },
-    body:
+  return cardHtml(
+    "Ready to submit",
+    title(`Filled on ${v.portalName}`) +
+      display(lines.length ? plural(lines.length, "field") : "Review page", { kind: "small" }) +
+      summary(
+        lines.length
+          ? "Read back from the page just now. Nothing is sent until you tap Approve."
+          : "A wizard’s last page has nothing to read back: check it here. Nothing is sent until you tap Approve.",
+      ) +
       shot +
       (lines.length
-        ? `<div class="h">On the page now</div>${rowsHtml(
+        ? section("On the page now") +
+          facts(
             lines.map((f) => [f.label, f.value]),
-            v.screenshot ? 5 : 10,
-          )}`
+            { max: 6 },
+          )
         : ""),
-    foot: ["Nothing is sent until you tap Approve"],
-  });
+  );
 }
 
 // ---------- question: the app needs something new ----------
@@ -484,19 +400,16 @@ export interface AskCardView {
 
 export function askPhoneCardHtml(v: AskCardView): string {
   const opts = v.options.filter((o) => o.trim() !== "");
-  return phoneCardHtml({
-    context: "Needs your answer",
-    title: `${v.portalName} added a required field`,
-    figure: { value: v.label, label: "Which one should I use?", style: "text" },
-    body:
-      (opts.length
-        ? `<div class="opts">${opts
-            .slice(0, 6)
-            .map((o) => `<span>${esc(o)}</span>`)
-            .join("")}${opts.length > 6 ? `<span>+${opts.length - 6} more</span>` : ""}</div>`
-        : "") + (v.screenshot ? shotHtml(v.screenshot, { height: 250, focusY: 0.55 }) : ""),
-    foot: ["You answer once. It becomes the default.", "Nothing submitted yet"],
-  });
+  const list =
+    opts.length > 1 ? `${opts.slice(0, -1).join(", ")} or ${opts.at(-1)}` : (opts[0] ?? "any value you type");
+  return cardHtml(
+    "Waiting for your answer",
+    title(`${v.portalName} now requires a new field`) +
+      display(v.label) +
+      summary(`Which should I use: ${esc(list)}? I’ll remember your answer and use it from now on.`) +
+      (v.screenshot ? shotHtml(v.screenshot, { height: 250, focusY: 0.55 }) : "") +
+      footnote("Nothing has been submitted. Reply “skip” to stop here."),
+  );
 }
 
 // ---------- receipt ----------
@@ -508,7 +421,7 @@ export interface ReceiptCardView {
   tier: ReceiptTier;
   /** The record ID ("NW-REG-48221"), set big in Geist Mono. */
   headline?: string;
-  /** One short line under the figure. */
+  /** One short line under the title. */
   line?: string;
   seconds: number;
   execCostUsd: number;
@@ -527,39 +440,36 @@ export const TIER_LABEL: Record<ReceiptTier, string> = {
   repair: "Replay · repaired",
 };
 
+const TIER_WORDS: Record<ReceiptTier, string> = {
+  api: "Done through the API",
+  replay: "Replayed the compiled skill, no model calls",
+  agentic: "First run with computer use",
+  repair: "Replayed, and repaired on the way",
+};
+
 export function receiptPhoneCardHtml(r: ReceiptCardView): string {
   const looksLikeId =
     r.headline !== undefined && /^[A-Z0-9][A-Z0-9-]{4,}$/.test(r.headline) && /\d/.test(r.headline);
-  const facts: [string, string][] = [
+  const rows: [string, string][] = [
+    ["How", esc(TIER_WORDS[r.tier])],
     ...(r.verified
-      ? [[`${r.verified.matched}/${r.verified.checked}`, "fields verified"] as [string, string]]
+      ? [["Fields verified", `${num(`${r.verified.matched} of ${r.verified.checked}`)}`] as [string, string]]
       : []),
-    [seconds(r.seconds), "machine time"],
-    [money(r.execCostUsd), "to run"],
-    [money(r.intakeCostUsd), "intake"],
+    ["Machine time", num(seconds(r.seconds))],
+    ["Cost to run", num(money(r.execCostUsd))],
+    ["Cost to read the request", num(money(r.intakeCostUsd))],
+    ...(r.skill ? [["Skill", num(`${r.skill.name} v${r.skill.version}`)] as [string, string]] : []),
   ];
-  return phoneCardHtml({
-    context: TIER_LABEL[r.tier],
-    title: r.title,
-    ...(r.line ? { sub: r.line } : {}),
-    ...(r.headline
-      ? {
-          figure: {
-            value: r.headline,
-            style: looksLikeId ? "mono" : "text",
-            accent: true,
-            label: "Submitted after your approval",
-          },
-        }
-      : {}),
-    body:
-      factsHtml(facts.slice(0, 4)) +
-      (r.screenshot ? shotHtml(r.screenshot, { height: r.headline ? 250 : 340, focusY: 0.3 }) : ""),
-    foot: [
-      r.skill ? `<span class="mono">${esc(r.skill.name)} v${r.skill.version}</span>` : "Synthetic demo data",
-      r.usedOpenWeights ? "Built with Muse Spark Open" : undefined,
-    ],
-  });
+  return cardHtml(
+    "Receipt",
+    title(r.title) +
+      (r.headline ? display(r.headline, { kind: looksLikeId ? "id" : "small", accent: true }) : "") +
+      (r.line ? summary(esc(r.line)) : "") +
+      section("Details") +
+      facts(rows, { html: true }) +
+      (r.screenshot ? shotHtml(r.screenshot, { height: r.headline ? 150 : 240, focusY: 0.3 }) : "") +
+      (r.usedOpenWeights ? footnote("Built with Muse Spark Open") : ""),
+  );
 }
 
 // ---------- new skill: the program it wrote ----------
@@ -576,37 +486,37 @@ export function skillPhoneCardHtml(v: SkillCardView): string {
   const n = skillCounts(v.skill);
   const from = v.draft ? draftCounts(v.draft) : undefined;
   const unused = v.draft ? v.draft.params.filter((p) => !v.skill.params.some((q) => q.name === p.name)) : [];
-  const ordered = [...v.skill.params.filter((p) => p.required), ...v.skill.params.filter((p) => !p.required)];
-  return phoneCardHtml({
-    context: "New skill",
-    title: v.skill.title,
-    sub: `on ${v.portalName}`,
-    figure: { value: "0", label: "model calls when it replays", accent: true },
-    body:
-      factsHtml([
-        [String(n.steps), "program steps"],
-        [String(n.values), "values per request"],
-        [`${v.verified.passed}/${v.verified.total}`, "dry runs passed"],
-      ]) +
-      (from
-        ? `<div class="note">Compiled from the first run: your video's <b>${from.steps} steps</b> became <b>${n.steps} program steps</b>, and its <b>${from.values} values</b> became <b>${n.values}</b>${unused.length ? ` (${esc(unused.map((p) => label(p.name)).join(", "))} not needed)` : ""}.</div>`
-        : "") +
-      `<div class="h">Values per request</div><div class="cols">${ordered
-        .slice(0, ordered.length > 6 ? 5 : 6)
-        .map((p) => `<div>${esc(label(p.name))}${p.required ? "" : " <i>optional</i>"}</div>`)
-        .join("")}${ordered.length > 6 ? `<div><i>+${ordered.length - 5} more</i></div>` : ""}</div>`,
-    foot: [`<span class="mono">${esc(v.skill.name)} v${v.skill.version}</span>`],
-  });
+  return cardHtml(
+    "New skill",
+    title(`${v.skill.title} on ${v.portalName}`) +
+      display("0 model calls", { kind: "small", accent: true }) +
+      summary(
+        from
+          ? `when it replays. Compiled from the first run: your video’s ${from.steps} steps became <b>${n.steps} program steps</b>, and its ${from.values} values became <b>${n.values}</b>${unused.length ? ` (${esc(unused.map((p) => label(p.name)).join(", "))} not needed)` : ""}.`
+          : `when it replays. ${n.steps} program steps, ${n.values} values per request.`,
+      ) +
+      section("Program") +
+      facts(
+        [
+          ["Steps", num(n.steps)],
+          ["Values per request", num(n.values)],
+          ["Fields it writes and reads back", num(n.fields)],
+          ["Checked before saving", `${num(`${v.verified.passed} of ${v.verified.total}`)} dry runs passed`],
+          ["Name", num(`${v.skill.name} v${v.skill.version}`)],
+        ],
+        { html: true },
+      ),
+  );
 }
 
-// ---------- repair and drift watch: v1 -> v2 ----------
+// ---------- repair and drift watch: a new version ----------
 
-const RUNG_TEXT: Record<HealRung, string> = {
-  fallback: "stored selector, free",
-  similarity: "similarity, free",
+const RUNG_WORDS: Record<HealRung, string> = {
+  fallback: "Stored selector",
+  similarity: "Similarity match",
   open_weights: "Muse Spark Open",
   computer_use: "Muse computer use",
-  ask_rep: "your answer",
+  ask_rep: "Your answer",
 };
 const PAID: HealRung[] = ["open_weights", "computer_use"];
 
@@ -614,7 +524,7 @@ export interface DiffCardInput {
   portalName: string;
   parent: Pick<Skill, "name" | "version" | "steps" | "params">;
   saved: Pick<Skill, "name" | "version" | "title" | "steps" | "params">;
-  /** The run's step results (rung per step id). */
+  /** The run's step results (rung and time per step id). */
   steps: StepResult[];
   canary: { passed: number; total: number };
   /** The repairing run's cost from the ledger (diffCardLedger). */
@@ -657,78 +567,79 @@ export function diffCardLedger(
   };
 }
 
-const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
-
-/** Change rows on the card; past this, a "+N more" row. */
-const MAX_CHANGES = 4;
-
-export function diffPhoneCardHtml(v: DiffCardInput): string {
-  const rungOf = new Map(v.steps.flatMap((s) => (s.rung ? [[s.stepId, s.rung] as const] : [])));
+/** The change rows of a repair: renamed or moved controls, new values, and how many steps were found again free. */
+export function repairChanges(v: Pick<DiffCardInput, "parent" | "saved" | "steps">): {
+  rows: Change[];
+  free: number;
+  byModel: number;
+} {
+  const result = new Map(v.steps.flatMap((s) => (s.rung ? [[s.stepId, s] as const] : [])));
   const before = new Map(v.parent.steps.map((s) => [s.id, s]));
-  const named: { html: string; paid: boolean }[] = [];
+  const rows: Change[] = [];
   let free = 0;
+  let byModel = 0;
   for (const s of v.saved.steps) {
-    const rung = rungOf.get(s.id);
-    if (!rung) continue;
+    const r = result.get(s.id);
+    if (!r?.rung) continue;
     const old = before.get(s.id);
     const a = old ? displayName(stepTarget(old)?.fingerprint) : "";
     const b = displayName(stepTarget(s)?.fingerprint);
-    if ((rung === "fallback" || rung === "similarity") && (!a || a === b)) {
+    if ((r.rung === "fallback" || r.rung === "similarity") && (!a || a === b)) {
       free++;
       continue;
     }
-    const what =
-      rung === "ask_rep" || !old
-        ? `<span class="new">New: ${esc(clip(b || s.intent, 30))}</span>`
-        : a && a !== b
-          ? `<span class="old">${esc(clip(a, 20))}</span><span class="to">→</span><span class="new">${esc(clip(b, 22))}</span>`
-          : `<span class="new">${esc(clip(b || s.intent, 26))}</span> <span class="old" style="text-decoration:none">moved</span>`;
-    named.push({
-      html: `<span class="w">${what}</span><span class="r">${esc(RUNG_TEXT[rung])}</span>`,
-      paid: PAID.includes(rung),
+    const paid = PAID.includes(r.rung);
+    if (paid) byModel++;
+    rows.push({
+      was: r.rung === "ask_rep" || !old ? "(new field)" : a && a !== b ? a : `${b}, moved`,
+      now: b || s.intent,
+      by: paid ? `${RUNG_WORDS[r.rung]}, ${seconds(r.ms / 1000)}` : RUNG_WORDS[r.rung],
     });
   }
   // The accent marks the one change a model repaired (the first, when several).
-  const firstPaid = named.findIndex((x) => x.paid);
-  const rows = named.map((x, i) => `<div class="chg${i === firstPaid ? " on" : ""}">${x.html}</div>`);
-  const shown =
-    rows.length > MAX_CHANGES
-      ? [
-          ...rows.slice(0, MAX_CHANGES - 1),
-          `<div class="chg"><span class="w">+${rows.length - MAX_CHANGES + 1} more changes</span></div>`,
-        ]
-      : rows;
-  if (free > 0)
-    shown.push(
-      `<div class="chg"><span class="w">${free} other step${free === 1 ? "" : "s"} found again</span><span class="r">stored selectors, free</span></div>`,
-    );
-  const fixed = rungOf.size;
+  const first = rows.findIndex((x) => /Muse/.test(x.by));
+  const marked = rows.map((x, i) => (i === first ? { ...x, accent: true } : x));
+  return { rows: marked, free, byModel };
+}
+
+export function diffPhoneCardHtml(v: DiffCardInput): string {
+  const { rows, free, byModel } = repairChanges(v);
   const added = v.saved.params.filter((p) => !v.parent.params.some((q) => q.name === p.name));
   const cost = repairCost(v);
-  const facts: [string, string][] = [
-    [String(fixed), `step${fixed === 1 ? "" : "s"} repaired`],
-    [`${v.canary.passed}/${v.canary.total}`, "dry runs passed"],
-    ...(cost ? [[cost, "to repair"] as [string, string]] : []),
+  const changed = rows.length;
+  const controls = `${cap(spelled(changed))} ${changed === 1 ? "control" : "controls"} changed`;
+  const what =
+    changed === 0
+      ? "The page changed; stored selectors found every step again."
+      : byModel === 0
+        ? `${controls}; stored selectors found ${changed === 1 ? "it" : "them"} again.`
+        : byModel === changed
+          ? `${controls}; a model found ${changed === 1 ? "the new one" : "each new one"}.`
+          : `${controls}. A model found ${spelled(byModel)}; stored selectors found the rest.`;
+  const checks = `Checked with ${v.canary.passed} of ${v.canary.total} dry runs before version ${v.saved.version} went live; version ${v.parent.version} is kept.`;
+  const facts_: [string, string][] = [
+    ["Skill", num(`${v.saved.name} v${v.saved.version}`)],
+    ...(cost ? [["Cost of the repair", num(cost)] as [string, string]] : []),
+    ["Undo", num(`/rollback ${v.saved.name} ${v.parent.version}`)],
   ];
-  const versions = `v${v.parent.version} → v${v.saved.version}`;
-  const watch = v.watch;
-  return phoneCardHtml({
-    context: watch ? `Drift watch${watch.when ? ` · ${watch.when}` : ""}` : "Skill repaired",
-    title: `${v.portalName} changed${watch?.when === "overnight" ? " overnight" : ""}`,
-    sub: `${v.saved.name}${watch ? ` ${versions}` : ""}${added.length ? ` · new value: ${added.map((p) => label(p.name)).join(", ")}` : ""}`,
-    figure: watch
-      ? {
-          value: "Nothing to do",
-          label: `Repaired and checked with ${v.canary.total} dry runs before anyone noticed`,
-          style: "text",
-        }
-      : { value: versions, label: "repaired, checked, now active", style: "text" },
-    body:
-      factsHtml(facts) +
-      `<div class="h">What changed</div><div class="list">${shown.join("") || '<div class="chg"><span class="w">Selectors refreshed</span></div>'}</div>`,
-    foot: [
-      `v${v.parent.version} kept: <span class="mono">/rollback ${esc(v.saved.name)} ${v.parent.version}</span>`,
-      v.usedOpenWeights ? "Built with Muse Spark Open" : undefined,
-    ],
-  });
+  const more = free > 0 ? `${plural(free, "other step")} found again by stored selectors, free` : undefined;
+  const body = v.watch
+    ? title(`${v.portalName} changed${v.watch.when === "overnight" ? " overnight" : ""}.`) +
+      display("Nothing to do.") +
+      summary(`${esc(what)} ${esc(checks)}`)
+    : title(`${v.portalName} changed. Repaired.`) +
+      display(`Version ${v.saved.version} is live`, { kind: "small" }) +
+      summary(`${esc(what)} ${esc(checks)}`);
+  return cardHtml(
+    v.watch ? `Drift watch${v.watch.when ? `, ${v.watch.when}` : ""}` : "Skill repaired",
+    body +
+      section(
+        added.length
+          ? `What changed, and the new value: ${added.map((p) => label(p.name)).join(", ")}`
+          : "What changed",
+      ) +
+      changes(rows, { max: 4, ...(more ? { more } : {}) }) +
+      facts(facts_, { html: true }) +
+      (v.usedOpenWeights ? footnote("Built with Muse Spark Open") : ""),
+  );
 }

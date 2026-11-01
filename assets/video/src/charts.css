@@ -14,13 +14,3 @@ svg .note { font-size: 36px; fill: var(--gray); }
 svg .gray { fill: var(--gray); }
 svg .accent { fill: var(--accent); }
 
-.urow + .urow { margin-top: 52px; }
-.uhead { margin-bottom: 16px; white-space: nowrap; }
-.ubody { display: flex; align-items: center; gap: 28px; }
-.uname { font-size: 40px; font-weight: 500; color: var(--ink); }
-.uname .gray { font-weight: 400; color: var(--gray); }
-.ufig { font-size: 44px; font-weight: 600; color: var(--ink); }
-.ufig.accent { color: var(--accent); }
-.ugrid { display: grid; }
-.ugrid i { display: block; }
-.unote { margin-top: 14px; font-size: 36px; color: var(--gray); }

@@ -89,9 +89,11 @@ describe("phone cards", () => {
     const n = draftCounts(draft);
     expect(n).toEqual({ steps: 3, values: 3, required: 2 });
     expect(html).toContain("Register &#60;b&#62;a&#60;/b&#62; deal");
-    expect(html).toContain(`>${n.values}</b>`);
-    expect(html).toContain(`values seen in your 45 s video · ${n.required} required · ${n.steps} steps`);
-    expect(html.indexOf("Company name")).toBeLessThan(html.indexOf("Notes <i>optional</i>"));
+    expect(html).toContain(`>${n.values} values</div>`);
+    expect(html).toContain(`Seen in your 45 s recording: ${n.required} required, done in ${n.steps} steps.`);
+    expect(html.indexOf("Company name")).toBeLessThan(
+      html.indexOf('Notes <span class="was">(optional)</span>'),
+    );
     expect(html).toContain("Submit registration");
     expect(withParams("{{close_date|date:DD/MM/YYYY}} <x>")).toBe("<b>Close date</b> &#60;x&#62;");
   });
@@ -116,9 +118,9 @@ describe("phone cards", () => {
       verified: { passed: 2, total: 2 },
       draft,
     });
-    expect(html).toContain("<b>3 steps</b> became <b>4 program steps</b>");
-    expect(html).toContain("<b>3 values</b> became <b>2</b> (Notes not needed)");
-    expect(html).toContain("2/2");
+    expect(html).toContain("your video’s 3 steps became <b>4 program steps</b>");
+    expect(html).toContain("its 3 values became <b>2</b> (Notes not needed)");
+    expect(html).toContain("2 of 2</span> dry runs passed");
   });
 
   it("plan, submit, question and receipt cards say where, what and that nothing is sent before the tap", () => {
@@ -130,21 +132,21 @@ describe("phone cards", () => {
       rows: [["Seats", "25"]],
       foot: "Nothing is submitted until you approve the filled form",
     });
-    expect(plan).toContain("Caravela Partner Hub · register_partner_deal v1, no model calls");
-    expect(plan).toContain('<span class="k">Seats</span><span class="v">25</span>');
+    expect(plan).toContain("Written on Caravela Partner Hub with register_partner_deal v1, no model calls.");
+    expect(plan).toContain('<td class="k">Seats</td><td>25</td>');
     const submit = submitPhoneCardHtml({
       portalName: "Caravela",
       readback: [{ label: "Seats", value: "25" }],
     });
-    expect(submit).toContain("fields read back from the page");
+    expect(submit).toContain("Read back from the page just now.");
     expect(submit).toContain("Nothing is sent until you tap Approve");
     const ask = askPhoneCardHtml({
       portalName: "Caravela",
       label: "Partner tier",
       options: ["Gold", "Silver"],
     });
-    expect(ask).toContain(">Partner tier</b>");
-    expect(ask).toContain("<span>Silver</span>");
+    expect(ask).toContain(">Partner tier</div>");
+    expect(ask).toContain("Which should I use: Gold or Silver?");
     const receipt = receiptPhoneCardHtml({
       title: "Register a deal",
       tier: "repair",
@@ -154,10 +156,10 @@ describe("phone cards", () => {
       intakeCostUsd: 0.0153,
       verified: { matched: 13, checked: 13 },
     });
-    expect(receipt).toContain('<b class="m a">NW-REG-48221</b>');
+    expect(receipt).toContain('<div class="dh-display m dh-accent">NW-REG-48221</div>');
     expect(receipt).toContain("$0.0047");
     expect(receipt).toContain("$0.015");
-    expect(receipt).toContain("13/13");
+    expect(receipt).toContain("13 of 13");
   });
 
   it("diff card: renamed controls with their rung, free heals counted, canary, cost and rollback", () => {
@@ -195,14 +197,14 @@ describe("phone cards", () => {
       costUsd: 0.0031,
       usedOpenWeights: true,
     });
-    expect(html).toContain('<span class="old">Product</span>');
-    expect(html).toContain('<span class="new">Solution</span>');
-    expect(html).toContain('<div class="chg on">'); // the accent marks the model-repaired change
+    expect(html).toContain(
+      '<td class="was">Product</td><td class="dh-accent">Solution</td><td class="by">Muse Spark Open, 0.9 s</td>',
+    ); // the accent marks the model-repaired change
     expect(html).toContain("Muse Spark Open");
-    expect(html).toContain("2 other steps found again");
-    expect(html).toContain("3/3");
+    expect(html).toContain("2 other steps found again by stored selectors, free");
+    expect(html).toContain("Checked with 3 of 3 dry runs before version 2 went live");
     expect(html).toContain("$0.0031");
-    expect(html).toContain("new value: Partner tier");
+    expect(html).toContain("the new value: Partner tier");
     expect(html).toContain("/rollback register_partner_deal 1");
     expect(html).toContain("Built with Muse Spark Open");
     // A paid rung with no recorded cost (the fake stand-in) shows no figure, never "$0"; free rungs only is $0.
@@ -218,7 +220,7 @@ describe("phone cards", () => {
       watch: { when: "overnight" },
     });
     expect(watch).toContain("Caravela Partner Hub changed overnight");
-    expect(watch).toContain(">Nothing to do</b>");
-    expect(watch).not.toContain("to repair");
+    expect(watch).toContain(">Nothing to do.</div>");
+    expect(watch).not.toContain("Cost of the repair");
   });
 });

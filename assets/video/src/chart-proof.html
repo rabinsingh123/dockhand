@@ -6,48 +6,52 @@
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="charts.css">
 <style>
-.left { left: 160px; top: 132px; width: 760px; }
-.right { left: 1080px; top: 132px; width: 720px; }
-.rows { margin-top: 58px; }
+.left { left: 160px; top: 120px; width: 760px; }
+.right { left: 1080px; top: 120px; width: 680px; }
 </style>
 </head>
 <body>
 <div class="stage">
   <div class="left abs">
     <h2 class="ptitle">42 UI changes it never saw</h2>
-    <div class="psub">Handled out of 42, same cases</div>
-    <div class="rows" id="rows"></div>
+    <div class="psub">Handled, out of the same 42 cases</div>
   </div>
   <div class="right abs">
     <h2 class="ptitle">Cost over 93 runs</h2>
-    <div class="psub">Cumulative, same task</div>
+    <div class="psub">Cumulative, same task, US dollars</div>
   </div>
   <svg id="chart" class="abs" width="1920" height="1080" viewBox="0 0 1920 1080" style="left:0;top:0"></svg>
   <div class="source abs" id="source"></div>
 </div>
 <script src="data.js"></script>
 <script src="runtime.js"></script>
-<script src="charts.js"></script>
+<script src="../../../packages/design/src/charts.js"></script>
 <script>
 (() => {
   const D = window.DOCKHAND_DATA;
+  const B = D.baseline;
   const { fade } = DH;
   const $ = (id) => document.getElementById(id);
-  // Accent once: Dockhand's 42/42.
-  const rows = DHC.unitRows($("rows"), DHC.baselineRows(D, true), { cell: 26, gap: 6 });
-  const c = DHC.costChart($("chart"), { L: 1170, R: 1760, T: 420, B: 846 }, D, { yMax: 12, yStep: 4, xTicks: [1, 50, 93] });
-  $("source").textContent = `Mock portal, held-out seeds ${D.heals.seeds[0]}–${D.heals.seeds.at(-1)}. No arm wrote wrong data. Costs: live calls at list prices.`;
+  const svg = $("chart");
+  // Accent once per frame: Dockhand's 42.
+  const bars = DHChart.armBars(svg, { L: 160, R: 860, T: 330 }, [
+    { name: "Recorded script", qual: "one selector per step", ...B.scriptPrimary },
+    { name: "Recorded script", qual: "as exported", ...B.script },
+    { name: "Dockhand", qual: "heal ladder and read-back", ...B.dockhand, ink: true, accent: true },
+  ], { pitch: 150, barHeight: 44 });
+  const cost = DHChart.costChart(svg, { L: 1170, R: 1760, T: 430, B: 846 }, D, { yMax: 12, yStep: 4, xTicks: [1, 50, 93] });
+  $("source").textContent = `Mock portal, held-out seeds ${D.heals.seeds[0]}–${D.heals.seeds.at(-1)}. No arm wrote wrong data. Costs are live calls at list prices.`;
   DH.clip({
     duration: 9,
     frame(t) {
-      rows.forEach((r, i) => fade(r, t, 0.3 + i * 0.7));
-      fade(c.axes, t, 0);
-      fade(c.cuG, t, 2.6);
-      fade(c.cuLbl, t, 4.0);
-      fade(c.proj, t, 4.0);
-      fade(c.projLbl, t, 4.0);
-      fade(c.dock, t, 3.2);
-      fade(c.dockLbl, t, 3.2);
+      fade(bars.frame, t, 0);
+      bars.groups.forEach((g, i) => fade(g, t, 0.3 + i * 0.7));
+      fade(cost.axes, t, 0);
+      fade(cost.measured, t, 2.6);
+      fade(cost.projected, t, 4.0);
+      fade(cost.cuLabel, t, 4.0);
+      fade(cost.dock, t, 3.2);
+      fade(cost.dockLabel, t, 3.2);
       fade($("source"), t, 0);
     },
   });

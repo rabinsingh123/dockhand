@@ -189,7 +189,7 @@ export function registerPlan(
         "skill" in via
           ? `${via.skill.name} v${via.skill.version}, no model calls`
           : "first run, computer use",
-      figure: { value: String(n), label: `values to write on ${portalName}` },
+      figure: { value: count(n, "value"), label: "from your message" },
       rows: valueRows(params),
       foot: "Nothing is submitted until you approve the filled form",
     },
@@ -294,8 +294,8 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
     where: `${portal.name}, invite ${inviteCode}`,
     how,
     figure: {
-      value: String(Object.keys(params).length),
-      label: `values from the company profile, ${docs.length} documents`,
+      value: `${Object.keys(params).length} values`,
+      label: `and ${docs.length} documents from the company profile`,
     },
     rows: [
       ["Legal name", company.legalName ?? "?"],
@@ -428,7 +428,7 @@ function planQuote(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
       title: `Quote for ${u.company}`,
       where: "HubSpot",
       how: "API, 4 writes",
-      figure: { value: total, label: `${u.seats} seats of ${planName}, 12 months` },
+      figure: { value: total, label: `${u.seats} seats of ${planName} for 12 months` },
       rows: [
         ["HubSpot company", `${u.company}${u.city ? ` (${u.city})` : ""}, found or created`],
         ["HubSpot deal", dealName],

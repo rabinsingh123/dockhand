@@ -20,16 +20,16 @@
 </div>
 <script src="data.js"></script>
 <script src="runtime.js"></script>
-<script src="charts.js"></script>
+<script src="../../../packages/design/src/charts.js"></script>
 <script>
 (() => {
   const D = window.DOCKHAND_DATA;
   const C = D.cost;
   const { fade } = DH;
   const $ = (id) => document.getElementById(id);
-  $("title").textContent = `${DHC.usd(C.compileTotalUsd)} vs ${DHC.usd(C.cuTotalUsd)} over ${C.totalRuns} runs`;
+  $("title").textContent = `$${C.compileTotalUsd.toFixed(2)} vs $${C.cuTotalUsd.toFixed(2)} over ${C.totalRuns} runs`;
   $("sub").textContent = `Cumulative cost of the same task. Computer use measured for ${C.measuredCuRuns} runs.`;
-  const c = DHC.costChart($("chart"), { L: 300, R: 1700, T: 430, B: 860 }, D, {
+  const c = DHChart.costChart($("chart"), { L: 300, R: 1700, T: 430, B: 860 }, D, {
     yMax: 12,
     yStep: 4,
     xTicks: [1, 25, 50, 75, C.totalRuns],
@@ -41,12 +41,11 @@
     duration: 10,
     frame(t) {
       fade(c.axes, t, 0);
-      fade(c.cuG, t, 0.8);
-      fade(c.proj, t, 2.0);
-      fade(c.projLbl, t, 2.0);
-      fade(c.cuLbl, t, 2.0);
+      fade(c.measured, t, 0.8);
+      fade(c.projected, t, 2.0);
+      fade(c.cuLabel, t, 2.0);
       fade(c.dock, t, 3.6);
-      fade(c.dockLbl, t, 3.6);
+      fade(c.dockLabel, t, 3.6);
       fade($("source"), t, 0);
     },
   });

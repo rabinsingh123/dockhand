@@ -41,8 +41,9 @@ async function measure(html: string): Promise<{ w: number; h: number; bottom: nu
   const page = await browser.newPage({ viewport: { width: PHONE_CARD_WIDTH, height: PHONE_CARD_HEIGHT } });
   try {
     await page.setContent(html);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     return await page.evaluate(() => {
-      const card = document.querySelector(".card") as HTMLElement;
+      const card = document.querySelector(".dh-card") as HTMLElement;
       const last = card.lastElementChild as HTMLElement;
       return {
         w: document.documentElement.scrollWidth,
@@ -88,10 +89,10 @@ describe("phone cards fit 4:5", () => {
   const cards: Record<string, string> = {
     teach: teachPhoneCardHtml(big, { portalName: "Caravela", frames: [pixel, pixel, pixel], durationS: 45 }),
     plan: planPhoneCardHtml({
-      title: long,
+      title: "Register Vila Nova Logística Ltda. e Associados Comércio Internacional",
       where: "Caravela Partner Hub",
       how: "register_partner_deal v1, no model calls",
-      figure: { value: "35", label: long },
+      figure: { value: "35 values", label: "and 2 documents from the company profile" },
       rows: Array.from({ length: 35 }, (_, i): [string, string] => [`${long} ${i}`, long]),
       foot: "Nothing is submitted until you approve the filled form",
     }),

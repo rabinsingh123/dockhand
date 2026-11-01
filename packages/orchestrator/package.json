@@ -10,6 +10,7 @@
   "dependencies": {
     "@dockhand/browser": "workspace:*",
     "@dockhand/core": "workspace:*",
+    "@dockhand/design": "workspace:*",
     "@dockhand/skills": "workspace:*",
     "pdf-lib": "^1",
     "playwright": "1.64.1",

@@ -108,6 +108,8 @@ importers:
         specifier: 1.64.1
         version: 1.64.1
 
+  packages/design: {}
+
   packages/evals:
     dependencies:
       '@dockhand/browser':
@@ -152,6 +154,9 @@ importers:
       '@dockhand/core':
         specifier: workspace:*
         version: link:../core
+      '@dockhand/design':
+        specifier: workspace:*
+        version: link:../design
       '@dockhand/skills':
         specifier: workspace:*
         version: link:../skills
