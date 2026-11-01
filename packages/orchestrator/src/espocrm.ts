@@ -212,7 +212,9 @@ export function mapLead(
 
 /** Who the lead is, for the message: the person and the account, as the rep would check them. */
 function leadSubject(params: Record<string, ParamValue>): string | undefined {
-  const name = [params.first_name, params.last_name].filter((v) => typeof v === "string" && v.trim()).join(" ");
+  const name = [params.first_name, params.last_name]
+    .filter((v) => typeof v === "string" && v.trim())
+    .join(" ");
   const account = typeof params.account_name === "string" ? params.account_name : undefined;
   return name && account ? `${name}, ${account}` : name || account;
 }
@@ -254,7 +256,9 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
         // The values go on the card; the message says what, for whom, and that the form comes back first.
         approvalText: [
           head,
-          ...(leadSubject(actionParams(actions[0])) ? [`Lead: ${leadSubject(actionParams(actions[0]))}`] : []),
+          ...(leadSubject(actionParams(actions[0]))
+            ? [`Lead: ${leadSubject(actionParams(actions[0]))}`]
+            : []),
           ...extra,
           `${Object.keys(actionParams(actions[0])).length} values from your message, listed on the card. I'll show you the filled form before saving.`,
         ].join("\n"),
@@ -262,8 +266,14 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
       card: {
         title: `Create a lead${leadSubject(actionParams(actions[0])) ? ` for ${leadSubject(actionParams(actions[0]))}` : ""}`,
         where: "EspoCRM",
-        how: actions[0]?.kind === "skill_replay" ? `${actions[0].skill} v${actions[0].version}, no model calls` : "first run, computer use",
-        figure: { value: `${Object.keys(actionParams(actions[0])).length} values`, label: "from your message" },
+        how:
+          actions[0]?.kind === "skill_replay"
+            ? `${actions[0].skill} v${actions[0].version}, no model calls`
+            : "first run, computer use",
+        figure: {
+          value: `${Object.keys(actionParams(actions[0])).length} values`,
+          label: "from your message",
+        },
         rows: Object.entries(actionParams(actions[0])).map(([k, v]): [string, string] => [
           humanize(k).replace(/^./, (c) => c.toUpperCase()),
           displayValue(v),
