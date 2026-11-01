@@ -36,7 +36,7 @@
   // Accent once per frame: Dockhand's 42.
   const bars = DHChart.armBars(svg, { L: 160, R: 860, T: 330 }, [
     { name: "Recorded script", qual: "one selector per step", ...B.scriptPrimary },
-    { name: "Recorded script", qual: "as exported", ...B.script },
+    { name: "Recorded script", qual: "five stored selectors per step", ...B.script },
     { name: "Dockhand", qual: "heal ladder and read-back", ...B.dockhand, ink: true, accent: true },
   ], { pitch: 150, barHeight: 44 });
   const cost = DHChart.costChart(svg, { L: 1170, R: 1760, T: 430, B: 846 }, D, { yMax: 12, yStep: 4, xTicks: [1, 50, 93] });

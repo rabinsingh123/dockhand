@@ -32,7 +32,7 @@
   // The accent once per frame: Dockhand's 42.
   const bars = DHChart.armBars($("chart"), { L: 160, R: 1480, T: 330 }, [
     { name: "Recorded script", qual: "one selector per step", ...B.scriptPrimary },
-    { name: "Recorded script", qual: "as exported", ...B.script },
+    { name: "Recorded script", qual: "five stored selectors per step", ...B.script },
     { name: "Dockhand", qual: "heal ladder and read-back", ...B.dockhand, ink: true, accent: true },
   ], { pitch: 170, barHeight: 60 });
   const wrong = B.script.wrongWrites + B.scriptPrimary.wrongWrites + B.dockhand.wrongWrites;

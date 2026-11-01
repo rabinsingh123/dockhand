@@ -3,7 +3,7 @@
 .csub { margin-top: 18px; font-size: 44px; font-weight: 400; color: var(--gray); letter-spacing: -0.005em; }
 .ptitle { font-size: 60px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap; }
 .psub { margin-top: 14px; font-size: 40px; color: var(--gray); white-space: nowrap; }
-.source { left: 160px; right: 160px; bottom: 56px; font-size: 32px; color: var(--gray); white-space: nowrap; }
+.source { left: 160px; right: 160px; top: 268px; font-size: 32px; color: var(--gray); white-space: nowrap; }
 
 svg text { font-family: var(--sans); font-variant-numeric: tabular-nums; }
 svg .tick { font-family: var(--mono); font-size: 36px; fill: var(--gray); letter-spacing: -0.01em; }
