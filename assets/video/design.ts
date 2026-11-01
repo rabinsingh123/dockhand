@@ -108,7 +108,7 @@ async function cards(): Promise<Record<string, string>> {
       return m ? [{ label: m[1] as string, value: m[2] as string }] : [];
     });
   const shot = artifact(commit?.image_artifact_id);
-  out.submit = submitPhoneCardHtml({ portalName: PORTAL, ...(shot ? { screenshot: shot } : {}), readback, highlight: { x: 1004, y: 690, w: 132, h: 34 } });
+  out.submit = submitPhoneCardHtml({ portalName: PORTAL, ...(shot ? { screenshot: shot } : {}), readback });
 
   const intake = (jobId: string) =>
     one<{ c: number }>("SELECT COALESCE(SUM(cost_usd),0) c FROM model_calls WHERE job_id = ? AND purpose IN ('transcribe','extract','understand')", jobId)?.c ?? 0;
@@ -192,17 +192,59 @@ async function main(): Promise<void> {
   }
 
   // Style frames (a) and (c) are stills of the end card and the proof chart.
-  const stills = (clip: string, t: number) =>
-    spawnSync("pnpm", ["exec", "tsx", "assets/video/render.ts", clip, "--still", String(t), "--out", "var/design/stills"], {
-      cwd: ROOT,
-      stdio: "inherit",
-      shell: true,
-    });
-  stills("endcard", 1);
+  const stills = (clip: string, ...t: number[]) =>
+    spawnSync(
+      "pnpm",
+      ["exec", "tsx", "assets/video/render.ts", clip, ...t.flatMap((s) => ["--still", String(s)])].concat([
+        "--out",
+        "var/design/stills",
+      ]),
+      { cwd: ROOT, stdio: "inherit", shell: true },
+    );
+  stills("endcard-wordmark", 1);
   stills("chart-proof", 8.5);
-  copyFileSync(join(OUT, "stills", "endcard-1.00s.png"), join(OUT, "style-frames", "a-endcard-wordmark.png"));
+  copyFileSync(join(OUT, "stills", "endcard-wordmark-1.00s.png"), join(OUT, "style-frames", "a-endcard-wordmark.png"));
   copyFileSync(join(OUT, "stills", "chart-proof-8.50s.png"), join(OUT, "style-frames", "c-proof-chart.png"));
   if (cardsOnly) return;
+
+  // A still of every clip at the moments that matter, then the contact sheet of everything.
+  const shots: [string, number[]][] = [
+    ["title", [3, 7.9]],
+    ["title-band", [3]],
+    ["chart-baseline", [7.9]],
+    ["chart-cost", [9.9]],
+    ["chart-heals", [7.9]],
+    ["endcard", [3, 7.9]],
+  ];
+  for (const [clip, t] of shots) stills(clip, ...t);
+  const tiles = [
+    ...["a-endcard-wordmark", "b-overnight-card", "c-proof-chart"].map((f) => join(OUT, "style-frames", `${f}.png`)),
+    ...shots.flatMap(([clip, t]) => t.map((s) => join(OUT, "stills", `${clip}-${s.toFixed(2)}s.png`))),
+  ];
+  const cardNames = ["teach", "plan", "submit", "ask", "receipt", "skill", "diff", "watch"];
+  const sheet = `<!doctype html><html><head><style>
+body{margin:0;background:#E3E1DB;font:500 14px system-ui;color:#6B6B6B}
+.g{display:grid;grid-template-columns:repeat(4,480px);gap:16px;padding:16px}
+.c{display:grid;grid-template-columns:repeat(8,228px);gap:16px;padding:0 16px 16px}
+img{width:100%;display:block;background:#F6F5F1}figure{margin:0}figcaption{padding:4px 0}
+</style></head><body><div class="g">${tiles
+    .map((f) => `<figure><img src="${pathToFileURL(f).href}"><figcaption>${f.split(/[\\/]/).at(-1)}</figcaption></figure>`)
+    .join("")}</div><div class="c">${cardNames
+    .map((n) => `<figure><img src="${pathToFileURL(join(OUT, "cards", `${n}.png`)).href}"><figcaption>${n}</figcaption></figure>`)
+    .join("")}</div></body></html>`;
+  const sheetFile = join(OUT, "tmp", "review.html");
+  mkdirSync(dirname(sheetFile), { recursive: true });
+  writeFileSync(sheetFile, sheet);
+  const b2 = await chromium.launch({ headless: true });
+  try {
+    const p = await b2.newPage({ viewport: { width: 2000, height: 800 } });
+    await p.goto(pathToFileURL(sheetFile).href);
+    await p.waitForFunction(() => [...document.images].every((i) => i.complete));
+    writeFileSync(join(OUT, "review.png"), await p.screenshot({ type: "png", fullPage: true }));
+    console.log(join(OUT, "review.png"));
+  } finally {
+    await b2.close();
+  }
 }
 
 main().catch((e: unknown) => {

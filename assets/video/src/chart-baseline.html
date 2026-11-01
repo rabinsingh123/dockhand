@@ -15,7 +15,7 @@
 <div class="stage">
   <div class="head abs">
     <h1 class="ctitle">42 UI changes it never saw</h1>
-    <div class="csub">Handled: submitted correctly, or stopped where a new required field made stopping right.</div>
+    <div class="csub">Handled: a correct submission, or a stop where stopping was right.</div>
   </div>
   <div class="rows abs" id="rows"></div>
   <div class="source abs" id="source"></div>
@@ -31,7 +31,7 @@
   const $ = (id) => document.getElementById(id);
   const rows = DHC.unitRows($("rows"), DHC.baselineRows(D, true), { cell: 38, gap: 8 });
   const wrong = B.script.wrongWrites + B.scriptPrimary.wrongWrites + B.dockhand.wrongWrites;
-  $("source").textContent = `Same mock portal and held-out seeds for every row. Wrong writes in any row: ${wrong}; the scripts stopped. live-headline.md, section 4`;
+  $("source").textContent = `Same mock portal and held-out seeds for every row. Wrong writes in any row: ${wrong}. live-headline.md, section 4`;
   DH.clip({
     duration: 8,
     frame(t) {

@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="charts.css">
 <style>
 .head { left: 160px; top: 96px; width: 1600px; }
+.head .ctitle { font-size: 76px; white-space: nowrap; }
 .ladder { left: 160px; top: 380px; width: 1600px; }
 .rung { display: grid; grid-template-columns: 700px 1fr; align-items: center; column-gap: 40px; }
 .rung + .rung { margin-top: 56px; }
@@ -42,8 +43,8 @@
   const ms = (v) => `${(v / 1000).toFixed(1)} s`;
   const rungs = [
     { name: "Stored selector or similarity", meta: "free, no model", n: H.freeHealed, of: null, ink: true },
-    { name: "Muse Spark Open, text only", meta: `open weights · $${H.rung2.costPerAttemptUsd.toFixed(4)}, ${ms(H.rung2.msPerAttempt)} per try`, n: H.rung2.healed, of: H.rung2.tried, ink: true },
-    { name: "Muse computer use", meta: `at most 8 actions · $${H.rung3.costPerAttemptUsd.toFixed(4)}, ${ms(H.rung3.msPerAttempt)} per try`, n: H.rung3.healed, of: H.rung3.tried, ink: false },
+    { name: "Muse Spark Open, text only", meta: `open weights · $${H.rung2.costPerAttemptUsd.toFixed(4)} · ${ms(H.rung2.msPerAttempt)} a try`, n: H.rung2.healed, of: H.rung2.tried, ink: true },
+    { name: "Muse computer use", meta: `≤8 actions · $${H.rung3.costPerAttemptUsd.toFixed(4)} · ${ms(H.rung3.msPerAttempt)} a try`, n: H.rung3.healed, of: H.rung3.tried, ink: false },
   ];
   const max = Math.max(...rungs.map((r) => r.n));
   const els = rungs.map((r) => {

@@ -28,8 +28,8 @@
   const { fade } = DH;
   const $ = (id) => document.getElementById(id);
   $("title").textContent = `${DHC.usd(C.compileTotalUsd)} vs ${DHC.usd(C.cuTotalUsd)} over ${C.totalRuns} runs`;
-  $("sub").textContent = `Cumulative cost of the same task. Computer use was measured for ${C.measuredCuRuns} runs, dashed after.`;
-  const c = DHC.costChart($("chart"), { L: 300, R: 1700, T: 400, B: 860 }, D, {
+  $("sub").textContent = `Cumulative cost of the same task. Computer use measured for ${C.measuredCuRuns} runs.`;
+  const c = DHC.costChart($("chart"), { L: 300, R: 1700, T: 430, B: 860 }, D, {
     yMax: 12,
     yStep: 4,
     xTicks: [1, 25, 50, 75, C.totalRuns],

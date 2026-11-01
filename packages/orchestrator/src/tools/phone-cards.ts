@@ -154,6 +154,7 @@ const CSS = `
 html,body{background:${PAPER}}
 body{width:${PHONE_CARD_WIDTH}px;height:${PHONE_CARD_HEIGHT}px;overflow:hidden;font:400 16px/1.4 "Geist",system-ui,sans-serif;color:${INK};-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
 .card{height:${PHONE_CARD_HEIGHT}px;padding:26px 30px 22px;display:flex;flex-direction:column}
+.card>*{flex-shrink:0}
 .top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:13px;border-bottom:1px solid ${HAIR};white-space:nowrap}
 .wm{font-weight:600;font-size:19px;letter-spacing:-.045em}
 .ctx{font-size:15px;font-weight:500;color:${GRAY};overflow:hidden;text-overflow:ellipsis}
@@ -424,7 +425,7 @@ export function planPhoneCardHtml(v: PlanCardView): string {
     title: v.title,
     sub: `${v.where} · ${v.how}`,
     figure: { value: v.figure.value, label: v.figure.label },
-    body: `<div class="h">What I will write</div>${rowsHtml(v.rows, 10)}`,
+    body: `<div class="h">What I will write</div>${rowsHtml(v.rows, 8)}`,
     foot: [esc(v.foot)],
   });
 }
@@ -455,7 +456,7 @@ export function submitPhoneCardHtml(v: SubmitCardView): string {
     : "";
   return phoneCardHtml({
     context: "Ready to submit",
-    title: `The form on ${v.portalName} is filled`,
+    title: `Filled on ${v.portalName}`,
     figure: lines.length
       ? { value: String(lines.length), label: "fields read back from the page, listed below" }
       : { value: "Review page", label: "a wizard's last page has nothing to read back", style: "text" },
@@ -464,7 +465,7 @@ export function submitPhoneCardHtml(v: SubmitCardView): string {
       (lines.length
         ? `<div class="h">On the page now</div>${rowsHtml(
             lines.map((f) => [f.label, f.value]),
-            6,
+            v.screenshot ? 5 : 10,
           )}`
         : ""),
     foot: ["Nothing is sent until you tap Approve"],
@@ -591,9 +592,9 @@ export function skillPhoneCardHtml(v: SkillCardView): string {
         ? `<div class="note">Compiled from the first run: your video's <b>${from.steps} steps</b> became <b>${n.steps} program steps</b>, and its <b>${from.values} values</b> became <b>${n.values}</b>${unused.length ? ` (${esc(unused.map((p) => label(p.name)).join(", "))} not needed)` : ""}.</div>`
         : "") +
       `<div class="h">Values per request</div><div class="cols">${ordered
-        .slice(0, 8)
+        .slice(0, ordered.length > 6 ? 5 : 6)
         .map((p) => `<div>${esc(label(p.name))}${p.required ? "" : " <i>optional</i>"}</div>`)
-        .join("")}${ordered.length > 8 ? `<div><i>+${ordered.length - 8} more</i></div>` : ""}</div>`,
+        .join("")}${ordered.length > 6 ? `<div><i>+${ordered.length - 5} more</i></div>` : ""}</div>`,
     foot: [`<span class="mono">${esc(v.skill.name)} v${v.skill.version}</span>`],
   });
 }

@@ -403,7 +403,7 @@ async function encode(rig: Rig, name: string): Promise<void> {
   const probe = verify(out, clip, alpha);
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   console.log(
-    `${name}.mp4  ${probe.frames} frames, ${probe.seconds.toFixed(2)} s, ${W}x${H} ${probe.fps} fps ${probe.pixFmt}, ` +
+    `${name}.${alpha ? "mov" : "mp4"}  ${probe.frames} frames, ${probe.seconds.toFixed(2)} s, ${W}x${H} ${probe.fps} fps ${probe.pixFmt}, ` +
       `${(statSync(out).size / 1e6).toFixed(2)} MB, rendered in ${secs} s; redraw check: ${redraw.join(", ")}`,
   );
 }
