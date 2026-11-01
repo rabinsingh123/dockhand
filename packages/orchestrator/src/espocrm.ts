@@ -16,7 +16,6 @@ import {
   workspaceRoot,
 } from "@dockhand/core";
 import { z } from "zod";
-import { cardBody } from "./messages.ts";
 import { canonicalCountry, humanize, matchEnum } from "./params.ts";
 import { activeSkillFor, type BuildPlanContext, displayValue, type PlanOutcome } from "./plan.ts";
 import { ESPOCRM, type PortalTarget, startUrlFor } from "./portals.ts";
@@ -211,10 +210,12 @@ export function mapLead(
 
 // ---------- plan ----------
 
-const lines = (params: Record<string, ParamValue>) =>
-  Object.entries(params).map(
-    ([k, v]) => `• ${humanize(k).replace(/^./, (c) => c.toUpperCase())}: ${displayValue(v)}`,
-  );
+/** Who the lead is, for the message: the person and the account, as the rep would check them. */
+function leadSubject(params: Record<string, ParamValue>): string | undefined {
+  const name = [params.first_name, params.last_name].filter((v) => typeof v === "string" && v.trim()).join(" ");
+  const account = typeof params.account_name === "string" ? params.account_name : undefined;
+  return name && account ? `${name}, ${account}` : name || account;
+}
 
 function askFor(missing: ParamSpec[]): PlanOutcome {
   return {
@@ -250,10 +251,24 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
         intent: "create_lead",
         actions,
         writes: true,
-        approvalText: cardBody([head], lines(actionParams(actions[0])), [
+        // The values go on the card; the message says what, for whom, and that the form comes back first.
+        approvalText: [
+          head,
+          ...(leadSubject(actionParams(actions[0])) ? [`Lead: ${leadSubject(actionParams(actions[0]))}`] : []),
           ...extra,
-          "I'll show you the filled form before saving.",
+          `${Object.keys(actionParams(actions[0])).length} values from your message, listed on the card. I'll show you the filled form before saving.`,
+        ].join("\n"),
+      },
+      card: {
+        title: `Create a lead${leadSubject(actionParams(actions[0])) ? ` for ${leadSubject(actionParams(actions[0]))}` : ""}`,
+        where: "EspoCRM",
+        how: actions[0]?.kind === "skill_replay" ? `${actions[0].skill} v${actions[0].version}, no model calls` : "first run, computer use",
+        figure: { value: `${Object.keys(actionParams(actions[0])).length} values`, label: "from your message" },
+        rows: Object.entries(actionParams(actions[0])).map(([k, v]): [string, string] => [
+          humanize(k).replace(/^./, (c) => c.toUpperCase()),
+          displayValue(v),
         ]),
+        foot: "Nothing is saved until you approve the filled form",
       },
     }) satisfies PlanOutcome;
   if (skill) {
@@ -262,7 +277,7 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
     const notIn = m.unused.map((k) => humanize(k));
     return plan(
       [{ kind: "skill_replay", skill: skill.name, version: skill.version, params: m.params }],
-      `Create this lead in EspoCRM (${skill.name} v${skill.version}):`,
+      `Create this lead in EspoCRM with ${skill.name} v${skill.version}.`,
       notIn.length > 0 ? [`Not in this skill yet, left as the form has it: ${notIn.join(", ")}.`] : [],
     );
   }

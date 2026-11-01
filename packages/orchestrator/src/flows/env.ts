@@ -221,7 +221,7 @@ export function gateHooks(
     async approveSafety(r) {
       const body = [
         `${run.portalName} raised a safety check:`,
-        ...r.checks.map((c) => `• ${c.message}`),
+        ...r.checks.map((c) => c.message),
         "Continue?",
       ].join("\n");
       const { decision } = await open("safety", body, r.screenshot);
