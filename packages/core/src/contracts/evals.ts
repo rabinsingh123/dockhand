@@ -30,7 +30,11 @@ export interface EvalResult {
   suite: EvalSuite;
   ok: boolean; // all expected fields correct in the ground-truth submission (or a correct safe stop)
   outcome: RunResult["outcome"];
-  fields: { correct: number; total: number; mismatches: { field: string; expected: string; actual: string }[] };
+  fields: {
+    correct: number;
+    total: number;
+    mismatches: { field: string; expected: string; actual: string }[];
+  };
   /** Wrote a submission with at least one wrong field. The number that must stay at 0. */
   silentWrong: boolean;
   safeStop: boolean; // stopped without writing, as required for must_fail_safe cases

@@ -7,7 +7,8 @@ import { WHAT_I_DO } from "../plan.ts";
 import type { Repos } from "../repo.ts";
 import { seconds, usd } from "../tools/receipts.ts";
 
-export const COMMANDS = "/skills, /skills <name>, /history, /stats, /watch, /rollback <skill> <version>, /help";
+export const COMMANDS =
+  "/skills, /skills <name>, /history, /stats, /watch, /rollback <skill> <version>, /help";
 
 export function isCommand(text: string | undefined): boolean {
   return /^\/[a-z]/i.test(text?.trim() ?? "");

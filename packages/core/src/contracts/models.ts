@@ -103,7 +103,13 @@ export type CuTurn =
 export type CuReply =
   | { kind: "start"; task: string; screenshot: Uint8Array }
   /** `note` is a harness message for the model (e.g. "submitting is gated: call request_commit first"), sent as input_text alongside the output. */
-  | { kind: "computer_output"; callId: string; screenshot: Uint8Array; acknowledged: SafetyCheck[]; note?: string }
+  | {
+      kind: "computer_output";
+      callId: string;
+      screenshot: Uint8Array;
+      acknowledged: SafetyCheck[];
+      note?: string;
+    }
   | { kind: "function_output"; callId: string; output: string; screenshot?: Uint8Array }
   /** Starts a fresh response chain (50-images-per-request cap). */
   | { kind: "rollover"; summary: string; screenshot: Uint8Array };

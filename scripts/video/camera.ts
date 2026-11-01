@@ -83,7 +83,7 @@ async function codeShot(page: Page): Promise<void> {
 
 /** The focus views (pick, teach) fit one screen: let them settle, then hold for the edit. */
 async function holdShot(page: Page): Promise<void> {
-  await settle(page, () => document.body.innerText.length, 1200, 15_000);
+  await settle(page, () => document.body.textContent?.length ?? 0, 1200, 15_000);
   await sleep(8000);
 }
 
