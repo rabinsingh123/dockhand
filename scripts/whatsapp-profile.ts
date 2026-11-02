@@ -34,7 +34,8 @@ async function drawAvatar(): Promise<void> {
 async function graph(url: string, init: RequestInit): Promise<Record<string, unknown>> {
   const res = await fetch(url, init);
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) throw new Error(`${new URL(url).pathname}: HTTP ${res.status} ${JSON.stringify(body.error ?? body)}`);
+  if (!res.ok)
+    throw new Error(`${new URL(url).pathname}: HTTP ${res.status} ${JSON.stringify(body.error ?? body)}`);
   return body;
 }
 

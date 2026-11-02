@@ -326,7 +326,12 @@ export async function renderQuotePdf(q: Quote, r: QuoteRequest, createdAtMs: num
   // Acceptance
   const sign = 150;
   text(page, bold, t.accept, left, sign + 42, 10, INK);
-  page.drawLine({ start: { x: left, y: sign }, end: { x: second - 24, y: sign }, thickness: 0.6, color: INK });
+  page.drawLine({
+    start: { x: left, y: sign },
+    end: { x: second - 24, y: sign },
+    thickness: 0.6,
+    color: INK,
+  });
   page.drawLine({ start: { x: second, y: sign }, end: { x: right, y: sign }, thickness: 0.6, color: INK });
   text(page, regular, t.signName, left, sign - 14, 9, MUTED);
   text(page, regular, t.signDate, second, sign - 14, 9, MUTED);

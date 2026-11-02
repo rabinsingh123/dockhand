@@ -223,7 +223,10 @@ export function gateHooks(
         lines.length > 0
           ? `Ready to submit on ${run.portalName}. ${lines.length} fields, read back from the page:`
           : `Ready to submit on ${run.portalName}. Check the review page on the card.`,
-        ...listWithin(ordered.map((f) => `${f.label}: ${f.value}`), READBACK_CHARS),
+        ...listWithin(
+          ordered.map((f) => `${f.label}: ${f.value}`),
+          READBACK_CHARS,
+        ),
         "Approve to submit. Nothing is sent until you tap.",
       ].join("\n");
       const card = await cardOr(r.screenshot, (shot) =>
