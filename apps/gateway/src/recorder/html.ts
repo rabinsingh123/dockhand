@@ -38,7 +38,7 @@ function render(v: unknown): string {
 export const raw = (s: string) => new Html(s);
 
 export const LOGO = raw(
-  '<svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><rect width="18" height="18" rx="4.5" fill="#111111"/><path d="M5.2 4.6h3.6a4.4 4.4 0 0 1 0 8.8H5.2z" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linejoin="round"/><circle cx="9.1" cy="9" r="1.35" fill="#FFFFFF"/></svg>',
+  '<svg viewBox="16 12 72 76" aria-hidden="true"><path d="M16 12h34c24 0 38 16 38 38S74 88 50 88H16V57h22V43H16Z"/></svg>',
 );
 
 export function page(o: {
@@ -46,7 +46,7 @@ export function page(o: {
   nav: "runs" | "skills" | "teach";
   body: Html;
   base: string;
-  /** Filming: no header, paper background, content inside the 1.15x push-in safe area. */
+  /** Filming: no header, content inside the 1.15x push-in safe area. */
   focus?: boolean;
 }): string {
   const b = o.base;
@@ -83,7 +83,7 @@ export const COLORS = {
   ok: "var(--ok)",
   bad: "var(--bad)",
   wait: "var(--wait)",
-  muted: "#94a3b8",
+  muted: "var(--gray)",
 } as const;
 
 export function chip(

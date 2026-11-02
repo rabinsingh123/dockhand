@@ -405,7 +405,7 @@ function agenticTimeline(
             s.tags.length
               ? html`<span class="tags">${s.tags.map((t) => html`<span class="tag ${t}">${t}</span>`)}</span>`
               : ""
-          }${s.fieldValueAfter !== undefined && s.action.type !== "fn" ? html`<div class="muted" style="font-size:12px">field now: <span class="mono" style="color:#d9f99d">${s.fieldValueAfter}</span></div>` : ""}${cands(s.target)}</div></li>`,
+          }${s.fieldValueAfter !== undefined && s.action.type !== "fn" ? html`<div class="muted" style="font-size:12px">field now: <span class="mono" style="color:var(--text)">${s.fieldValueAfter}</span></div>` : ""}${cands(s.target)}</div></li>`,
         );
       });
       return html`<div class="batch"><div>${b.shot ? html`<figure class="shot"><img src="${base}a/${b.shot.id}" alt="screenshot ${bi + 1}" loading="lazy">${overlay}<span class="cap">Screenshot ${bi + 1} · what the model saw</span></figure>` : html`<p class="empty">No screenshot.</p>`}</div>
@@ -511,7 +511,7 @@ function diffLines(parent: SkillRow, sel: SkillRow, notes: { stepId: string; run
           ? "chg"
           : "inf";
     const mark = cls === "add" ? "+" : cls === "del" ? "−" : cls === "chg" ? "~" : "·";
-    return html`<li class="${cls}"><span class="m">${mark}</span><span>${l}</span></li>`;
+    return html`<li class="${cls}"><span class="m">${mark}</span><span>${l.replaceAll(" → ", " to ")}</span></li>`;
   })}</ul>`;
 }
 
@@ -526,7 +526,7 @@ function targetPairs(parent: SkillRow, sel: SkillRow, notes: Map<string, string>
     if (!o) {
       const how = notes.get(s.id);
       pairs.push(
-        html`<div class="pair"><div class="side-a" style="opacity:.55"><h4>v${parent.version}</h4><span class="muted">no such step</span></div><div class="arrow">now</div><div class="side-b"><h4>v${sel.version} · new step ${s.id}${how ? html` · ${RUNG[how] ? `rung ${RUNG[how]?.n} · ${RUNG[how]?.how}` : how}` : ""}</h4><b>${s.intent}</b>${cands(b, 2)}</div></div>`,
+        html`<div class="pair"><div class="side-a"><h4>v${parent.version}</h4><span class="muted">no such step</span></div><div class="arrow">now</div><div class="side-b"><h4>v${sel.version} · new step ${s.id}${how ? html` · ${RUNG[how] ? `rung ${RUNG[how]?.n} · ${RUNG[how]?.how}` : how}` : ""}</h4><b>${s.intent}</b>${cands(b, 2)}</div></div>`,
       );
       continue;
     }
@@ -568,7 +568,7 @@ export function skillView(d: RecorderData, base: string, name: string, v: number
   )}</div>
   <div class="grid"><div style="display:flex;flex-direction:column;gap:20px;min-width:0">
     ${parent ? html`<section class="panel"><h2>What changed from v${parent.version} to v${sel.version} <span>${notes.length ? `${notes.length} step${notes.length === 1 ? "" : "s"} fixed in the run` : ""}</span></h2>${diffLines(parent, sel, notes)}${targetPairs(parent, sel, new Map(notes.map((n) => [n.stepId, n.rung])))}</section>` : ""}
-    <section class="panel"><div class="ph"><span style="display:flex;gap:12px;align-items:center;color:var(--text)">Compiled program <a class="chip" style="--c:var(--replay)" href="${base}skills/${name}/code?v=${sel.version}">▶ code reveal</a></span><div class="tabs" data-tabs="prog"><button data-tab="steps" class="on">Steps</button><button data-tab="json">JSON</button><button data-tab="ts">Playwright export</button></div></div>
+    <section class="panel"><div class="ph"><span style="display:flex;gap:12px;align-items:center;color:var(--text)">Compiled program <a class="chip" href="${base}skills/${name}/code?v=${sel.version}">Code reveal</a></span><div class="tabs" data-tabs="prog"><button data-tab="steps" class="on">Steps</button><button data-tab="json">JSON</button><button data-tab="ts">Playwright export</button></div></div>
       <div data-pane="prog" data-name="steps">${programTable(sel.skill)}</div>
       <div data-pane="prog" data-name="json" hidden><pre class="code">${highlight(json, "json")}</pre></div>
       <div data-pane="prog" data-name="ts" hidden><pre class="code">${highlight(ts, "ts")}</pre></div>
@@ -599,24 +599,24 @@ function stepWithParams(text: string): Html {
   return html`${parts.map((p) => (/^\{\{.*\}\}$/.test(p) ? html`<span class="pchip">${p.slice(2, -2)}</span>` : p))}`;
 }
 
+// Filmed at device scale 2 in a 1280x720 window: 27 px here is 40 px in a 1080p frame.
 const TEACH_FOCUS_CSS = `
-body.focus{background:var(--paper)}
-.stage{position:fixed;inset:0;padding:44px 84px 40px;display:flex;flex-direction:column;gap:18px}
-.tk{font-size:22px;color:var(--muted)}
-.th{font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
-.tframes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.tframes img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:2px;border:1px solid var(--line);display:block;background:var(--surface)}
-.tcols{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:36px;min-height:0}
-.tsteps li>span{;overflow-wrap:anywhere}
-.tsteps{list-style:none;margin:0;padding:0;counter-reset:s;border-top:1px solid var(--line)}
-.tsteps li{counter-increment:s;display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:26px;line-height:1.25;overflow-wrap:anywhere}
-.tsteps li::before{content:counter(s);color:var(--muted);font:400 22px var(--mono);padding-top:3px}
+.stage{position:fixed;inset:0;padding:48px 84px 40px;display:flex;flex-direction:column;gap:16px}
+.thead{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 24px}
+.tk{font-size:27px;color:var(--gray);line-height:1.2}
+.th{font-size:56px;font-weight:700;letter-spacing:-.04em;line-height:1.05}
+.tframes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tframes img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:var(--surface)}
+.tcols{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:40px;min-height:0}
+.tsteps{list-style:none;margin:0;padding:0;counter-reset:s}
+.tsteps li{counter-increment:s;display:grid;grid-template-columns:44px minmax(0,1fr);padding:6px 0;border-top:1px solid var(--hair);font-size:27px;line-height:1.2;overflow-wrap:anywhere}
+.tsteps li::before{content:counter(s);color:var(--gray)}
 .tsteps li.more::before{content:""}
-.tsteps li.more{color:var(--muted);font-size:22px}
-.tsteps .pchip,.tparams .pchip{font-size:.85em}
-.tparams{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
-.tparams li{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:24px}
-.tparams li span:last-child{color:var(--muted);font-size:20px;white-space:nowrap}
+.tsteps li.more{color:var(--gray)}
+.tsteps .pchip,.tparams .pchip{font-size:24px;line-height:1.3}
+.tparams{list-style:none;margin:0;padding:0}
+.tparams li{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--hair);font-size:27px;line-height:1.2}
+.tparams li span:last-child{color:var(--gray);white-space:nowrap}
 `;
 
 /** Filming: what Muse saw (4 frames), the steps it wrote with its values by name, the value list. */
@@ -624,14 +624,13 @@ function teachFocus(d: RecorderData, base: string, t: DraftRow): string {
   const draft = t.draft;
   const video = d.draftVideo(t);
   const n = 4;
-  const steps = draft.steps.slice(0, 6);
+  const steps = draft.steps.slice(0, 4);
   const more = draft.steps.length - steps.length;
   const body = html`<style>${raw(TEACH_FOCUS_CSS)}</style>
-  <div class="tk">Taught from one screen recording · ${draft.steps.length} steps · ${draft.params.length} values</div>
-  <h1 class="th">${draft.title}</h1>
+  <div class="thead"><h1 class="th">${draft.title}</h1><div class="tk">Taught from one screen recording. ${draft.steps.length} steps, ${draft.params.length} values.</div></div>
   ${video ? html`<div class="tframes">${Array.from({ length: n }, (_, i) => html`<img src="${base}frames/${video}/${i}?n=${n}" alt="frame ${i + 1}">`)}</div>` : ""}
   <div class="tcols"><ol class="tsteps">${steps.map((s) => html`<li><span>${stepWithParams(s)}</span></li>`)}${more > 0 ? html`<li class="more"><span>+${more} more steps</span></li>` : ""}</ol>
-  <ul class="tparams">${draft.params.slice(0, 5).map((p) => html`<li><span class="pchip">${p.name}</span><span>${p.type}${p.required ? ", required" : ""}</span></li>`)}${draft.params.length > 5 ? html`<li><span class="muted">+${draft.params.length - 5} more</span><span></span></li>` : ""}</ul></div>`;
+  <ul class="tparams">${draft.params.slice(0, 5).map((p) => html`<li><span class="pchip">${p.name}</span><span>${p.type}</span></li>`)}${draft.params.length > 5 ? html`<li><span class="muted">+${draft.params.length - 5} more</span><span></span></li>` : ""}</ul></div>`;
   return page({ title: draft.title, nav: "teach", body, base, focus: true });
 }
 
@@ -662,7 +661,7 @@ export function teachView(d: RecorderData, base: string, t: DraftRow, frames: nu
   </div><aside class="side">
     <section class="panel"><h2>Typed parameters <span>values seen are never reused</span></h2><table><thead><tr><th>Param</th><th>Type</th><th>Seen in the video</th></tr></thead><tbody>${draft.params.map(
       (p) =>
-        html`<tr><td><span class="pchip">${p.name}</span>${p.required ? html` <span class="bad">*</span>` : ""}<div class="muted" style="font-size:12px;margin-top:3px">${p.description}${p.enumValues?.length ? html`<br>one of: ${p.enumValues.join(", ")}` : ""}</div></td><td><span class="tag">${p.type}</span></td><td class="mono" style="font-size:12px;color:var(--text-2)">${observed[p.name] ?? html`<span class="faint">–</span>`}</td></tr>`,
+        html`<tr><td><span class="pchip">${p.name}</span>${p.required ? html` <span class="bad">*</span>` : ""}<div class="muted" style="font-size:12px;margin-top:3px">${p.description}${p.enumValues?.length ? html`<br>one of: ${p.enumValues.join(", ")}` : ""}</div></td><td><span class="tag">${p.type}</span></td><td class="mono" style="color:var(--gray)">${observed[p.name] ?? html`<span class="faint">–</span>`}</td></tr>`,
     )}</tbody></table></section>
     <section class="panel"><h2>Success check</h2><div class="pb">${draft.success}</div></section>
   </aside></div>`;

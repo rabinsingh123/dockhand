@@ -106,37 +106,44 @@ export function focusOps(
   return out;
 }
 
+// Filmed at device scale 2 in a 1280x720 window: 27 px here is 40 px in a 1080p frame. Code is monochrome, so the
+// one color on screen is the patch.
 const REVEAL_CSS = `
 body{overflow:hidden}
-.reveal{position:fixed;inset:56px 0 0 0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--surface)}
+.reveal{position:fixed;inset:64px 0 0 0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--ground)}
 body.focus .reveal{inset:0}
-.rbar{display:flex;align-items:center;gap:14px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--paper)}
-body.focus .rbar{padding:44px 84px 16px;border-bottom:0}
-.tab{font:500 15px var(--mono);color:var(--ink)}
-body.focus .tab{font-size:28px;letter-spacing:-.01em}
-body.focus .rbar .chip{height:38px;font-size:24px;padding:0 14px}
-.rbar .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.rbar{display:flex;align-items:baseline;gap:20px;padding:16px 40px;border-bottom:1px solid var(--hair)}
+body.focus .rbar{padding:48px 84px 16px;border-bottom:0}
+.tab{font:500 16px var(--mono);letter-spacing:-.01em;color:var(--text)}
+body.focus .tab{font-size:27px;letter-spacing:-.02em}
+body.focus .rbar .chip{font-size:27px;color:var(--gray)}
+.rbar .sp{margin-left:auto;display:flex;gap:16px;align-items:baseline}
 body.focus .rbar .sp{display:none}
-.rbar button{all:unset;cursor:pointer;padding:6px 12px;border-radius:2px;border:1px solid var(--line);background:var(--surface);font-weight:500;font-size:14px}
-.editor{overflow:auto;padding:14px 0 40vh;font:16px/1.6 var(--mono);color:var(--ink);tab-size:2}
-body.focus .editor{padding:10px 64px 30vh;font-size:24px;line-height:1.55}
-body.focus.diff .editor{font-size:27px}
-.ln{display:grid;grid-template-columns:64px 26px minmax(0,1fr);white-space:pre;min-height:1.55em}
-body.focus .ln{grid-template-columns:60px 30px minmax(0,1fr)}
-.ln .no{color:#B4B1A8;text-align:right;padding-right:14px;user-select:none}
-.ln .mk{font-weight:600;user-select:none}
-.ln .tx{;overflow-wrap:anywhere}
-.ln.add{background:#FFF1EA}.ln.add .mk{color:var(--accent)}
-.ln.del .mk{color:var(--muted)}.ln.del .tx{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(107,107,107,.5)}
+.rbar button{all:unset;cursor:pointer;font-size:15px;color:var(--gray)}
+.rbar button:hover{color:var(--text)}
+.editor{overflow:auto;padding:14px 0 40vh;font:400 16px/1.6 var(--mono);color:var(--text);tab-size:2}
+body.focus .editor{padding:6px 84px 30vh;font-size:27px;line-height:38px;letter-spacing:-.03em}
+.ln{display:grid;grid-template-columns:64px 26px minmax(0,1fr);white-space:pre-wrap;min-height:1.6em}
+body.focus .ln{grid-template-columns:56px 28px minmax(0,1fr);min-height:38px}
+.ln .no{color:var(--faint);text-align:right;padding-right:14px;user-select:none}
+.ln .mk{user-select:none}
+.ln .tx{overflow-wrap:anywhere}
+.ln.add{background:var(--accent);color:var(--on-accent)}
+.ln.add .no{color:var(--on-accent)}
+.ln.add .tx span{color:inherit!important}
+.ln.add .pp{border-color:var(--on-accent);background:none}
+.ln.del{color:var(--gray)}
+.ln.del .no{color:var(--faint)}
+.ln.del .tx{color:var(--gray);text-decoration:line-through;text-decoration-color:var(--faint)}
 .ln.del .tx span{color:inherit!important}
-.ln.gap{color:var(--muted);font-family:var(--sans);font-size:.8em;padding:6px 0 6px 90px;display:block;min-height:0}
-.ln.gap:empty::before{content:"⋯"}
-.ln.typing .tx::after{content:"";display:inline-block;width:.5em;height:1.1em;margin-left:1px;vertical-align:-.18em;background:var(--ink);animation:blink 1s steps(1) infinite}
+body .ln.gap{color:var(--gray);font-family:var(--sans);letter-spacing:-.01em;padding:6px 0 6px 84px;display:block;min-height:0}
+body .ln.gap:empty{height:1px;padding:0;margin:18px 0;background:var(--hair)}
+.ln.typing .tx::after{content:"";display:inline-block;width:.5em;height:1.1em;margin-left:1px;vertical-align:-.18em;background:currentColor;animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
-.pp{padding:0 4px;border-radius:2px;background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-2)}
-.rfoot{display:flex;gap:20px;align-items:center;padding:12px 32px;border-top:1px solid var(--line);background:var(--paper);font-size:14px;color:var(--muted)}
-body.focus .rfoot{padding:16px 84px 40px;font-size:22px;border-top:0}
-.rfoot b{color:var(--ink);font-weight:600}
+.pp{padding:0 4px;background:var(--surface);color:var(--text)}
+.rfoot{display:flex;gap:32px;align-items:baseline;padding:12px 40px;border-top:1px solid var(--hair);font-size:15px;color:var(--gray)}
+body.focus .rfoot{padding:12px 84px 40px;font-size:27px;border-top:0;background:var(--ground)}
+.rfoot b{color:var(--text);font-weight:700}
 `;
 
 /**
@@ -167,7 +174,11 @@ export function codeRevealView(
       ? focusOps(diff, modelSteps)
       : diff
     : now.map((line) => ({ t: "same" as const, line }));
-  const ops: Op[] = shown.map((o) => ({ t: o.t, html: o.t === "gap" ? esc(o.line) : lineHtml(o.line) }));
+  // Filmed at 27 px a line holds 66 characters: half the indent keeps a patched selector on one line.
+  const fit = (l: string) => (focus ? l.replace(/^ +/, (m) => " ".repeat(m.length / 2)) : l);
+  // A focused diff opens on its first change, not on a rule for the lines before it.
+  const lines = shown[0]?.t === "gap" && !shown[0].line ? shown.slice(1) : shown;
+  const ops: Op[] = lines.map((o) => ({ t: o.t, html: o.t === "gap" ? esc(o.line) : lineHtml(fit(o.line)) }));
   const added = diff?.filter((o) => o.t === "add").length ?? 0;
   const removed = diff?.filter((o) => o.t === "del").length ?? 0;
   const params = sel.skill.params.length;
@@ -286,46 +297,48 @@ function describe(e: Record<string, string | number>): Html {
 const nameOfEl = (e: Record<string, string | number>) =>
   String(e.name ?? e.label ?? e.placeholder ?? e.text ?? "(unnamed)");
 
+// The focus half is filmed at device scale 2 in a 1280x720 window: 27 px here is 40 px in a 1080p frame.
 const PICK_CSS = `
-.plist{list-style:none;margin:0;padding:6px 0;font:14px/1.4 var(--mono)}
-.plist li{display:grid;grid-template-columns:48px 96px minmax(0,1fr);gap:10px;align-items:baseline;padding:8px 16px;border-left:3px solid transparent}
-.plist li .ix{color:var(--faint);text-align:right}
-.plist li .rl{color:var(--muted)}
-.plist li b{font-weight:500;color:var(--ink)}
-.plist li.picked{background:#FFF1EA;border-left-color:var(--accent)}
-.plist li.picked .ix{color:var(--ink);font-weight:600}
-.plist li.picked.rejected{background:var(--paper);border-left-color:var(--error)}
-.ask{font:14px/1.55 var(--mono);color:var(--text-2)}
-.ask .k{color:var(--muted)}
-.checks{list-style:none;margin:0;padding:8px 0}
-.checks li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;padding:7px 16px;font-size:14.5px}
-.checks .ic{min-width:64px;font-size:13px;font-weight:600;color:var(--ink)}
-.checks .ic.ok{color:var(--ink)}.checks .ic.bad{color:var(--error)}
-.verdict{margin:6px 16px 16px;padding:12px 14px;border-radius:2px;font-size:15px;font-weight:500;border:1px solid var(--line);background:var(--paper)}
+.plist{list-style:none;margin:0;padding:0;font:400 14px/1.4 var(--mono)}
+.plist li{display:grid;grid-template-columns:48px 96px minmax(0,1fr);gap:12px;align-items:baseline;padding:8px 12px;border-top:1px solid var(--hair)}
+.plist li .ix{color:var(--gray);text-align:right}
+.plist li .rl{color:var(--gray)}
+.plist li b{font-weight:500;color:var(--text)}
+.plist li .muted{color:inherit}
+.plist li.picked{background:var(--accent);color:var(--on-accent)}
+.plist li.picked .ix,.plist li.picked .rl,.plist li.picked b{color:var(--on-accent)}
+.plist li.picked.rejected{background:none;color:var(--error)}
+.plist li.picked.rejected .ix,.plist li.picked.rejected .rl,.plist li.picked.rejected b{color:var(--error)}
+.ask{font:400 14px/1.55 var(--mono);color:var(--text)}
+.ask .k{color:var(--gray)}
+.checks{list-style:none;margin:0;padding:0 0 8px}
+.checks li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;padding:7px 0;border-top:1px solid var(--hair);font-size:15px}
+.checks .ic{font-weight:600;color:var(--text)}
+.checks .ic.ok{color:var(--text)}.checks .ic.bad{color:var(--error)}
+.verdict{margin:8px 0 16px;font-size:16px;font-weight:600}
 .verdict.bad{color:var(--error)}
-body.focus{background:var(--paper)}
-.stage{position:fixed;inset:0;padding:44px 84px 40px;display:flex;flex-direction:column;gap:22px}
-.fk{font-size:22px;color:var(--muted)}
-.fh{font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
-.fcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;min-height:0;flex:1}
-.fcol{display:flex;flex-direction:column;gap:12px;min-height:0}
-.flist{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
-.flist li{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:9px 12px 9px 14px;border-bottom:1px solid var(--line);border-left:3px solid transparent;font-size:27px;line-height:1.25}
-.flist li .ix{font:400 22px var(--mono);color:var(--faint)}
-.flist li .nm{;overflow-wrap:anywhere}
-.flist li .tg{font-size:20px;color:var(--muted)}
-.flist li.picked{background:var(--surface);border-left-color:var(--accent)}
-.flist li.picked .ix{color:var(--ink)}
-.flist li.picked .tg{color:var(--ink);font-weight:600}
-.flist li.more{font-size:20px;color:var(--muted);border-left:0}
-.freason{font-size:28px;line-height:1.32;overflow:hidden}
-.fmeta{display:flex;gap:34px;font-size:30px;font-weight:600;letter-spacing:-.01em}
-.fmeta span small{display:block;font-size:20px;font-weight:400;color:var(--muted);letter-spacing:0}
-.fchecks{list-style:none;margin:0;padding:0;font-size:22px;display:flex;flex-direction:column;gap:6px}
-.fchecks li{display:flex;gap:10px;align-items:center}
-.fchecks .ic{min-width:96px;font-size:22px;font-weight:600;color:var(--ink);flex:none}
+.stage{position:fixed;inset:0;padding:48px 84px 40px;display:flex;flex-direction:column}
+.fk{font-size:27px;line-height:1.2;color:var(--gray)}
+.fh{margin:6px 0 24px;font-size:52px;font-weight:700;letter-spacing:-.04em;line-height:1.02}
+.fcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;min-height:0}
+.fcol{display:flex;flex-direction:column;gap:8px;min-height:0}
+.flist{list-style:none;margin:0;padding:0}
+.flist li{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:4px 12px 5px;border-top:1px solid var(--hair);font-size:27px;line-height:1.2}
+.flist li .ix,.flist li .tg{color:var(--gray)}
+.flist li .nm{overflow-wrap:anywhere}
+.flist li.picked{background:var(--accent);color:var(--on-accent);font-weight:700;letter-spacing:-.03em;border-top-color:var(--accent)}
+.flist li.picked .ix,.flist li.picked .tg{color:var(--on-accent)}
+.flist li.picked.rejected{background:none;color:var(--error);border-top-color:var(--hair)}
+.flist li.picked.rejected .ix,.flist li.picked.rejected .tg{color:var(--error)}
+.flist li.more{color:var(--gray)}
+.freason{font-size:27px;line-height:1.26;letter-spacing:-.015em}
+.fmeta{margin-top:8px;font-size:27px;line-height:1.26;color:var(--gray)}
+.fmeta b{color:var(--text);font-weight:700;letter-spacing:-.03em;margin-right:10px}
+.fchecks{list-style:none;margin:16px 0 0;padding:12px 0 0;border-top:1px solid var(--hair);font-size:27px;line-height:1.2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 40px}
+.fchecks li{display:flex;gap:12px}
+.fchecks .ic{font-weight:700;letter-spacing:-.03em;flex:none}
 .fchecks .ic.bad{color:var(--error)}
-.fnote{font-size:18px;color:var(--muted)}
+.fnote{font-size:20px;color:var(--gray)}
 `;
 
 /** At most `n` list rows, kept around the pick; the rest counted. */
@@ -356,25 +369,25 @@ export function pickView(base: string, doc: PickDoc, call?: PickCall, focus = fa
   const lat = call ? latency(call.latencyMs, call.provider) : ms(doc.ms);
   const cost = usd(call?.costUsd ?? doc.costUsd);
   if (focus) {
-    const { rows, more } = around(doc.list, picked, 7);
+    const { rows, more } = around(doc.list, picked, doc.list.length > 7 ? 6 : 7);
     const chosen =
       doc.chosen ?? (picked === null ? null : nameOfEl(doc.list.find((e) => e.index === picked) ?? {}));
     const body = html`<style>${raw(PICK_CSS)}</style>
-    <div class="fk">Step ${doc.stepIdx + 1} · ‘${nameOfEl(doc.before)}’ is no longer on the page · heal rung 2, text only</div>
+    <div class="fk">Step ${doc.stepIdx + 1}: ‘${nameOfEl(doc.before)}’ is no longer on the page. Heal rung 2, text only.</div>
     <h1 class="fh">${doc.ok ? html`Muse Spark Open picked ‘${chosen ?? "the element"}’` : html`Muse Spark Open’s pick was rejected`}</h1>
     <div class="fcols">
-      <div class="fcol"><div class="fk">The list it got: ${doc.list.length} ${doc.kind} elements of ${doc.listedOf} on the page</div>
+      <div class="fcol"><div class="fk">The list it got: ${doc.list.length} ${doc.kind} elements of ${doc.listedOf}</div>
         <ol class="flist">${rows.map(
           (e) =>
             html`<li class="${e.index === picked ? `picked${doc.ok ? "" : " rejected"}` : ""}"><span class="ix">#${e.index}</span><span class="nm">${nameOfEl(e)}</span><span class="tg">${e.index === picked ? "its pick" : String(e.role ?? "")}</span></li>`,
         )}${more ? html`<li class="more"><span></span><span>+${more} more of the same kind</span><span></span></li>` : ""}</ol></div>
       <div class="fcol"><div class="fk">Its reason</div>
         <div class="freason">${plainReason(doc.pick.reason)}</div>
-        <div class="fmeta"><span>${lat}<small>latency, from the ledger</small></span><span>${cost}<small>cost, list price</small></span></div>
-        <ul class="fchecks">${doc.checks.map((c) => html`<li><span class="ic ${c.ok ? "" : "bad"}">${c.ok ? "Passed" : "Failed"}</span><span>${c.check}</span></li>`)}</ul>
+        <div class="fmeta"><div><b>${lat}</b>latency, from the ledger</div><div><b>${cost}</b>cost, list price</div></div>
         ${call?.provider === "cassette" ? html`<div class="fnote">Rehearsal: the recorded live answer, replayed</div>` : ""}
       </div>
-    </div>`;
+    </div>
+    <ul class="fchecks">${doc.checks.map((c) => html`<li><span class="ic ${c.ok ? "" : "bad"}">${c.ok ? "Passed" : "Failed"}</span><span>${c.check}</span></li>`)}</ul>`;
     return page({ title: "Open-weights pick", nav: "runs", body, base, focus: true });
   }
   const body = html`<style>${raw(PICK_CSS)}</style>
@@ -400,7 +413,7 @@ export function pickView(base: string, doc: PickDoc, call?: PickCall, focus = fa
       ${doc.nextIntent ? html`<div><span class="k">Next step:</span> ${doc.nextIntent}</div>` : ""}
       <div style="margin-top:8px"><span class="k">Element before the change:</span></div><div>${describe(doc.before)}</div>
     </div></section>
-    <section class="panel"><h2>Its answer</h2><div class="pb"><div class="mono" style="font-size:14px">{ "index": ${picked === null ? "null" : picked}, "confidence": ${doc.pick.confidence} }</div><p style="margin-top:8px;color:var(--text-2)">${doc.pick.reason}</p></div></section>
+    <section class="panel"><h2>Its answer</h2><div class="pb"><div class="mono" style="font-size:14px">{ "index": ${picked === null ? "null" : picked}, "confidence": ${doc.pick.confidence} }</div><p style="margin-top:8px;color:var(--gray)">${doc.pick.reason}</p></div></section>
     <section class="panel"><h2>Harness verification <span>the model proposes, code decides</span></h2>
       <ul class="checks">${doc.checks.map((c) => html`<li><span class="ic ${c.ok ? "ok" : "bad"}">${c.ok ? "Passed" : "Failed"}</span><span>${c.check}</span></li>`)}</ul>
       <div class="verdict ${doc.ok ? "ok" : "bad"}">${doc.ok ? `Accepted: the step now uses '${doc.chosen ?? "the pick"}'. The replay continues and every field is read back before submit.` : `Rejected: ${doc.reason ?? "a check failed"}. The ladder moves to the next rung.`}</div>
