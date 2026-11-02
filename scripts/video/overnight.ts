@@ -17,9 +17,9 @@
 //    refuse a rename the tapes accepted (live-sim-1: the relabeled Country combobox), so the change is proven
 //    first; if none repairs, nothing is sent.
 // 4. At the time: applies that change, runs the watch addressed to the first allow-listed rep (the watch would
-//    otherwise report to whoever last ran the skill), then sends the watch's sentence once more as plain text: the
-//    lock screen shows the newest message, and plain text always previews in full (the card is an image with
-//    buttons). Everything sent is logged in var/overnight/<stamp>/hook.log.
+//    otherwise report to whoever last ran the skill), then sends one short plain-text line: the lock screen shows
+//    the newest message, and plain text always previews in full (the card is an image with buttons). Everything
+//    sent is logged in var/overnight/<stamp>/hook.log.
 //
 // Needs: Rabin messaged the Dockhand number within the 24 hours before (WhatsApp's customer-service window: no
 // template is set up), the laptop plugged in with the lid open, and a network. Outbound only: no tunnel.
@@ -410,6 +410,8 @@ async function main(): Promise<number> {
     db.close();
 
     if (o?.outcome === "repaired" && o.message && !has("--no-text")) {
+      // The headline only; the detail is in the card's own message just above it.
+      const line = `${o.message.split(". ")[0]}. Nothing to do.`;
       const res = await fetch(
         `${graph}/${config.whatsapp.graphVersion}/${config.whatsapp.phoneNumberId}/messages`,
         {
@@ -419,7 +421,7 @@ async function main(): Promise<number> {
             messaging_product: "whatsapp",
             to: rep,
             type: "text",
-            text: { body: o.message },
+            text: { body: line },
           }),
         },
       );
@@ -427,7 +429,7 @@ async function main(): Promise<number> {
         messages?: { id: string }[];
         error?: { message?: string };
       } | null;
-      if (res.ok) log(`sent text ${reply?.messages?.[0]?.id ?? "?"} at ${local(Date.now())}: ${o.message}`);
+      if (res.ok) log(`sent text ${reply?.messages?.[0]?.id ?? "?"} at ${local(Date.now())}: ${line}`);
       else log(`plain-text follow-up refused: HTTP ${res.status} ${reply?.error?.message ?? ""}`);
     }
     const ok = o?.outcome === "repaired";

@@ -40,6 +40,9 @@ export const CONTEXT_DEFAULTS = {
   colorScheme: "light",
 } as const;
 
+/** Device pixels per CSS pixel on a filmed page: 2560 x 1600 frames for a 1920 x 1200 picture. */
+const FILM_SCALE = 2;
+
 export interface BrowserPoolConfig {
   headless: boolean;
   /** Open contexts at most; further leases wait in FIFO order. */
@@ -141,6 +144,9 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
     const state = storageFile(cfg.storageStateDir, portalId);
     const context = await (await browser()).newContext({
       ...CONTEXT_DEFAULTS,
+      // Filmed pages render at 2x so a 1080p film shows them downscaled, never upscaled. The layout stays 1280 x 800
+      // CSS px, and every screenshot a model or a card uses is taken at CSS scale, so neither sees a difference.
+      ...(capture ? { deviceScaleFactor: FILM_SCALE } : {}),
       ...(existsSync(state) ? { storageState: state } : {}),
     });
     await context.addInitScript({ content: DH_SCRIPT });

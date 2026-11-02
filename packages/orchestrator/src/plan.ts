@@ -178,7 +178,7 @@ export function registerPlan(
       ? `Register this deal on ${portalName} with ${via.skill.name} v${via.skill.version}.`
       : `Register this deal on ${portalName}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
     ...(who ? [`${who.label}: ${who.value}`] : []),
-    `${count(n, "value")} from your message, listed on the card. I'll show you the filled form before anything is submitted.`,
+    `${count(n, "value")} from your message. I'll show you the filled form before anything is submitted.`,
   ].join("\n");
   return {
     text,
@@ -187,8 +187,8 @@ export function registerPlan(
       where: portalName,
       how:
         "skill" in via
-          ? `${via.skill.name} v${via.skill.version}, no model calls`
-          : "first run, computer use",
+          ? `Replay of ${via.skill.name} v${via.skill.version}, no model calls`
+          : "First run with computer use",
       figure: { value: count(n, "value"), label: "from your message" },
       rows: valueRows(params),
       foot: "Nothing is submitted until you approve the filled form",
@@ -324,7 +324,7 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
       true,
       [
         `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}) with ${skill.name} v${skill.version}.`,
-        `${Object.keys(m.params).length} values and ${docs.length} documents from the company profile, listed on the card.`,
+        `${Object.keys(m.params).length} values and ${docs.length} documents from the company profile.`,
         "I'll stop before the final submit and show you the filled form.",
       ].join("\n"),
       supplierCard(m.params, `${skill.name} v${skill.version}, no model calls`),
@@ -355,7 +355,7 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
       `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}). First time on this portal: computer use fills every step from the company profile and uploads the documents.`,
       "I'll stop before the final submit and show you the filled form.",
     ].join("\n"),
-    supplierCard(params, "first run, computer use"),
+    supplierCard(params, "First run with computer use"),
   );
 }
 
@@ -427,7 +427,7 @@ function planQuote(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
     {
       title: `Quote for ${u.company}`,
       where: "HubSpot",
-      how: "API, 4 writes",
+      how: "Through the API, 4 writes",
       figure: { value: total, label: `${u.seats} seats of ${planName} for 12 months` },
       rows: [
         ["HubSpot company", `${u.company}${u.city ? ` (${u.city})` : ""}, found or created`],

@@ -179,8 +179,11 @@ const TEXT = {
     unit: "Preço unitário",
     total: "Total",
     grandTotal: "Total do contrato (12 meses)",
-    monthly: "Equivalente mensal",
+    monthly: "por mês",
     includes: "Inclui",
+    accept: "Aceite da proposta",
+    signName: "Nome e cargo",
+    signDate: "Assinatura e data",
     terms: (start: string) =>
       `Início em ${start}. Prazo de 12 meses, cobrança mensal. Valores sem impostos. Proposta sujeita a aprovação de crédito.`,
     footer: "Tidewater Cloud é uma empresa fictícia. Documento de demonstração.",
@@ -196,8 +199,11 @@ const TEXT = {
     unit: "Unit price",
     total: "Total",
     grandTotal: "Contract total (12 months)",
-    monthly: "Monthly equivalent",
+    monthly: "per month",
     includes: "Includes",
+    accept: "Acceptance",
+    signName: "Name and title",
+    signDate: "Signature and date",
     terms: (start: string) =>
       `Starts ${start}. 12-month term, billed monthly. Prices exclude taxes. Subject to credit approval.`,
     footer: "Tidewater Cloud is a fictional company. Demo document.",
@@ -216,11 +222,9 @@ function lineDescription(sku: string, description: string, language: QuoteReques
 
 // ---------- PDF ----------
 
-const INK = rgb(0.07, 0.13, 0.2);
-const MUTED = rgb(0.42, 0.47, 0.53);
-const BRAND = rgb(0.04, 0.19, 0.28);
-const ACCENT = rgb(0.0, 0.55, 0.6);
-const RULE = rgb(0.86, 0.89, 0.92);
+const INK = rgb(0.07, 0.09, 0.11);
+const MUTED = rgb(0.4, 0.43, 0.46);
+const RULE = rgb(0.84, 0.85, 0.86);
 
 export async function renderQuotePdf(q: Quote, r: QuoteRequest, createdAtMs: number): Promise<Uint8Array> {
   const t = TEXT[r.language];
@@ -235,97 +239,101 @@ export async function renderQuotePdf(q: Quote, r: QuoteRequest, createdAtMs: num
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const { width, height } = page.getSize();
-  const left = 48;
-  const right = width - 48;
+  const left = 56;
+  const right = width - 56;
   const today = todayIso(createdAtMs, "America/Sao_Paulo");
+  const hairline = (at: number, color = RULE, thickness = 0.6) =>
+    page.drawLine({ start: { x: left, y: at }, end: { x: right, y: at }, thickness, color });
 
-  // Header band
-  page.drawRectangle({ x: 0, y: height - 96, width, height: 96, color: BRAND });
-  text(page, bold, "Tidewater Cloud", left, height - 56, 22, rgb(1, 1, 1));
-  text(page, regular, "Workforce cloud for growing teams", left, height - 76, 10, rgb(0.78, 0.86, 0.9));
-  textRight(page, bold, t.title.toUpperCase(), right, height - 56, 14, rgb(1, 1, 1));
-  textRight(page, regular, q.number, right, height - 76, 10, rgb(0.78, 0.86, 0.9));
+  // Letterhead
+  text(page, bold, "Tidewater Cloud", left, height - 66, 15, INK);
+  textRight(page, regular, t.title, right, height - 66, 11, MUTED);
 
-  // Meta and customer
-  let y = height - 140;
-  text(page, bold, t.billTo, left, y, 9, MUTED);
-  text(page, bold, r.company, left, y - 18, 14, INK);
-  text(page, regular, [r.city, r.country].filter(Boolean).join(", "), left, y - 34, 10, MUTED);
-  const meta: [string, string][] = [
+  // Who it is for
+  let y = height - 150;
+  text(page, regular, t.billTo, left, y, 11, MUTED);
+  y -= 38;
+  const name = drawable(bold, r.company, 32);
+  const nameSize = Math.max(18, Math.min(32, (32 * (right - left)) / bold.widthOfTextAtSize(name, 32)));
+  text(page, bold, r.company, left, y, nameSize, INK, right - left);
+  y -= 20;
+  text(page, regular, [r.city, r.country].filter(Boolean).join(", "), left, y, 11, MUTED);
+
+  // The number that matters, and the quote's own facts beside it
+  y -= 62;
+  const facts: [string, string][] = [
     [t.number, q.number],
     [t.date, formatDate(today, r.language)],
     [t.validUntil, formatDate(q.validUntil, r.language)],
   ];
-  meta.forEach(([label, value], i) => {
-    textRight(page, regular, `${label}: ${value}`, right, y - i * 16, 10, i === 0 ? INK : MUTED);
+  text(page, regular, t.grandTotal, left, y, 11, MUTED);
+  facts.forEach(([label, value], i) => {
+    text(page, regular, label, right - 150, y - i * 21, 9, MUTED);
+    textRight(page, bold, value, right, y - i * 21, 9, INK);
   });
-
-  // Table
-  y -= 80;
-  const cols = { desc: left, qty: 345, unit: 450, total: right };
-  page.drawRectangle({
-    x: left - 8,
-    y: y - 8,
-    width: right - left + 16,
-    height: 26,
-    color: rgb(0.95, 0.97, 0.98),
-  });
-  text(page, bold, t.description, cols.desc, y, 9, MUTED);
-  textRight(page, bold, t.qty, cols.qty, y, 9, MUTED);
-  textRight(page, bold, t.unit, cols.unit, y, 9, MUTED);
-  textRight(page, bold, t.total, cols.total, y, 9, MUTED);
-  y -= 30;
-  for (const line of q.lines) {
-    text(page, regular, lineDescription(line.sku, line.description, r.language), cols.desc, y, 10, INK, 265);
-    textRight(page, regular, String(line.qty), cols.qty, y, 10, INK);
-    textRight(page, regular, formatMoney(line.unitMinor, q.currency, r.language), cols.unit, y, 10, INK);
-    textRight(page, regular, formatMoney(line.totalMinor, q.currency, r.language), cols.total, y, 10, INK);
-    y -= 22;
-    page.drawLine({
-      start: { x: left - 8, y: y + 10 },
-      end: { x: right + 8, y: y + 10 },
-      thickness: 0.6,
-      color: RULE,
-    });
-  }
-
-  // Totals
-  y -= 14;
-  text(page, bold, t.grandTotal, cols.desc, y, 12, INK);
-  textRight(page, bold, formatMoney(q.totalMinor, q.currency, r.language), cols.total, y, 14, ACCENT);
-  y -= 20;
-  text(page, regular, t.monthly, cols.desc, y, 10, MUTED);
-  textRight(
+  y -= 46;
+  text(page, bold, formatMoney(q.totalMinor, q.currency, r.language), left, y, 38, INK);
+  y -= 22;
+  text(
     page,
     regular,
-    formatMoney(Math.round(q.totalMinor / TERM_MONTHS), q.currency, r.language),
-    cols.total,
+    `${formatMoney(Math.round(q.totalMinor / TERM_MONTHS), q.currency, r.language)} ${t.monthly}`,
+    left,
     y,
-    10,
+    11,
     MUTED,
   );
 
-  // What the plan includes
-  const plan = Object.values(PRICE_BOOK).find((p) => q.lines.some((l) => l.sku === p.sku));
-  if (plan) {
-    y -= 44;
-    text(page, bold, `${t.includes}: ${plan.name}`, left, y, 11, INK);
-    for (const item of plan.includes[r.language]) {
-      y -= 18;
-      page.drawCircle({ x: left + 3, y: y + 3.5, size: 2, color: ACCENT });
-      text(page, regular, item, left + 14, y, 10, INK);
-    }
+  // Lines
+  y -= 48;
+  const cols = { desc: left, qty: 345, unit: 440, total: right };
+  hairline(y + 18, INK, 1);
+  text(page, regular, t.description, cols.desc, y, 9, MUTED);
+  textRight(page, regular, t.qty, cols.qty, y, 9, MUTED);
+  textRight(page, regular, t.unit, cols.unit, y, 9, MUTED);
+  textRight(page, regular, t.total, cols.total, y, 9, MUTED);
+  y -= 10;
+  hairline(y);
+  for (const line of q.lines) {
+    y -= 18;
+    text(page, regular, lineDescription(line.sku, line.description, r.language), cols.desc, y, 10, INK, 270);
+    textRight(page, regular, String(line.qty), cols.qty, y, 10, INK);
+    textRight(page, regular, formatMoney(line.unitMinor, q.currency, r.language), cols.unit, y, 10, INK);
+    textRight(page, regular, formatMoney(line.totalMinor, q.currency, r.language), cols.total, y, 10, INK);
+    y -= 10;
+    hairline(y);
   }
 
-  // Terms and footer
-  y -= 40;
-  for (const line of wrap(regular, t.terms(formatDate(r.startDate, r.language)), 10, right - left)) {
-    text(page, regular, line, left, y, 10, MUTED);
-    y -= 15;
+  // What the plan includes, then the terms, in two columns
+  y -= 34;
+  const plan = Object.values(PRICE_BOOK).find((p) => q.lines.some((l) => l.sku === p.sku));
+  const second = left + (right - left) / 2 + 12;
+  const columnTop = y;
+  if (plan) {
+    text(page, bold, t.includes, left, y, 10, INK);
+    y -= 4;
+    for (const item of plan.includes[r.language]) {
+      y -= 16;
+      text(page, regular, item, left, y, 10, INK, second - left - 16);
+    }
   }
-  page.drawLine({ start: { x: left, y: 64 }, end: { x: right, y: 64 }, thickness: 0.6, color: RULE });
-  text(page, regular, t.footer, left, 48, 8, MUTED);
-  textRight(page, regular, "tidewater.example", right, 48, 8, MUTED);
+  let terms = columnTop;
+  for (const line of wrap(regular, t.terms(formatDate(r.startDate, r.language)), 10, right - second)) {
+    text(page, regular, line, second, terms, 10, MUTED);
+    terms -= 15;
+  }
+
+  // Acceptance
+  const sign = 150;
+  text(page, bold, t.accept, left, sign + 42, 10, INK);
+  page.drawLine({ start: { x: left, y: sign }, end: { x: second - 24, y: sign }, thickness: 0.6, color: INK });
+  page.drawLine({ start: { x: second, y: sign }, end: { x: right, y: sign }, thickness: 0.6, color: INK });
+  text(page, regular, t.signName, left, sign - 14, 9, MUTED);
+  text(page, regular, t.signDate, second, sign - 14, 9, MUTED);
+
+  // Footer
+  text(page, regular, t.footer, left, 52, 8, MUTED);
+  textRight(page, regular, "tidewater.example", right, 52, 8, MUTED);
 
   return doc.save();
 }

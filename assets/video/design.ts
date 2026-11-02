@@ -105,10 +105,15 @@ async function cards(): Promise<Record<string, string>> {
   const readback = (commit?.body ?? "")
     .split("\n")
     .flatMap((l) => {
-      const m = /^• ([^:]+): (.*)$/.exec(l);
+      const m = /^([^:]+): (.*)$/.exec(l);
       return m ? [{ label: m[1] as string, value: m[2] as string }] : [];
     });
-  const shot = artifact(commit?.image_artifact_id);
+  const shot = artifact(
+    one<{ id: string }>(
+      "SELECT id FROM artifacts WHERE run_id = ? AND kind = 'screenshot' ORDER BY created_at DESC LIMIT 1",
+      replay.id,
+    )?.id,
+  );
   out.submit = submitPhoneCardHtml({ portalName: PORTAL, ...(shot ? { screenshot: shot } : {}), readback });
 
   const intake = (jobId: string) =>

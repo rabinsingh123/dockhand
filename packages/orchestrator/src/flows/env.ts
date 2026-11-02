@@ -151,6 +151,24 @@ export function runTotals(env: FlowEnv, runId: Id): { calls: number; costUsd: nu
 
 // ---------- gates ----------
 
+/** Room for read-back lines in a submit message (WhatsApp caps a button message's body at 1024 characters). */
+const READBACK_CHARS = 880;
+
+/** As many lines as fit in `max` characters, then how many are left: the rest are on the form in the picture. */
+function listWithin(lines: string[], max: number): string[] {
+  const out: string[] = [];
+  let used = 0;
+  for (const line of lines) {
+    if (used + line.length + 1 > max) {
+      out.push(`${lines.length - out.length} more on the form above.`);
+      break;
+    }
+    out.push(line);
+    used += line.length + 1;
+  }
+  return out;
+}
+
 /** Approval hooks for a browser run: commit and safety gates in WhatsApp, with the screenshot as header. */
 export function gateHooks(
   env: FlowEnv,
@@ -192,19 +210,20 @@ export function gateHooks(
   return {
     async approveCommit(r) {
       const lines = (r.readback ?? []).filter((f) => f.value.trim() !== "" && f.value !== "false");
-      // The card shows the filled form and every value read back (raw: a field that reads "true" must look
-      // wrong, not like a ticked box). The message says where, names the company and anything the rep just
-      // answered, as read back from the page (the rep's check), and that nothing is sent before the tap.
+      // The card shows the filled form; the message lists every value read back, in sharp text the rep can check
+      // (raw: a field that reads "true" must look wrong, not like a ticked box). The company and anything the rep
+      // just answered come first, and nothing is sent before the tap.
       const company = lines.find((f) => /company|customer|account|legal name/i.test(f.label));
       const named = [
         ...(company ? [company] : []),
         ...lines.filter((f) => answered.has(f.label) && f !== company),
       ];
+      const ordered = [...named, ...lines.filter((f) => !named.includes(f))];
       const body = [
         lines.length > 0
-          ? `Ready to submit on ${run.portalName}. ${lines.length} fields on the page, read back on the card.`
+          ? `Ready to submit on ${run.portalName}. ${lines.length} fields, read back from the page:`
           : `Ready to submit on ${run.portalName}. Check the review page on the card.`,
-        ...named.map((f) => `${f.label}: ${f.value}`),
+        ...listWithin(ordered.map((f) => `${f.label}: ${f.value}`), READBACK_CHARS),
         "Approve to submit. Nothing is sent until you tap.",
       ].join("\n");
       const card = await cardOr(r.screenshot, (shot) =>

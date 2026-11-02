@@ -253,14 +253,14 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
         intent: "create_lead",
         actions,
         writes: true,
-        // The values go on the card; the message says what, for whom, and that the form comes back first.
+        // The message says what, for whom, and that the form comes back first, with every value read back.
         approvalText: [
           head,
           ...(leadSubject(actionParams(actions[0]))
             ? [`Lead: ${leadSubject(actionParams(actions[0]))}`]
             : []),
           ...extra,
-          `${Object.keys(actionParams(actions[0])).length} values from your message, listed on the card. I'll show you the filled form before saving.`,
+          `${Object.keys(actionParams(actions[0])).length} values from your message. I'll show you the filled form before saving.`,
         ].join("\n"),
       },
       card: {
@@ -268,8 +268,8 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
         where: "EspoCRM",
         how:
           actions[0]?.kind === "skill_replay"
-            ? `${actions[0].skill} v${actions[0].version}, no model calls`
-            : "first run, computer use",
+            ? `Replay of ${actions[0].skill} v${actions[0].version}, no model calls`
+            : "First run with computer use",
         figure: {
           value: `${Object.keys(actionParams(actions[0])).length} values`,
           label: "from your message",

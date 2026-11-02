@@ -2,9 +2,9 @@
 // drift watch). Drawn with @dockhand/design (docs/DESIGN.md): a 4:5 card, 540 x 675 CSS px at 2x, so the PNG is
 // 1080 x 1350, exactly what WhatsApp shows uncropped in the chat bubble.
 //
-// Each card reads like a product update or a receipt, not a dashboard: a masthead, a title, one line big enough
-// to read when the phone fills a 1080p frame, one summary sentence, then hairline tables. Status is a word,
-// numbers are tabular, and the accent marks at most one thing per card, only what Dockhand did.
+// A card is seen about 290 px wide, so it is a poster: one statement, one real picture from the run, one line of
+// proof, and nothing under 20 CSS px. Full detail goes in the WhatsApp message under it, where text is always sharp.
+// Black is Dockhand speaking; a whole orange card is reserved for work it finished by itself.
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -22,17 +22,18 @@ import type {
 } from "@dockhand/core";
 import {
   type Change,
+  COLOR,
   changes,
-  display,
   esc,
   FIT_SCRIPT,
   facts,
-  footnote,
-  masthead,
-  num,
-  section,
-  summary,
-  title,
+  foot,
+  kicker,
+  proof,
+  stage,
+  state,
+  sub,
+  top,
   uiCss,
 } from "@dockhand/design";
 import { displayName, stepTarget } from "@dockhand/skills";
@@ -97,9 +98,6 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const label = (name: string) => cap(name.replace(/_/g, " "));
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
-/** Small counts in words, as a sentence would have them ("two controls"); larger ones as numerals. */
-const spelled = (n: number) => WORDS[n] ?? String(n);
 
 // ---------- counts: one source for every number about a draft or a skill ----------
 
@@ -140,12 +138,13 @@ export function skillCounts(s: Pick<Skill, "steps" | "params">): {
 
 // ---------- the card ----------
 
-/** A whole card document: masthead, then the body. */
-export function cardHtml(meta: string, body: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${uiCss()}html,body{margin:0;background:#F6F5F1}</style></head><body class="dh"><main class="dh-card">${masthead(meta)}${body}</main>${FIT_SCRIPT}</body></html>`;
+/** A whole card document: the top line, then the body. `signal` is the orange ground of a job finished alone. */
+export function cardHtml(context: string, body: string, o: { signal?: boolean } = {}): string {
+  const ground = o.signal ? COLOR.accent : COLOR.ground;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${uiCss()}html,body{margin:0;background:${ground}}</style></head><body class="dh"><main class="dh-card${o.signal ? " signal" : ""}">${top(context)}${body}</main>${FIT_SCRIPT}</body></html>`;
 }
 
-/** The generic card (tests and one-off notices): a title, an optional line and summary. */
+/** The generic card (tests and one-off notices): a statement, an optional line and proof. */
 export interface PhoneCardSpec {
   context: string;
   title: string;
@@ -156,9 +155,8 @@ export interface PhoneCardSpec {
 export function phoneCardHtml(c: PhoneCardSpec): string {
   return cardHtml(
     c.context,
-    title(c.title) +
-      (c.line ? display(c.line, { kind: "small" }) : "") +
-      (c.summary ? summary(esc(c.summary)) : ""),
+    stage(state(esc(c.title)) + (c.line ? sub(esc(c.line)) : "")) +
+      (c.summary ? foot(proof(esc(c.summary))) : ""),
   );
 }
 
@@ -172,24 +170,28 @@ export function pngSize(b: Uint8Array): { w: number; h: number } | undefined {
   return { w: v.getUint32(16), h: v.getUint32(20) };
 }
 
+/** Portal pages keep navigation down the left; a card shows the working area, at a size that can be read. */
+const SHOT_SOURCE_WIDTH = 1120;
+
 /**
- * A real screenshot of the page, cropped to `height` CSS px around `focusY` (0..1 of the image). `highlight`
- * outlines the control Dockhand will act on, in the accent.
+ * A real screenshot of the page, edge to edge and cropped to `height` CSS px around `focusY` (0..1 of the image).
+ * `highlight` outlines the control Dockhand will act on, in the accent.
  */
 export function shotHtml(
   bytes: Uint8Array,
   o: { height: number; focusY?: number; highlight?: BBox },
 ): string {
   const size = pngSize(bytes);
-  const w = PHONE_CARD_WIDTH - 56 - 2;
-  const scale = size ? w / size.w : 1;
-  const fullH = size ? size.h * scale : o.height;
-  const top = Math.max(0, Math.min(fullH - o.height, (o.focusY ?? 0) * fullH - o.height / 2));
-  const hl =
-    o.highlight && size
-      ? `<span class="hl" style="left:${(o.highlight.x * scale - 4).toFixed(1)}px;top:${(o.highlight.y * scale - top - 4).toFixed(1)}px;width:${(o.highlight.w * scale + 8).toFixed(1)}px;height:${(o.highlight.h * scale + 8).toFixed(1)}px"></span>`
-      : "";
-  return `<div class="dh-shot" style="height:${o.height}px"><img src="${png(bytes)}" style="width:${w}px;height:${fullH.toFixed(1)}px;margin-top:${(-top).toFixed(1)}px">${hl}</div>`;
+  if (!size) return `<div class="dh-bleed" style="height:${o.height}px"><img src="${png(bytes)}"></div>`;
+  const shown = Math.min(SHOT_SOURCE_WIDTH, size.w);
+  const scale = PHONE_CARD_WIDTH / shown;
+  const fullH = size.h * scale;
+  const left = (size.w - shown) * scale;
+  const y = Math.max(0, Math.min(fullH - o.height, (o.focusY ?? 0) * fullH - o.height / 2));
+  const hl = o.highlight
+    ? `<span class="hl" style="left:${(o.highlight.x * scale - left - 5).toFixed(1)}px;top:${(o.highlight.y * scale - y - 5).toFixed(1)}px;width:${(o.highlight.w * scale + 10).toFixed(1)}px;height:${(o.highlight.h * scale + 10).toFixed(1)}px"></span>`
+    : "";
+  return `<div class="dh-bleed" style="height:${o.height}px"><img src="${png(bytes)}" style="width:${(size.w * scale).toFixed(1)}px;left:${(-left).toFixed(1)}px;top:${(-y).toFixed(1)}px">${hl}</div>`;
 }
 
 // ---------- frames from a video ----------
@@ -252,11 +254,6 @@ export async function videoFrames(ffmpeg: string, src: string, n = 4): Promise<U
   }
 }
 
-function clock(s: number): string {
-  const m = Math.floor(s / 60);
-  return `${m}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-}
-
 /** "{{company_name}}" in a step becomes the value's label in bold; the rest is escaped. */
 export function withParams(text: string): string {
   return text
@@ -288,35 +285,27 @@ export interface TeachCardOptions {
   portalName: string;
   /** Frames sampled evenly from the recording (videoFrames). */
   frames?: Uint8Array[];
-  /** Recording length in seconds, for the frame timestamps and the summary. */
+  /** Recording length in seconds, for the summary. */
   durationS?: number;
 }
 
 export function teachPhoneCardHtml(d: SkillDraft, o: TeachCardOptions): string {
   const n = draftCounts(d);
-  const frames = (o.frames ?? []).slice(0, 3);
-  const strip = frames.length
-    ? `<div class="dh-frames">${frames
-        .map(
-          (f, i) =>
-            `<figure><img src="${jpeg(f)}"><span>${o.durationS ? clock(((i + 0.5) / frames.length) * o.durationS) : `${i + 1} of ${frames.length}`}</span></figure>`,
-        )
-        .join("")}</div>`
+  const frames = o.frames ?? [];
+  const frame = frames[Math.floor(frames.length / 2)];
+  const picture = frame
+    ? `<div class="dh-bleed" style="height:232px"><img src="${jpeg(frame)}" style="width:100%;left:0;top:0"></div>`
     : "";
   const video = o.durationS ? `your ${Math.round(o.durationS)} s recording` : "your recording";
   return cardHtml(
-    "Learned from your video",
-    title(`${d.title} on ${o.portalName}`) +
-      display(plural(n.values, "value"), { accent: true }) +
-      summary(
-        `Seen in ${esc(video)}: ${n.required} required, done in ${plural(n.steps, "step")}. It submits with “${esc(d.commitStep)}”, only after your tap.`,
+    "Learned",
+    picture +
+      stage(
+        state(esc(d.title), { size: 52 }) +
+          sub(`${plural(n.values, "value")}, ${plural(n.steps, "step")}, on ${esc(o.portalName)}`) +
+          valueNames(d.params, 6),
       ) +
-      strip +
-      section("Values it will ask for") +
-      valueNames(d.params, 8) +
-      footnote(
-        "Values typed in the video are never reused. The first real request runs once with computer use.",
-      ),
+      foot(proof(`Seen in ${esc(video)}. It submits with “${esc(d.commitStep)}”, only after your tap.`)),
   );
 }
 
@@ -327,7 +316,7 @@ export interface PlanCardView {
   title: string;
   /** "Caravela Partner Hub", "HubSpot". */
   where: string;
-  /** "register_partner_deal v1, no model calls". */
+  /** "Replay of register_partner_deal v1, no model calls". */
   how: string;
   figure: { value: string; label: string };
   rows: [string, string][];
@@ -337,12 +326,12 @@ export interface PlanCardView {
 
 export function planPhoneCardHtml(v: PlanCardView): string {
   return cardHtml(
-    "Plan, waiting for your approval",
-    title(`${v.title}`) +
-      display(v.figure.value, { kind: "small" }) +
-      summary(`${esc(cap(v.figure.label))}. Written on ${esc(v.where)} with ${esc(v.how)}. ${esc(v.foot)}.`) +
-      section(`What I will write on ${v.where}`) +
-      facts(v.rows, { max: 9 }),
+    "Plan",
+    stage(
+      state(esc(v.title), { size: 56 }) +
+        sub(`${esc(v.figure.value)} on ${esc(v.where)}`) +
+        facts(v.rows, { max: 6 }),
+    ) + foot(proof(`${esc(v.how)}. ${esc(v.foot)}.`)),
   );
 }
 
@@ -363,28 +352,29 @@ export function submitPhoneCardHtml(v: SubmitCardView): string {
   const size = v.screenshot ? pngSize(v.screenshot) : undefined;
   const shot = v.screenshot
     ? shotHtml(v.screenshot, {
-        height: lines.length ? 140 : 330,
+        height: 340,
         focusY: v.highlight && size ? (v.highlight.y + v.highlight.h / 2) / size.h : 0.5,
         ...(v.highlight ? { highlight: v.highlight } : {}),
       })
     : "";
   return cardHtml(
-    "Ready to submit",
-    title(`Filled on ${v.portalName}`) +
-      display(lines.length ? plural(lines.length, "field") : "Review page", { kind: "small" }) +
-      summary(
-        lines.length
-          ? "Read back from the page just now. Nothing is sent until you tap Approve."
-          : "A wizard’s last page has nothing to read back: check it here. Nothing is sent until you tap Approve.",
+    "Your approval",
+    shot +
+      stage(
+        state("Ready to submit", { size: 56 }) +
+          sub(
+            lines.length
+              ? `${plural(lines.length, "field")} filled on ${esc(v.portalName)}`
+              : `Review page on ${esc(v.portalName)}`,
+          ),
       ) +
-      shot +
-      (lines.length
-        ? section("On the page now") +
-          facts(
-            lines.map((f) => [f.label, f.value]),
-            { max: 6 },
-          )
-        : ""),
+      foot(
+        proof(
+          lines.length
+            ? "Read back from the page just now. Nothing is sent until you tap Approve."
+            : "A wizard’s last page has nothing to read back: check it here. Nothing is sent until you tap Approve.",
+        ),
+      ),
   );
 }
 
@@ -403,12 +393,12 @@ export function askPhoneCardHtml(v: AskCardView): string {
   const list =
     opts.length > 1 ? `${opts.slice(0, -1).join(", ")} or ${opts.at(-1)}` : (opts[0] ?? "any value you type");
   return cardHtml(
-    "Waiting for your answer",
-    title(`${v.portalName} now requires a new field`) +
-      display(v.label) +
-      summary(`Which should I use: ${esc(list)}? I’ll remember your answer and use it from now on.`) +
-      (v.screenshot ? shotHtml(v.screenshot, { height: 250, focusY: 0.55 }) : "") +
-      footnote("Nothing has been submitted. Reply “skip” to stop here."),
+    "Question",
+    stage(state(esc(v.label), { size: 84 }) + sub(`${esc(v.portalName)} now requires a new field.`)) +
+      (v.screenshot ? shotHtml(v.screenshot, { height: 220, focusY: 0.55 }) : "") +
+      foot(
+        `<div style="height:20px"></div>${proof(`Which should I use: ${esc(list)}? I’ll remember your answer and use it from now on. Nothing has been submitted.`)}`,
+      ),
   );
 }
 
@@ -450,25 +440,25 @@ const TIER_WORDS: Record<ReceiptTier, string> = {
 export function receiptPhoneCardHtml(r: ReceiptCardView): string {
   const looksLikeId =
     r.headline !== undefined && /^[A-Z0-9][A-Z0-9-]{4,}$/.test(r.headline) && /\d/.test(r.headline);
-  const rows: [string, string][] = [
-    ["How", esc(TIER_WORDS[r.tier])],
-    ...(r.verified
-      ? [["Fields verified", `${num(`${r.verified.matched} of ${r.verified.checked}`)}`] as [string, string]]
-      : []),
-    ["Machine time", num(seconds(r.seconds))],
-    ["Cost to run", num(money(r.execCostUsd))],
-    ["Cost to read the request", num(money(r.intakeCostUsd))],
-    ...(r.skill ? [["Skill", num(`${r.skill.name} v${r.skill.version}`)] as [string, string]] : []),
-  ];
+  const how = [
+    r.verified ? `${r.verified.matched} of ${r.verified.checked} fields verified` : TIER_WORDS[r.tier],
+    seconds(r.seconds),
+    `${money(r.execCostUsd)} to run`,
+  ].join(". ");
+  const shot = r.screenshot ? shotHtml(r.screenshot, { height: 300, focusY: 0.3 }) : "";
+  const big = r.headline ?? r.title;
   return cardHtml(
     "Receipt",
-    title(r.title) +
-      (r.headline ? display(r.headline, { kind: looksLikeId ? "id" : "small", accent: true }) : "") +
-      (r.line ? summary(esc(r.line)) : "") +
-      section("Details") +
-      facts(rows, { html: true }) +
-      (r.screenshot ? shotHtml(r.screenshot, { height: r.headline ? 150 : 240, focusY: 0.3 }) : "") +
-      (r.usedOpenWeights ? footnote("Built with Muse Spark Open") : ""),
+    shot +
+      stage(
+        state(esc(big), { size: shot ? 60 : looksLikeId ? 72 : 84, accent: true }) +
+          (r.headline ? sub(esc(r.title)) : ""),
+      ) +
+      foot(
+        (r.line ? proof(esc(r.line)) : "") +
+          proof(`${esc(how)}.`) +
+          (r.usedOpenWeights ? proof("Built with Muse Spark Open") : ""),
+      ),
   );
 }
 
@@ -484,27 +474,16 @@ export interface SkillCardView {
 
 export function skillPhoneCardHtml(v: SkillCardView): string {
   const n = skillCounts(v.skill);
-  const from = v.draft ? draftCounts(v.draft) : undefined;
-  const unused = v.draft ? v.draft.params.filter((p) => !v.skill.params.some((q) => q.name === p.name)) : [];
   return cardHtml(
     "New skill",
-    title(`${v.skill.title} on ${v.portalName}`) +
-      display("0 model calls", { kind: "small", accent: true }) +
-      summary(
-        from
-          ? `when it replays. Compiled from the first run: your video’s ${from.steps} steps became <b>${n.steps} program steps</b>, and its ${from.values} values became <b>${n.values}</b>${unused.length ? ` (${esc(unused.map((p) => label(p.name)).join(", "))} not needed)` : ""}.`
-          : `when it replays. ${n.steps} program steps, ${n.values} values per request.`,
-      ) +
-      section("Program") +
-      facts(
-        [
-          ["Steps", num(n.steps)],
-          ["Values per request", num(n.values)],
-          ["Fields it writes and reads back", num(n.fields)],
-          ["Checked before saving", `${num(`${v.verified.passed} of ${v.verified.total}`)} dry runs passed`],
-          ["Name", num(`${v.skill.name} v${v.skill.version}`)],
-        ],
-        { html: true },
+    stage(
+      state("0 model calls", { size: 88, accent: true }) +
+        sub(`each time ${esc(v.skill.title)} replays on ${esc(v.portalName)}.`),
+    ) +
+      foot(
+        proof(
+          `${plural(n.steps, "program step")}, ${plural(n.values, "value")}. ${v.verified.passed} of ${v.verified.total} dry runs passed.`,
+        ),
       ),
   );
 }
@@ -603,43 +582,52 @@ export function repairChanges(v: Pick<DiffCardInput, "parent" | "saved" | "steps
 }
 
 export function diffPhoneCardHtml(v: DiffCardInput): string {
-  const { rows, free, byModel } = repairChanges(v);
+  const { rows, free } = repairChanges(v);
   const added = v.saved.params.filter((p) => !v.parent.params.some((q) => q.name === p.name));
   const cost = repairCost(v);
-  const changed = rows.length;
-  const controls = `${cap(spelled(changed))} ${changed === 1 ? "control" : "controls"} changed`;
-  const what =
-    changed === 0
-      ? "The page changed; stored selectors found every step again."
-      : byModel === 0
-        ? `${controls}; stored selectors found ${changed === 1 ? "it" : "them"} again.`
-        : byModel === changed
-          ? `${controls}; a model found ${changed === 1 ? "the new one" : "each new one"}.`
-          : `${controls}. A model found ${spelled(byModel)}; stored selectors found the rest.`;
-  const checks = `Checked with ${v.canary.passed} of ${v.canary.total} dry runs before version ${v.saved.version} went live; version ${v.parent.version} is kept.`;
-  const facts_: [string, string][] = [
-    ["Skill", num(`${v.saved.name} v${v.saved.version}`)],
-    ...(cost ? [["Cost of the repair", num(cost)] as [string, string]] : []),
-    ["Undo", num(`/rollback ${v.saved.name} ${v.parent.version}`)],
-  ];
+  const repaired = `${plural(rows.length + free, "step")} repaired${cost ? ` for ${cost}` : ""}`;
+  const credit = v.usedOpenWeights ? proof("Built with Muse Spark Open") : "";
+  const value = added.length ? ` New value: ${esc(added.map((p) => label(p.name)).join(", "))}.` : "";
+  if (v.watch)
+    return cardHtml(
+      cap(v.watch.when ?? "Drift watch"),
+      stage(state("Nothing<br>to do.", { size: 112 })) +
+        foot(
+          sub(`${esc(v.portalName)} changed${v.watch.when === "overnight" ? " overnight" : ""}.${value}`) +
+            proof(`${repaired}. ${v.canary.passed} of ${v.canary.total} dry runs passed.`) +
+            credit,
+        ),
+      { signal: true },
+    );
+  const leadAt = Math.max(
+    rows.findIndex((r) => r.accent),
+    0,
+  );
+  const lead = rows[leadAt];
+  const rest = rows.filter((_, i) => i !== leadAt);
+  const was = lead
+    ? lead.was === "(new field)"
+      ? "New field"
+      : lead.was.endsWith(", moved")
+        ? "Moved"
+        : `${esc(lead.was)} is now`
+    : "";
   const more = free > 0 ? `${plural(free, "other step")} found again by stored selectors, free` : undefined;
-  const body = v.watch
-    ? title(`${v.portalName} changed${v.watch.when === "overnight" ? " overnight" : ""}.`) +
-      display("Nothing to do.") +
-      summary(`${esc(what)} ${esc(checks)}`)
-    : title(`${v.portalName} changed. Repaired.`) +
-      display(`Version ${v.saved.version} is live`, { kind: "small" }) +
-      summary(`${esc(what)} ${esc(checks)}`);
   return cardHtml(
-    v.watch ? `Drift watch${v.watch.when ? `, ${v.watch.when}` : ""}` : "Skill repaired",
-    body +
-      section(
-        added.length
-          ? `What changed, and the new value: ${added.map((p) => label(p.name)).join(", ")}`
-          : "What changed",
-      ) +
-      changes(rows, { max: 4, ...(more ? { more } : {}) }) +
-      facts(facts_, { html: true }) +
-      (v.usedOpenWeights ? footnote("Built with Muse Spark Open") : ""),
+    "Repaired",
+    stage(
+      lead
+        ? kicker(was) +
+            state(esc(lead.now), { size: 64 }) +
+            (rest.length || more ? changes(rest, { max: 3, ...(more ? { more } : {}) }) : "")
+        : state("Repaired", { size: 84 }) + sub("The page changed; stored selectors found every step again."),
+    ) +
+      foot(
+        sub(`Version ${v.saved.version} is live.${value}`) +
+          proof(
+            `${repaired}. ${v.canary.passed} of ${v.canary.total} dry runs passed. Version ${v.parent.version} is kept.`,
+          ) +
+          credit,
+      ),
   );
 }

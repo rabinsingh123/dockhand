@@ -73,8 +73,7 @@ describe("receipts", () => {
 
   it("shows execution and intake cost separately, escapes text, credits Spark Open only when used", () => {
     const html = receiptHtml(view);
-    expect(html).toContain("$0.00");
-    expect(html).toContain("$0.004");
+    expect(html).toContain("$0.00 to run"); // intake cost is in the caption
     expect(html).toContain("12 of 12");
     expect(html).toContain("Submitted &#60;after&#62; approval");
     expect(html).not.toContain("Built with Muse Spark Open");

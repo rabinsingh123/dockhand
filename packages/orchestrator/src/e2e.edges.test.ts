@@ -101,7 +101,7 @@ describe("edge cases through WhatsApp", () => {
   it("a text at the plan card edits it; text at the submit card points at the card; 'cancel' stops it", async () => {
     await send({ file: { path: VILA, mime: "image/jpeg" } });
     const first = lastCard();
-    expect(first.body).toContain("values from your message, listed on the card");
+    expect(first.body).toContain("values from your message.");
     expect(first.headerImagePath).toBeTruthy();
     await send({ text: "make it 30 seats" });
     const edited = lastCard();
