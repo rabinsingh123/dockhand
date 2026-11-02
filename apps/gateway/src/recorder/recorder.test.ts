@@ -260,7 +260,7 @@ describe("flight recorder", () => {
     expect(full).toContain("Muse Spark Open picks the element");
     expect(full).toContain("Customer account name");
     expect(full).toContain("Harness verification");
-    expect((await get("/fonts/geist.woff2")).headers.get("content-type")).toBe("font/woff2");
+    expect((await get("/fonts/archivo.woff2")).headers.get("content-type")).toBe("font/woff2");
     expect((await get("/picks/NOPE")).status).toBe(404);
   });
 

@@ -26,19 +26,16 @@ import type { ElementHandle, Locator, Page } from "playwright";
 import { toLocator } from "../helpers/locators.ts";
 
 const fontFile = (name: string) => readFileSync(new URL(`./fonts/${name}`, import.meta.url));
-/** Geist and Geist Mono (SIL OFL 1.1, fonts/OFL.txt), variable weight: the HUD's and the flight recorder's type. */
+/** Archivo and Geist Mono (SIL OFL 1.1, fonts/OFL.txt), variable: the HUD's type, and the flight recorder's code. */
 export const HUD_FONTS: { sans: Uint8Array; mono: Uint8Array } = {
-  sans: fontFile("Geist-Variable.woff2"),
+  sans: fontFile("Archivo-Variable.woff2"),
   mono: fontFile("GeistMono-Variable.woff2"),
 };
 
-/** The in-page overlay, with Geist inlined. Installed with addInitScript on every leased context when the HUD is on. */
+/** The in-page overlay, with Archivo inlined. Installed with addInitScript on every leased context when the HUD is on. */
 export const HUD_SCRIPT: string = readFileSync(new URL("./hud-page.js", import.meta.url), "utf8").replace(
   "/*__DOCKHAND_FONTS__*/null",
-  JSON.stringify({
-    sans: Buffer.from(HUD_FONTS.sans).toString("base64"),
-    mono: Buffer.from(HUD_FONTS.mono).toString("base64"),
-  }),
+  JSON.stringify({ sans: Buffer.from(HUD_FONTS.sans).toString("base64") }),
 );
 export const HUD_TAG = "dockhand-hud";
 /** Added to every screenshot taken through a HUD page (Playwright's `style` option), so no image has it. */
@@ -102,11 +99,11 @@ export function attachHud(page: Page, opts: HudOptions): Hud {
 
 type Box = { x: number; y: number; w: number; h: number; space: "doc" | "view" };
 interface OutlineOpts {
-  tone?: "accent" | "ink" | "gray" | "error";
+  tone?: "accent" | "ground" | "gray" | "error";
   dash?: boolean;
   label?: string;
   sub?: string;
-  tagTone?: "plain" | "ink" | "fail";
+  tagTone?: "plain" | "fail";
   below?: boolean;
   /** Cut out of the spotlight scrim. */
   hole?: boolean;
@@ -173,8 +170,8 @@ interface View {
   visible: boolean;
   stage: string;
   model: string;
-  /** The model slot holds an ID (registration number): set in Geist Mono. */
-  modelMono?: boolean;
+  /** The model slot holds an ID (registration number): set like the stage, not like a model's name. */
+  modelId?: boolean;
   /** A real failure: the stage is set in the error color. */
   fail?: boolean;
   clock: { startedAt: number; pausedMs: number; pausedAt: number | null; frozenAt?: number } | null;
@@ -246,7 +243,7 @@ function secs(ms: number): string {
 
 /** A true zero reads $0.00; paid calls keep four decimals (they are fractions of a cent). */
 function money(usd: number): string {
-  return usd >= 1 || usd === 0 ? `${usd.toFixed(2)}` : `${usd.toFixed(4)}`;
+  return usd >= 1 || usd === 0 ? `$${usd.toFixed(2)}` : `$${usd.toFixed(4)}`;
 }
 
 /**
@@ -315,7 +312,7 @@ interface RunState {
   original: Map<string, Step>;
   idx: number;
   actions: number;
-  ended: { stage: string; model: string; modelMono?: boolean; fail?: boolean; notes: View["notes"] } | null;
+  ended: { stage: string; model: string; modelId?: boolean; fail?: boolean; notes: View["notes"] } | null;
 }
 
 /**
@@ -530,7 +527,7 @@ export class Hud {
         ...base,
         stage: run.ended.stage,
         model: run.ended.model,
-        ...(run.ended.modelMono ? { modelMono: true } : {}),
+        ...(run.ended.modelId ? { modelId: true } : {}),
         ...(run.ended.fail ? { fail: true } : {}),
         notes: [...run.ended.notes, ...this.notes(false).filter((n) => n.text !== "Slowed for video")],
       };
@@ -750,7 +747,7 @@ export class Hud {
     run.ended = {
       stage: e.stage,
       model: detail,
-      ...(id ? { modelMono: true } : {}),
+      ...(id ? { modelId: true } : {}),
       ...(e.fail ? { fail: true } : {}),
       notes,
     };
@@ -848,9 +845,8 @@ export class Hud {
   cuBlocked(info: { name: string; box: { x: number; y: number; w: number; h: number } }): void {
     if (!this.run) return;
     void this.call("outline", "blocked", { ...info.box, space: "view" }, {
-      tone: "ink",
+      tone: "ground",
       dash: true,
-      tagTone: "ink",
       label: `Blocked: ‘${clip(info.name, 40)}’ submits`,
       sub: "Nothing is submitted without the rep’s tap",
     } satisfies OutlineOpts);
@@ -948,7 +944,6 @@ export class Hud {
       tone: "accent",
       hole: true,
       label: `New required field: ‘${clip(q.label, 36)}’`,
-      tagTone: "ink",
     } satisfies OutlineOpts);
     // No selector to fix, so the free and model rungs do not apply: new data comes from the rep.
     const na = (id: RungId): LadderRung => ({
@@ -1024,7 +1019,6 @@ export class Hud {
     if (box) {
       void this.call("outline", "commit", box, {
         tone: "accent",
-        tagTone: "ink",
         label: "Submit waits for the rep’s tap",
         below: true,
       } satisfies OutlineOpts);
@@ -1048,7 +1042,6 @@ export class Hud {
           d === "approved"
             ? ({
                 tone: "accent",
-                tagTone: "ink",
                 below: true,
                 label: "Approved on WhatsApp",
               } satisfies OutlineOpts)
