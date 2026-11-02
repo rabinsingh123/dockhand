@@ -40,8 +40,13 @@ export const CONTEXT_DEFAULTS = {
   colorScheme: "light",
 } as const;
 
-/** Device pixels per CSS pixel on a filmed page: 2560 x 1600 frames for a 1920 x 1200 picture. */
-const FILM_SCALE = 2;
+/**
+ * A filmed browser runs at 2x for real: Chromium's screencast ignores an emulated device scale, and 2560 x 1600 frames
+ * mean a 1080p film shows pages downscaled, never upscaled. The window sets the 1280 x 800 CSS px layout in place of an
+ * emulated viewport, and every screenshot a model or a card uses is taken at CSS scale, so neither sees a difference.
+ */
+const FILM_ARGS = ["--force-device-scale-factor=2", `--window-size=${VIEWPORT.w},${VIEWPORT.h}`];
+const { viewport: _viewport, deviceScaleFactor: _scale, ...FILM_CONTEXT } = CONTEXT_DEFAULTS;
 
 export interface BrowserPoolConfig {
   headless: boolean;
@@ -97,6 +102,7 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
   const clock = cfg.clock ?? systemClock;
   const capture = cfg.capture !== undefined ? cfg.capture : captureOptionsFromEnv();
   const hud = cfg.hud !== undefined ? cfg.hud : cfg.headless && !capture ? null : hudOptionsFromEnv();
+  const filmed = Boolean(capture) && cfg.headless;
   // A filmed replay keeps its result on screen a moment before the page closes (the clip ends with the page).
   if (hud && capture && hud.endHoldMs === undefined) hud.endHoldMs = 2500;
   let browserPromise: Promise<Browser> | null = null;
@@ -109,7 +115,7 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
       const launching = chromium.launch({
         ...cfg.launch,
         headless: cfg.headless,
-        args: [...launchArgs(cfg.headless), ...(cfg.launch?.args ?? [])],
+        args: [...launchArgs(cfg.headless), ...(filmed ? FILM_ARGS : []), ...(cfg.launch?.args ?? [])],
       });
       browserPromise = launching;
       launching.then(
@@ -143,10 +149,7 @@ export function createBrowserPool(cfg: BrowserPoolConfig): DockhandBrowserPool {
   async function newContext(portalId: string): Promise<BrowserContext> {
     const state = storageFile(cfg.storageStateDir, portalId);
     const context = await (await browser()).newContext({
-      ...CONTEXT_DEFAULTS,
-      // Filmed pages render at 2x so a 1080p film shows them downscaled, never upscaled. The layout stays 1280 x 800
-      // CSS px, and every screenshot a model or a card uses is taken at CSS scale, so neither sees a difference.
-      ...(capture ? { deviceScaleFactor: FILM_SCALE } : {}),
+      ...(filmed ? { ...FILM_CONTEXT, viewport: null } : CONTEXT_DEFAULTS),
       ...(existsSync(state) ? { storageState: state } : {}),
     });
     await context.addInitScript({ content: DH_SCRIPT });

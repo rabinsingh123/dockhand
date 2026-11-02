@@ -372,7 +372,9 @@ class ComputerUseRun {
           this.blockedWriteCount++;
         },
       );
-      const size = page.viewportSize();
+      // A filmed browser has no emulated viewport: its window sets the layout.
+      const size =
+        page.viewportSize() ?? (await page.evaluate(() => ({ width: innerWidth, height: innerHeight })));
       if (!size || size.width !== VIEWPORT.w || size.height !== VIEWPORT.h) {
         throw new DockhandError(
           "TOOL_ERROR",
