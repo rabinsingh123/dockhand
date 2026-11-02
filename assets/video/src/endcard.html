@@ -5,36 +5,38 @@
 <title>Dockhand end card</title>
 <link rel="stylesheet" href="theme.css">
 <style>
-/* Two states joined by a hard cut: the wordmark, then the credits. Left edge at 160 px throughout. */
-.mark { left: 160px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
-.mark .wordmark { font-size: 232px; margin-left: -10px; }
-.mark .tag { margin-top: 44px; font-size: 64px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); }
-.mark .legal { margin-top: 72px; font-size: 40px; line-height: 60px; color: var(--gray); }
-.mark .legal .mono { font-size: 38px; }
+/* Two states joined by a hard cut: the credits on black, then the wordmark on the whole orange ground, the film's
+   one finished job. The wordmark sits exactly where endcard-wordmark.html has it; the compliance lines hang under
+   it on the same left edge, 160 px throughout. */
+.signal { inset: 0; }
+.legal { left: 160px; right: 160px; bottom: 72px; font-size: 40px; line-height: 54px; white-space: nowrap; }
 
 .credits { inset: 0; }
-.head { left: 160px; right: 160px; top: 116px; display: flex; align-items: baseline; justify-content: space-between; }
+/* The film's caption lands over the bottom of the credits: they end above y = 880. */
+.head { left: 160px; right: 160px; top: 88px; display: flex; align-items: baseline; justify-content: space-between; }
 .head .wordmark { font-size: 96px; }
-.head .built { font-size: 44px; font-weight: 500; color: var(--ink); letter-spacing: -0.01em; }
+.head .built { font-size: 44px; }
 .hr { left: 160px; right: 160px; height: 2px; background: var(--hair); }
-.cols { left: 160px; right: 160px; top: 318px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 96px; }
-.cols h3 { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 22px; }
-.cols li { list-style: none; font-size: 40px; line-height: 64px; color: var(--ink); white-space: nowrap; }
+.cols { left: 160px; right: 160px; top: 264px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 96px; }
+.cols h3 { font-size: 56px; font-weight: 700; letter-spacing: var(--tight); margin-bottom: 20px; }
+.cols li { list-style: none; font-size: 40px; line-height: 64px; white-space: nowrap; }
 .cols li .gray { color: var(--gray); }
 .cols ul { margin: 0; padding: 0; }
-.foot { left: 160px; right: 160px; top: 882px; display: flex; align-items: baseline; justify-content: space-between; gap: 60px; }
-.foot .with { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
-.foot .url { font-size: 44px; color: var(--ink); white-space: nowrap; }
+.foot { left: 160px; right: 160px; top: 776px; display: flex; align-items: baseline; justify-content: space-between; gap: 60px; }
+.foot .with { font-size: 44px; white-space: nowrap; }
+.foot .url { font-size: 44px; white-space: nowrap; }
 </style>
 </head>
 <body>
 <div class="stage">
-  <div class="mark abs" id="mark">
-    <div class="wordmark">Dockhand</div>
-    <div class="tag">Automation that maintains itself.</div>
-    <div class="legal" id="legal">
+  <div class="signal abs" id="mark">
+    <div class="mark abs">
+      <div class="wordmark">Dockhand</div>
+      <div class="tag">Automation that maintains itself.</div>
+    </div>
+    <div class="legal abs" id="legal">
       <div>Built during the Meta AI Developer Hackathon, Oct 27–Nov 4, 2026</div>
-      <div class="mono" id="url2"></div>
+      <div id="url2"></div>
       <div>Built with Muse Spark Open</div>
     </div>
   </div>
@@ -42,9 +44,9 @@
   <div class="credits abs" id="credits">
     <div class="head abs">
       <div class="wordmark">Dockhand</div>
-      <div class="built">Built Oct 27 – Nov 4, 2026</div>
+      <div class="built">Built Oct 27–Nov 4, 2026</div>
     </div>
-    <div class="hr abs" style="top: 262px"></div>
+    <div class="hr abs" style="top: 224px"></div>
     <!-- From README.md, "What is real and what is simulated". -->
     <div class="cols abs">
       <div id="colReal">
@@ -67,10 +69,10 @@
         </ul>
       </div>
     </div>
-    <div class="hr abs" style="top: 818px"></div>
+    <div class="hr abs" style="top: 736px"></div>
     <div class="foot abs" id="foot">
       <div class="with">Built with Muse Spark Open</div>
-      <div class="url mono" id="url"></div>
+      <div class="url" id="url"></div>
     </div>
   </div>
 </div>
@@ -84,7 +86,8 @@ const REPO_URL = "github.com/rabinsingh123/dockhand";
   const $ = (id) => document.getElementById(id);
   $("url").textContent = REPO_URL;
   $("url2").textContent = REPO_URL;
-  const CUT = 4.2;
+  // The cut lands on the voiceover's "Dockhand:", at the end of the film's last caption (cut2.ts, beat 9).
+  const CUT = 6;
 
   DH.clip({
     duration: 8,

@@ -6,16 +6,15 @@
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="charts.css">
 <style>
-.head { left: 160px; top: 96px; width: 1600px; }
-.head .ctitle { font-size: 76px; white-space: nowrap; }
-.ladder { left: 160px; top: 380px; width: 1600px; }
-.rung { display: grid; grid-template-columns: 700px 1fr; align-items: center; column-gap: 40px; }
-.rung + .rung { margin-top: 56px; }
-.rung .name { font-size: 44px; font-weight: 500; line-height: 1.15; }
+.head .ctitle { font-size: 88px; }
+.ladder { left: 160px; top: 352px; width: 1600px; }
+.rung { display: grid; grid-template-columns: 800px 1fr; align-items: center; column-gap: 40px; }
+.rung + .rung { margin-top: 52px; }
+.rung .name { font-size: 44px; line-height: 1.15; }
 .rung .meta { margin-top: 8px; font-size: 40px; color: var(--gray); white-space: nowrap; }
-.rung .bar { display: flex; align-items: center; gap: 28px; white-space: nowrap; }
+.rung .bar { display: flex; align-items: center; gap: 24px; white-space: nowrap; }
 .rung .bar i { display: block; height: 64px; }
-.rung .bar b { font-size: 72px; font-weight: 600; letter-spacing: -0.03em; }
+.rung .bar b { font-size: 72px; font-weight: 700; letter-spacing: var(--tight); line-height: 1; }
 .rung .bar span { font-size: 40px; color: var(--gray); }
 </style>
 </head>
@@ -30,28 +29,27 @@
 </div>
 <script src="data.js"></script>
 <script src="runtime.js"></script>
-<script src="charts.js"></script>
 <script>
 (() => {
   const D = window.DOCKHAND_DATA;
   const H = D.heals;
   const { fade } = DH;
   const $ = (id) => document.getElementById(id);
-  // The accent once: the headline's key number.
+  // The frame's one orange: the headline's key number.
   $("title").innerHTML = `<span class="accent">${H.noClosedModel} of ${H.repairs}</span> repairs used no closed model`;
   $("sub").textContent = `Steps healed on ${H.cases} held-out UI changes, cheapest rung first. ${H.wrongWrites} wrong writes.`;
   const ms = (v) => `${(v / 1000).toFixed(1)} s`;
   const rungs = [
-    { name: "Stored selector or similarity", meta: "free, no model", n: H.freeHealed, of: null, ink: true },
-    { name: "Muse Spark Open, text only", meta: `open weights · $${H.rung2.costPerAttemptUsd.toFixed(4)} · ${ms(H.rung2.msPerAttempt)} a try`, n: H.rung2.healed, of: H.rung2.tried, ink: true },
-    { name: "Muse computer use", meta: `≤8 actions · $${H.rung3.costPerAttemptUsd.toFixed(4)} · ${ms(H.rung3.msPerAttempt)} a try`, n: H.rung3.healed, of: H.rung3.tried, ink: false },
+    { name: "Stored selector or similarity", meta: "Free, no model", n: H.freeHealed, of: null, open: true },
+    { name: "Muse Spark Open, text only", meta: `Open weights, $${H.rung2.costPerAttemptUsd.toFixed(4)}, ${ms(H.rung2.msPerAttempt)} a try`, n: H.rung2.healed, of: H.rung2.tried, open: true },
+    { name: "Muse computer use", meta: `Up to 8 actions, $${H.rung3.costPerAttemptUsd.toFixed(4)}, ${ms(H.rung3.msPerAttempt)} a try`, n: H.rung3.healed, of: H.rung3.tried, open: false },
   ];
   const max = Math.max(...rungs.map((r) => r.n));
   const els = rungs.map((r) => {
     const row = document.createElement("div");
     row.className = "rung";
     row.innerHTML = `<div><div class="name">${r.name}</div><div class="meta">${r.meta}</div></div>
-      <div class="bar"><i style="width:${Math.max(8, (r.n / max) * 600).toFixed(0)}px;background:${r.ink ? "#111111" : "#6B6B6B"}"></i><b class="mono">${r.n}</b>${r.of ? `<span>of ${r.of} tried</span>` : ""}</div>`;
+      <div class="bar"><i style="width:${Math.max(8, (r.n / max) * 480).toFixed(0)}px;background:${r.open ? "var(--text)" : "var(--gray)"}"></i><b>${r.n}</b>${r.of ? `<span>of ${r.of} tried</span>` : ""}</div>`;
     $("ladder").appendChild(row);
     return row;
   });

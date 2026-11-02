@@ -6,8 +6,8 @@
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="charts.css">
 <style>
-.left { left: 160px; top: 120px; width: 760px; }
-.right { left: 1080px; top: 120px; width: 680px; }
+.left { left: 160px; top: 96px; width: 780px; }
+.right { left: 1020px; top: 96px; width: 740px; }
 </style>
 </head>
 <body>
@@ -21,7 +21,7 @@
     <div class="psub">Cumulative, same task, US dollars</div>
   </div>
   <svg id="chart" class="abs" width="1920" height="1080" viewBox="0 0 1920 1080" style="left:0;top:0"></svg>
-  <div class="source abs" id="source"></div>
+  <div class="source abs" id="source" style="top:auto;bottom:124px"></div>
 </div>
 <script src="data.js"></script>
 <script src="runtime.js"></script>
@@ -33,14 +33,14 @@
   const { fade } = DH;
   const $ = (id) => document.getElementById(id);
   const svg = $("chart");
-  // Accent once per frame: Dockhand's 42.
-  const bars = DHChart.armBars(svg, { L: 160, R: 860, T: 330 }, [
-    { name: "Recorded script", qual: "one selector per step", ...B.scriptPrimary },
-    { name: "Recorded script", qual: "five stored selectors per step", ...B.script },
-    { name: "Dockhand", qual: "heal ladder and read-back", ...B.dockhand, ink: true, accent: true },
-  ], { pitch: 150, barHeight: 44 });
-  const cost = DHChart.costChart(svg, { L: 1170, R: 1760, T: 430, B: 846 }, D, { yMax: 12, yStep: 4, xTicks: [1, 50, 93] });
-  $("source").textContent = `Mock portal, held-out seeds ${D.heals.seeds[0]}–${D.heals.seeds.at(-1)}. No arm wrote wrong data. Costs are live calls at list prices.`;
+  // The frame's one orange: Dockhand's bar. Its line on the right stays white.
+  const bars = DHChart.armBars(svg, { L: 160, R: 900, T: 280 }, [
+    { name: "Recorded script", qual: "one selector", ...B.scriptPrimary },
+    { name: "Recorded script", qual: "five stored selectors", ...B.script },
+    { name: "Dockhand", qual: "heal ladder", ...B.dockhand, dock: true },
+  ], { pitch: 164, barHeight: 44 });
+  const cost = DHChart.costChart(svg, { L: 1090, R: 1760, T: 360, B: 800 }, D, { yMax: 12, yStep: 4, xTicks: [1, 50, 93], dockColor: DHChart.TEXT });
+  $("source").textContent = `Mock portal, held-out seeds ${D.heals.seeds[0]} to ${D.heals.seeds.at(-1)}. No arm wrote wrong data. Costs are live calls at list prices.`;
   DH.clip({
     duration: 9,
     frame(t) {

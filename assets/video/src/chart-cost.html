@@ -5,9 +5,6 @@
 <title>Dockhand cost chart</title>
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="charts.css">
-<style>
-.head { left: 160px; top: 96px; width: 1600px; }
-</style>
 </head>
 <body>
 <div class="stage">
@@ -29,12 +26,14 @@
   const $ = (id) => document.getElementById(id);
   $("title").textContent = `$${C.compileTotalUsd.toFixed(2)} vs $${C.cuTotalUsd.toFixed(2)} over ${C.totalRuns} runs`;
   $("sub").textContent = `Cumulative cost of the same task. Computer use measured for ${C.measuredCuRuns} runs.`;
-  const c = DHChart.costChart($("chart"), { L: 300, R: 1700, T: 430, B: 860 }, D, {
+  // The caption lands over the bottom of the frame: everything here ends above y = 880.
+  const c = DHChart.costChart($("chart"), { L: 236, R: 1260, T: 340, B: 800 }, D, {
     yMax: 12,
     yStep: 4,
     xTicks: [1, 25, 50, 75, C.totalRuns],
-    accent: "dockhand",
-    dockName: "Dockhand: compile once, then replay and repair",
+    side: true,
+    cuLines: ["Computer use every run", `measured to run ${C.measuredCuRuns},`, "projected after"],
+    dockLines: ["Dockhand", "compile once, then", "replay and repair"],
   });
   $("source").textContent = `Live Meta and Baseten calls at list prices, ${D.dateShort}. Break-even at run ${C.breakEvenRun}. evals/results/live-headline.md`;
   DH.clip({

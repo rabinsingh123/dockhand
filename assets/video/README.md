@@ -1,6 +1,6 @@
 # Demo video motion graphics
 
-Clips for the demo video (storyboard shots 2, 8 and 9), in the film's light, editorial look: paper `#F6F5F1`, ink `#111111`, one gray `#6B6B6B`, hairlines `#E3E1DB`, and one accent `#FF4F00`, used at most once per frame and only where Dockhand acted. Type is Geist and Geist Mono (SIL OFL, bundled in `fonts/`), weight 600 at -2% tracking for display, with tabular figures. There are no gradients, glows, blur, icons or count-ups. Motion is limited to hard cuts and overlays that fade in over 150 ms. Must-read text is at least 40 px.
+Clips for the demo video (storyboard shots 2, 8 and 9), in Dockhand's brand (`docs/DESIGN.md`): black ground `#0A0A0A`, white text, gray `#A3A3A3`, hairlines `#2A2A2A`, and one signal orange `#FF4F00`, used at most once per frame and only where Dockhand acted. A whole orange ground is the end card alone. Type is Archivo (SIL OFL, bundled in `packages/design/fonts`), 700 at tight tracking for statements and 500 for sentences. There are no gradients, glows, blur, icons or count-ups. Motion is limited to hard cuts and overlays that fade in over 150 ms. Must-read text is at least 40 px, and every chart ends above y = 880, where the film's caption lands.
 
 All clips are 1920×1080 at 30 fps. The `.mp4` files are H.264 High, yuv420p, BT.709, with no audio. The `.mov` file is QuickTime Animation with alpha.
 
@@ -9,11 +9,11 @@ All clips are 1920×1080 at 30 fps. The `.mp4` files are H.264 High, yuv420p, BT
 | `title.mp4` | 2 | 8 s | Full frame: "In LatAm and India, B2B deals happen in WhatsApp.", the sourced stat, then a hard cut to the wordmark |
 | `title-band.mov` | 2 | 6 s | The same line and stat as a caption band with alpha, laid over real footage (the WhatsApp thread) |
 | `chart-proof.mp4` | 8 | 9 s | One frame of proof: the same 42 changes (recorded script vs Dockhand) beside the cost curve |
-| `chart-baseline.mp4` | 8 | 8 s | 42 UI changes, one square each: 21/42 with one selector per step, 33/42 as exported, 42/42 Dockhand |
+| `chart-baseline.mp4` | 8 | 8 s | 42 UI changes as bars: 21/42 with one selector per step, 33/42 with five stored selectors, 42/42 Dockhand |
 | `chart-cost.mp4` | 8 | 10 s | $0.26 vs $10.30 over 93 runs; computer use solid through run 8, dashed after |
 | `chart-heals.mp4` | 8 | 8 s | The heal ladder: 100 of 102 repairs used no closed model (84 free, 16 Muse Spark Open, 2 computer use) |
-| `endcard.mp4` | 9 | 8 s | What is real and what is simulated, then a hard cut to the wordmark with the compliance lines (the last frame) |
-| `endcard-wordmark.mp4` | any | 3 s | The wordmark and tagline only, for a hard cut |
+| `endcard.mp4` | 9 | 8 s | What is real and what is simulated on black, then at 6 s a hard cut to the wordmark on the orange ground with the compliance lines (the last frame) |
+| `endcard-wordmark.mp4` | any | 3 s | The wordmark and tagline only on the orange ground, for a hard cut |
 
 ## Re-render
 

@@ -507,7 +507,7 @@ async function main(): Promise<void> {
     const context = await browser.newContext({
       viewport: { width: W, height: H },
       deviceScaleFactor: 1,
-      colorScheme: "light",
+      colorScheme: "dark",
     });
     await context.addInitScript(() => {
       window.__DH_RENDER__ = true;
