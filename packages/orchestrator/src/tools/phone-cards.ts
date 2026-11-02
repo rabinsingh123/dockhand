@@ -594,7 +594,8 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
       stage(state("Nothing<br>to do.", { size: 112 })) +
         foot(
           sub(`${esc(v.portalName)} changed${v.watch.when === "overnight" ? " overnight" : ""}.${value}`) +
-            proof(`${repaired}. ${v.canary.passed} of ${v.canary.total} dry runs passed.`) +
+            proof(repaired) +
+            proof(`${v.canary.passed} of ${v.canary.total} dry runs passed`) +
             credit,
         ),
       { signal: true },

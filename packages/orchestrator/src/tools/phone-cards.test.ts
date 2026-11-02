@@ -218,6 +218,7 @@ describe("phone cards", () => {
     expect(watch).toContain('class="dh-card signal"'); // finished alone: the orange card
     expect(watch).toContain("Caravela Partner Hub changed overnight");
     expect(watch).toContain(">Nothing<br>to do.</h1>");
-    expect(watch).toContain("3 steps repaired. 5 of 5 dry runs passed."); // no recorded cost, no figure
+    expect(watch).toContain(">3 steps repaired</p>"); // no recorded cost, no figure
+    expect(watch).toContain(">5 of 5 dry runs passed</p>");
   });
 });
