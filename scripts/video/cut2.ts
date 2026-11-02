@@ -1,16 +1,25 @@
-// `pnpm video:cut2`: the 3:00 film from recorded sessions, beat by beat (docs/internal/NARRATION.md v3).
+// `pnpm video:cut2`: the 3:00 film from recorded sessions, beat by beat (docs/internal/NARRATION.md v4, "The night
+// shift").
 //
-//   pnpm video:cut2 --session rh-cassette-2 --also rh-fake-2      takes come from the first session that has them
-//      [--race <race.json>] [--hook <lock-screen.mp4>] [--hubspot <deal-capture.mp4>] [--narration <file>]
-//      [--final]   fails if a placeholder, or simulated or taped footage, would reach the film
+//   pnpm video:cut2 --session live-1,live-sim-4      takes come from the first session that has them (--also adds more)
+//      [--hands <clip>] [--founder <clip>] [--by-hand <clip> --by-hand-seconds <n>] [--voices <list.json>]
+//      [--race <race.json>] [--hook <lock-screen.mp4>] [--overnight-card <clip>] [--hubspot <deal-capture.mp4>]
+//      [--narration <file>]
+//      [--final]   fails if a placeholder, taped footage or an emulator chat would reach the film. A live-sim session
+//                  may supply browser footage: its models were live, and only its rep was the emulator
+//
+//   --voices is a JSON list of { name, title, country, quote, clip? }: one quote card each in beat 2, shown only when
+//   given. A clip plays its sound under the card; the picture stays the card.
 //
 // One subject full-bleed per beat (the phone at full height, or the browser filling the frame); a split screen
 // only for the race. Idle stretches (an unchanged page or chat) are cut; whatever is still too long is sped up,
-// and every speed-up is labeled. Push-ins follow the heal: a 600 ms ease-out to at most 1.12x, done with ffmpeg's
-// perspective filter (sub-pixel, bicubic), which moves smoothly where zoompan's whole-pixel crop jitters. Type is
-// rendered in Archivo by a headless Chromium (lib/overlay.ts) and laid over by ffmpeg: no new dependency (Remotion
-// would add React, its renderer and its own Chromium). Captions are the narration's lines; no dev captions, no
-// clock. A rehearsal's emulator chat is labeled "Simulated chat (rehearsal)" wherever it appears.
+// and every speed-up is labeled with what the viewer gets: the real time covered over the time on screen. The film
+// carries sound only where a shot keeps its own (the hands, the founder, a voice clip); the rest is silence for the
+// voiceover. Push-ins follow the heal: a 600 ms ease-out to at most 1.12x, done with ffmpeg's perspective filter
+// (sub-pixel, bicubic) on the full-size frame before the downscale, which moves smoothly where zoompan's whole-pixel
+// crop jitters. Type is rendered in Archivo by a headless Chromium (lib/overlay.ts) and laid over by ffmpeg: no new
+// dependency (Remotion would add React, its renderer and its own Chromium). Captions are the narration's lines; no
+// dev captions, no clock. A rehearsal's emulator chat is labeled "Simulated chat (rehearsal)" wherever it appears.
 //
 // Output: <first session>/cuts-v2/rough-cut-v2.mp4 (1920x1080, 30 fps, 3:00) and contact-sheet.png.
 
@@ -19,18 +28,21 @@ import { join, relative } from "node:path";
 import { workspaceRoot } from "../../packages/core/src/index.ts";
 import { COLOR } from "../../packages/design/src/index.ts";
 import { activeRanges, mapTime, span } from "./lib/activity.ts";
-import { countFrames, ffmpeg, probe } from "./lib/media.ts";
+import { countFrames, ffmpeg, hasAudio, probe } from "./lib/media.ts";
 import {
   type CaptionPos,
   captionChunks,
   captionHtml,
+  footnoteHtml,
   type LabelSlot,
   labelHtml,
   lowerThirdHtml,
   type Overlay,
+  quoteHtml,
   renderOverlays,
   slateHtml,
   terminalHtml,
+  timerHtml,
 } from "./lib/overlay.ts";
 import {
   type Clip,
@@ -49,7 +61,7 @@ const opt = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const root = workspaceRoot();
-const names = [opt("--session"), ...(opt("--also")?.split(",") ?? [])].filter(Boolean) as string[];
+const names = [...(opt("--session")?.split(",") ?? []), ...(opt("--also")?.split(",") ?? [])].filter(Boolean);
 if (names.length === 0) throw new Error("--session <name> is required");
 const sessions: Session[] = [];
 for (const n of names) sessions.push(await loadSession(n));
@@ -59,6 +71,8 @@ const work = join(outDir, "work");
 const png = join(work, "png");
 mkdirSync(png, { recursive: true });
 const FPS = 30;
+/** Seconds on a whole frame, so a beat's pieces add up to it exactly. */
+const onFrame = (s: number) => Math.round(s * FPS) / FPS;
 const GROUND = COLOR.ground.replace("#", "0x");
 const t0 = Date.now();
 const say = (s: string) =>
@@ -91,14 +105,21 @@ const SAME_FORMAT =
 
 // ---------- pieces ----------
 
-/** browser-low: the same 1.5x, shifted up with the ground under it, for a subject low on the page and a caption below it. */
-type Fit = "phone" | "browser" | "browser-low" | "camera";
+/** code: a recorder page lifted clear of the caption, so its footer line stays whole. */
+type Fit = "phone" | "browser" | "camera" | "code";
 interface Push {
   /** Source time (s, in the file) the push starts; it eases in over 600 ms. */
   at: number;
   /** Center in source pixels. */
   cx: number;
   cy: number;
+}
+/** A timed run of full-frame overlays (the hand-timed clock). */
+type Ticks = { png: string; dur: number }[];
+/** The sound a piece keeps: the file's own from its start, at this gain. */
+interface Sound {
+  file: string;
+  gain: number;
 }
 interface VideoPiece {
   kind: "video";
@@ -110,13 +131,16 @@ interface VideoPiece {
   speed?: number;
   push?: Push;
   labels?: string[];
-  /** Where the caption goes over this piece (default: by the push's height). */
+  ticks?: Ticks;
+  sound?: Sound;
+  /** Where the caption goes over this piece (default: bottom). */
   caption?: CaptionPos;
 }
 interface StillPiece {
   kind: "still";
   png: string;
   target: number;
+  sound?: Sound;
 }
 interface SplitPiece {
   kind: "split";
@@ -133,12 +157,21 @@ interface Beat {
   /** Seconds in the film. */
   dur: number;
   pieces: Piece[];
-  /** Extra overlays over the whole beat (the lower-third stat). */
+  /** Extra overlays over the beat (the lower-third stat, the chart's footnote). */
   extra?: { png: string; from: number; to: number }[];
-  /** One pattern per piece: the first caption of that piece, which lands `lead` seconds into it. */
-  captionsByPiece?: { first: RegExp[]; lead: number };
-  /** Only the first `chunks` captions, spread up to second `to`: past that the frame says the words itself. */
-  captionsUntil?: { chunks: number; to: number };
+  /**
+   * Where the line lands: each group starts at the caption matching `first` and runs up to the next group's,
+   * spread over seconds `at` to `to` of the beat. A silence is the gap between two groups. Default: the whole
+   * line over the whole beat.
+   */
+  captions?: CaptionGroup[];
+  /** No captions from the one matching this on: the frame says the words itself. */
+  captionsStop?: RegExp;
+}
+interface CaptionGroup {
+  first: RegExp;
+  at: number;
+  to: number;
 }
 
 /** What would make this cut not the film: --final refuses to render it. */
@@ -203,7 +236,9 @@ function sourceChain(p: VideoPiece, seekFrom: number): string {
   const chain = [`${p.ranges.map((_, i) => `[t${i}]`).join("")}concat=n=${n}:v=1:a=0`];
   chain.push(`setpts=PTS/${speed.toFixed(4)}`, `fps=${FPS}`);
   if (p.push) {
-    const at = mapTime(p.ranges, p.push.at);
+    // The start of the push can fall in a cut wait: it then lands where the picture comes back.
+    const resume = p.ranges.find((r) => r[0] >= (p.push?.at ?? 0))?.[0];
+    const at = mapTime(p.ranges, p.push.at) ?? (resume === undefined ? null : mapTime(p.ranges, resume));
     if (at !== null) chain.push(pushFilter(p.push, Math.max(0, at / speed - 0.1), 0, 0));
   }
   parts.push(`${chain.join(",")}[v]`);
@@ -213,26 +248,41 @@ function sourceChain(p: VideoPiece, seekFrom: number): string {
 function fitChain(fit: Fit): string {
   if (fit === "phone") return `[v]scale=-2:1000:flags=lanczos[fv];[bg][fv]overlay=x=(W-w)/2:y=40[f]`;
   if (fit === "browser") return `[v]scale=1920:1200:flags=lanczos,crop=1920:1080:0:60[f]`;
-  if (fit === "browser-low")
-    return `[v]scale=1920:1200:flags=lanczos,pad=1920:1400:0:0:color=${GROUND},crop=1920:1080:0:200[f]`;
+  if (fit === "code")
+    return `[v]scale=1920:1080:flags=lanczos,crop=1920:1016:0:64,pad=1920:1080:0:0:color=${GROUND}[f]`;
   return `[v]scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos[fv];[bg][fv]overlay=x=(W-w)/2:y=(H-h)/2[f]`;
 }
 
 /**
- * A video piece's labels: its own, plus the speed-up it needed ("4× speed"). The HUD's status panel is top right on
- * a browser shot, so its labels go top left; the race's goes in the band under the panes; on the phone and on
- * close-ups the speed takes the top right, since the simulated label has the top left.
+ * A video piece's labels: its own, plus the speed-up the viewer gets ("4× speed"): the real time it covers, cut
+ * stretches included, over its time on screen. The HUD's status panel is top right on a browser shot, so its labels
+ * go top left; the race's goes in the band under the panes; on the phone and on close-ups the speed takes the top
+ * right, since the simulated label has the top left.
  */
 function labelsOf(p: Piece): { text: string; slot: LabelSlot }[] {
   if (p.kind === "still") return [];
   const v = p.kind === "split" ? p.right : p;
   const labels = (v.labels ?? []).map((text) => ({ text, slot: "tl" as LabelSlot }));
-  const speed = speedOf(v);
-  if (v.speed === undefined && speed > 1.05) {
-    const slot: LabelSlot = p.kind === "split" ? "br" : v.fit.startsWith("browser") ? "tl" : "tr";
+  const covered = (v.ranges.at(-1)?.[1] ?? 0) - (v.ranges[0]?.[0] ?? 0);
+  const speed = v.speed ?? covered / v.target;
+  if (speed > 1.05) {
+    const slot: LabelSlot = p.kind === "split" ? "br" : v.fit === "browser" ? "tl" : "tr";
     labels.push({ text: `${fmtSpeed(speed)}× speed`, slot });
   }
   return labels;
+}
+
+/** An ffconcat list of full-frame PNGs, each held for its duration; the last one stays. */
+function stillList(name: string, states: Ticks): string {
+  const list = join(work, name);
+  const entries = states.flatMap((l) => [
+    `file '${l.png.replace(/\\/g, "/")}'`,
+    `duration ${l.dur.toFixed(3)}`,
+  ]);
+  const last = states.at(-1);
+  if (last) entries.push(`file '${last.png.replace(/\\/g, "/")}'`);
+  writeFileSync(list, `ffconcat version 1.0\n${entries.join("\n")}\n`);
+  return list;
 }
 
 let pieceN = 0;
@@ -262,15 +312,7 @@ async function renderPiece(p: Piece): Promise<string> {
   const inputs = ["-ss", seek.toFixed(3), "-i", v.file];
   let graph: string;
   if (p.kind === "split") {
-    const list = join(work, `p${pieceN}-left.txt`);
-    const entries = p.left.flatMap((l) => [
-      `file '${l.png.replace(/\\/g, "/")}'`,
-      `duration ${l.dur.toFixed(3)}`,
-    ]);
-    const lastLeft = p.left.at(-1);
-    if (lastLeft) entries.push(`file '${lastLeft.png.replace(/\\/g, "/")}'`);
-    writeFileSync(list, `ffconcat version 1.0\n${entries.join("\n")}\n`);
-    inputs.push("-f", "concat", "-safe", "0", "-i", list);
+    inputs.push("-f", "concat", "-safe", "0", "-i", stillList(`p${pieceN}-left.txt`, p.left));
     graph = [
       sourceChain(v, seek),
       `[1:v]fps=${FPS},scale=1920:1080,${SAME_FORMAT},tpad=stop_mode=clone:stop_duration=${p.target}[bg]`,
@@ -293,6 +335,11 @@ async function renderPiece(p: Piece): Promise<string> {
     graph += `;[${last}][${2 + i}:v]overlay=0:0:shortest=1[l${i}]`;
     last = `l${i}`;
   });
+  if (v.ticks) {
+    inputs.push("-f", "concat", "-safe", "0", "-i", stillList(`p${pieceN}-ticks.txt`, v.ticks));
+    graph += `;[${last}][${2 + labels.length}:v]overlay=0:0:eof_action=repeat[tk]`;
+    last = "tk";
+  }
   graph += `;[${last}]setsar=1[out]`;
   await ffmpeg([...inputs, "-filter_complex", graph, "-map", "[out]", "-frames:v", frames, ...x264, out]);
   return out;
@@ -301,11 +348,17 @@ async function renderPiece(p: Piece): Promise<string> {
 // ---------- the beats ----------
 
 const narration = readFileSync(opt("--narration") ?? join(root, "docs", "internal", "NARRATION.md"), "utf8");
-/** Beat n's voiceover line from the narration table (| time | n Name | words | line |). */
+const handSeconds = Number(opt("--by-hand-seconds"));
+/** Beat n's voiceover line from the narration table (| time | n Name | picture | line |), as it is spoken. */
 function lineOf(n: number): string {
   for (const row of narration.split("\n")) {
     const cells = row.split("|").map((c) => c.trim());
-    if (cells.length >= 5 && new RegExp(`^${n} `).test(cells[2] ?? "")) return cells[4] ?? "";
+    if (cells.length >= 5 && new RegExp(`^${n} `).test(cells[2] ?? ""))
+      return (cells[4] ?? "")
+        .replace(/\*\[[^\]]*\]\*/g, " ") // stage directions: *[the orange card, 2 s, no voice]*
+        .replace("[MEASURED]", handSeconds > 0 ? String(Math.round(handSeconds / 30) / 2) : "[MEASURED]")
+        .replace(/\s+/g, " ")
+        .trim();
   }
   notFinal.push(`no narration line for beat ${n}`);
   return `[caption placeholder for beat ${n}]`;
@@ -313,6 +366,8 @@ function lineOf(n: number): string {
 
 const sec = (clip: { start: number }, wall: number) => (wall - clip.start) / 1000;
 const SIMULATED = "Simulated chat (rehearsal)";
+/** Under the voice, not beside it. */
+const HANDS_GAIN = 0.35;
 
 async function trimmed(
   file: string,
@@ -324,7 +379,7 @@ async function trimmed(
   return r.length ? r : [[a, Math.min(b, a + 1.5)]];
 }
 
-/** The phone track over a wall-clock window, idle stretches cut, labeled simulated if it is the emulator. */
+/** The phone track over a wall-clock window: idle stretches cut, labeled simulated if it is the emulator. */
 async function phonePiece(
   s: Session,
   from: number,
@@ -337,17 +392,24 @@ async function phonePiece(
   if (!ph) return slate("Phone footage", "the phone recording goes here", target, "placeholder");
   const a = sec(ph, from);
   const b = sec(ph, to);
+  const whole: [number, number][] = [[Math.max(0, a), b]];
+  const cut = keepIdle ? whole : await trimmed(ph.file, a, b);
   return {
     kind: "video",
     file: ph.file,
-    ranges: keepIdle ? [[Math.max(0, a), b]] : await trimmed(ph.file, a, b),
+    // A chat that would freeze once cut plays through instead, when that stays close to real time.
+    ranges: span(cut) < target && b - a <= target * 2 ? whole : cut,
     fit: "phone",
     target,
     labels: ph.simulated ? [SIMULATED] : [],
   };
 }
 
-/** A run's filmed page, idle stretches cut, pushed in on its open-weights heal. */
+/**
+ * A run's filmed page, idle stretches cut, pushed in on its open-weights heal. The push is anchored on the top
+ * center of the page, in source pixels: the HUD's status panel (top right) and the repair card (left) both stay
+ * whole, and only the sidebar and the foot of the page leave the frame.
+ */
 async function runPiece(
   s: Session,
   runId: string,
@@ -358,7 +420,7 @@ async function runPiece(
   const a = o.from ?? 0;
   const b = o.to ?? sec(clip, clip.end);
   const heal = healOf(s, runId);
-  const box = heal?.bbox;
+  const { width } = await probe(clip.file);
   return {
     kind: "video",
     file: clip.file,
@@ -366,29 +428,40 @@ async function runPiece(
     fit: "browser",
     target,
     ...(o.speed ? { speed: o.speed } : {}),
-    ...(heal
-      ? {
-          push: {
-            at: sec(clip, heal.start) - 0.5,
-            cx: box ? Math.min(1280, box.x + box.w / 2) : 640,
-            cy: box ? Math.min(700, Math.max(100, box.y + box.h / 2)) : 400,
-          },
-        }
-      : {}),
+    ...(heal ? { push: { at: sec(clip, heal.start) - 0.5, cx: width / 2, cy: 0 } } : {}),
   };
 }
 
-function cameraPiece(s: Session, label: string, target: number): Piece {
+/** A recorder page the take filmed. `still`: it does not move, so it plays from its start and claims no speed. */
+function cameraPiece(
+  s: Session,
+  label: string,
+  target: number,
+  o: { still?: boolean; fit?: Fit } = {},
+): Piece {
   const c = cameraShot(s, label);
   if (!c) return slate("Close-up", label, target, "placeholder");
   const end = (c.end - c.start) / 1000;
-  return { kind: "video", file: c.file, ranges: [[0, end]], fit: "camera", target };
+  return o.still
+    ? { kind: "video", file: c.file, ranges: [[0, Math.min(end, target)]], fit: "camera", target, speed: 1 }
+    : { kind: "video", file: c.file, ranges: [[0, end]], fit: o.fit ?? "camera", target };
 }
 
-async function assetPiece(file: string, target: number): Promise<Piece> {
-  if (!existsSync(file)) return slate("Asset missing", relative(root, file), target, "placeholder");
-  const p = await probe(file);
-  return { kind: "video", file, ranges: [[0, p.duration]], fit: "camera", target, speed: 1 };
+/** A clip passed by flag: from its start at real speed, its last frame held if it runs short. */
+async function clipPiece(file: string, target: number, fit: Fit, gain?: number): Promise<VideoPiece> {
+  const { duration } = await probe(file);
+  const piece: VideoPiece = {
+    kind: "video",
+    file,
+    ranges: [[0, Math.min(target, duration)]],
+    fit,
+    target,
+    speed: 1,
+  };
+  if (gain === undefined) return piece;
+  if (await hasAudio(file)) return { ...piece, sound: { file, gain } };
+  notFinal.push(`${relative(root, file)}: its sound was to stay, and it has none`);
+  return piece;
 }
 
 /** Seconds a chart still draws at the head of its piece; its caption lands once it is fully drawn. */
@@ -415,37 +488,272 @@ async function chartPiece(file: string, target: number): Promise<Piece> {
 const msgs = (a: { events: { msgs: { dir: string; kind: string; text: string; at: number }[] } }) =>
   a.events.msgs;
 
+interface Voice {
+  name: string;
+  title: string;
+  country: string;
+  quote: string;
+  clip?: string;
+}
+
+function loadVoices(): Voice[] {
+  const file = opt("--voices");
+  if (!file) return [];
+  const list = JSON.parse(readFileSync(file, "utf8")) as Voice[];
+  if (!Array.isArray(list)) throw new Error("--voices: a JSON list is expected");
+  for (const v of list) {
+    for (const key of ["name", "title", "country", "quote"] as const)
+      if (!v[key]) throw new Error(`--voices: no ${key} in ${JSON.stringify(v)}`);
+    if (v.clip && !existsSync(v.clip)) throw new Error(`--voices: ${v.clip} does not exist`);
+  }
+  return list;
+}
+
+async function voicePiece(v: Voice, target: number): Promise<StillPiece> {
+  const png = overlay(quoteHtml(v), true);
+  const sound = v.clip && (await hasAudio(v.clip)) ? { file: v.clip, gain: 1 } : null;
+  return { kind: "still", png, target, ...(sound ? { sound } : {}) };
+}
+
+const clockOf = (s: number) => {
+  const whole = Math.floor(s);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+};
+
+/** How long the clock sits on the measured time at the end of the shot. */
+const TIMER_HOLD = 0.8;
+
+/**
+ * The human filling the form: sped up to fit, under a running clock that ends on the real measured time and holds
+ * there, with who timed it.
+ */
+async function byHandPiece(file: string, seconds: number, target: number): Promise<VideoPiece> {
+  const { duration } = await probe(file);
+  if (Math.abs(duration - seconds) > seconds * 0.05)
+    say(
+      `--by-hand runs ${duration.toFixed(0)} s, --by-hand-seconds says ${seconds}: the clock shows the flag`,
+    );
+  const speed = Math.max(1, duration / (target - TIMER_HOLD));
+  const n = Math.round((duration / speed) * 10);
+  const ticks: Ticks = [];
+  for (let k = 0; k <= n; k++)
+    ticks.push({
+      png: overlay(timerHtml("Timed by the builder", clockOf((seconds * k) / n))),
+      dur: k < n ? 0.1 : TIMER_HOLD,
+    });
+  return { kind: "video", file, ranges: [[0, duration]], fit: "camera", target, speed, ticks };
+}
+
+/** Beat 5's close: the card from the phone; until it is filmed, the rendered card, labeled a placeholder. */
+async function overnightCard(target: number): Promise<Piece> {
+  const flag = opt("--overnight-card");
+  if (flag) return clipPiece(flag, target, "phone");
+  const night = takeIn(sessions, "overnight");
+  const card = night && msgs(night.a).find((x) => x.dir === "out" && /changed overnight/.test(x.text));
+  if (night && card) return phonePiece(night.s, card.at - 300, card.at + target * 1000 - 300, target, true);
+  const file = join(root, "var", "design", "cards", "watch.png");
+  if (!existsSync(file))
+    return slate("Overnight card", "", target, "placeholder: the phone recording goes here");
+  notFinal.push("overnight card: placeholder, var/design/cards/watch.png");
+  return {
+    kind: "video",
+    file,
+    ranges: [[0, 0.04]],
+    fit: "phone",
+    target,
+    speed: 1,
+    labels: ["Placeholder: overnight card"],
+    caption: "top",
+  };
+}
+
+/** The credits, held under the voice, then the hard cut to orange that the clip itself makes at 6 s. */
+async function endPieces(file: string, credits: number, card: number): Promise<Piece[]> {
+  if (!existsSync(file)) return [slate("Asset missing", relative(root, file), credits + card, "placeholder")];
+  const { duration } = await probe(file);
+  const cut = 6;
+  const piece = (ranges: [number, number][], target: number): VideoPiece => ({
+    kind: "video",
+    file,
+    ranges,
+    fit: "camera",
+    target,
+    speed: 1,
+  });
+  return [piece([[0, cut - 0.05]], credits), piece([[cut, duration]], card)];
+}
+
 async function buildBeats(): Promise<Beat[]> {
   const beats: Beat[] = [];
   for (const s of sessions)
-    if (s.cut.mode !== "live") notFinal.push(`${s.name} was recorded in ${s.cut.mode} mode, not live`);
+    if (s.cut.mode !== "live" && s.cut.mode !== "live-sim")
+      notFinal.push(`${s.name} was recorded in ${s.cut.mode} mode, not live`);
 
-  // 1. Hook: the real lock screen at 3 AM.
-  const hook = opt("--hook") ?? join(first.dir, "phone", "hook.mp4");
+  // 1. Eleven at night: real hands in a dark room, their keyboard under the voice.
+  const hands = opt("--hands");
   beats.push({
     n: 1,
-    name: "hook",
-    dur: 5,
+    name: "eleven at night",
+    dur: 12,
     pieces: [
-      existsSync(hook)
-        ? {
-            kind: "video",
-            file: hook,
-            ranges: [[0, Math.min(5, (await probe(hook)).duration)]],
-            fit: "phone",
-            target: 5,
-            speed: 1,
-          }
+      hands
+        ? await clipPiece(hands, 12, "camera", HANDS_GAIN)
         : slate(
-            "Lock screen, 3 AM",
-            "the real drift-watch notification",
-            5,
-            "placeholder: Rabin's lock-screen footage goes here",
+            "Hands on a laptop, dark room",
+            "real keyboard sound under the voice",
+            12,
+            "placeholder: --hands <clip>",
           ),
     ],
   });
 
-  // 2. The race: the recorded script dies (left), Dockhand repairs (right); then the pick at 0.25x.
+  // 2. Who, and what it costs: Rabin to camera, a real rep's words if we have them, the form by hand with its timer.
+  const founder = opt("--founder");
+  const byHand = opt("--by-hand");
+  const voices = loadVoices();
+  // Up to seven seconds of quote cards, shared between them.
+  const eachVoice = voices.length ? onFrame(Math.min(3.5, 7 / voices.length)) : 0;
+  const voicesEnd = 5 + eachVoice * voices.length;
+  const byHandTarget = onFrame(18 - voicesEnd);
+  // The voice turns from the login to the typing here: on the by-hand shot, a little into it if it has the beat alone.
+  const typed = Math.max(10, voicesEnd);
+  beats.push({
+    n: 2,
+    name: "who, and what it costs",
+    dur: 18,
+    pieces: [
+      founder
+        ? await clipPiece(founder, 5, "camera", 1)
+        : slate("Rabin to camera", "five seconds, his own sound", 5, "placeholder: --founder <clip>"),
+      ...(await Promise.all(voices.map((v) => voicePiece(v, eachVoice)))),
+      byHand && handSeconds > 0
+        ? await byHandPiece(byHand, handSeconds, byHandTarget)
+        : slate(
+            "The form, by hand",
+            "sped up, with the real timer",
+            byHandTarget,
+            "placeholder: --by-hand <clip> --by-hand-seconds <n>",
+          ),
+    ],
+    extra: [
+      {
+        png: overlay(
+          lowerThirdHtml(
+            "Reps spend 60% of the week not selling",
+            "Salesforce State of Sales, 7th ed., 2026",
+          ),
+        ),
+        from: typed,
+        to: 17.85,
+      },
+    ],
+    captions: [
+      { first: /^I'm Rabin/, at: 0.15, to: 4.9 },
+      { first: /^Big companies/, at: 5.1, to: typed - 0.05 },
+      { first: /^So every deal/, at: typed, to: 17.85 },
+    ],
+  });
+
+  // 3. The forward: the phone, the replay at real speed in silence, the receipt. The silence lasts what the replay
+  // lasts: only the rep's wait at the commit gate is cut, and the HUD's clock stops for it too.
+  const use = takeIn(sessions, "use");
+  const usePieces: Piece[] = [];
+  let silent = 4;
+  const receiptFor = 4;
+  if (use) {
+    const m = msgs(use.a);
+    const approve = m.find((x) => x.dir === "in" && x.kind === "button");
+    const from = (use.a.readyAt ?? use.a.startedAt) - 500;
+    const run = mainRun(use.a);
+    const clip = run ? clipOfRun(use.s, run.id) : undefined;
+    let replay: Piece | null = null;
+    if (clip) {
+      const commit = use.a.events.gates.find((g) => g.kind === "commit");
+      const end = sec(clip, clip.end);
+      const held = commit ? sec(clip, commit.at) + 0.6 : end;
+      const on = commit?.resolvedAt ? sec(clip, commit.resolvedAt) : held;
+      const done = Math.min(end, on + 1.1);
+      // The first frames are the blank page before it paints: a white flash in a dark film.
+      const paint = (await activeRanges(clip.file, 0, 1.5, { threshold: 4, pad: 0 }))[0]?.[0] ?? 0;
+      const ranges: [number, number][] =
+        on > held
+          ? [
+              [paint, held],
+              [on, done],
+            ]
+          : [[paint, done]];
+      silent = onFrame(span(ranges));
+      replay = { kind: "video", file: clip.file, ranges, fit: "browser", target: silent, speed: 1 };
+    }
+    const toApprove = (approve?.at ?? from + 4000) + 800;
+    usePieces.push(await phonePiece(use.s, from, toApprove, onFrame(22 - silent - receiptFor)));
+    usePieces.push(replay ?? slate("Replay", "at 1×", silent, "placeholder"));
+    const receipt = m.find((x) => x.dir === "out" && x.kind === "image" && /Replay ·/.test(x.text));
+    usePieces.push(
+      receipt
+        ? await phonePiece(use.s, receipt.at - 500, receipt.at + 3500, receiptFor, true)
+        : slate("Receipt", "", receiptFor, "placeholder"),
+    );
+  } else usePieces.push(slate("Use", "use take missing", 22, "placeholder"));
+  const replayAt = onFrame(22 - silent - receiptFor);
+  beats.push({
+    n: 3,
+    name: "the forward",
+    dur: 22,
+    pieces: usePieces,
+    captions: [
+      { first: /^So I built/, at: 0.15, to: replayAt - 0.1 },
+      { first: /^Done/, at: replayAt + silent, to: 21.85 },
+    ],
+  });
+
+  // 4. How it learned: the recording in, the teach card, the first run (sped up, labeled), the code.
+  const teach = takeIn(sessions, "teach");
+  const teachPieces: Piece[] = [];
+  if (teach) {
+    const m = msgs(teach.a);
+    const card = m.find((x) => x.dir === "out" && x.kind === "interactive" && /^I learned/.test(x.text));
+    const tapped = card ? m.find((x) => x.dir === "in" && x.kind === "button" && x.at > card.at) : undefined;
+    const from = (teach.a.readyAt ?? teach.a.startedAt) - 500;
+    teachPieces.push(await phonePiece(teach.s, from, (tapped?.at ?? from + 8000) + 1500, 6));
+    // what Muse Wonder drafted from the recording (the recorder's teach view, focus mode)
+    teachPieces.push(cameraPiece(teach.s, "__teach", 5, { still: true }));
+    const run = mainRun(teach.a);
+    const clip = run ? clipOfRun(teach.s, run.id) : undefined;
+    teachPieces.push(
+      clip && run
+        ? await runPiece(teach.s, run.id, clip, 9)
+        : slate("First run", "computer use", 9, "placeholder"),
+    );
+    teachPieces.push(cameraPiece(teach.s, "code-v1", 8, { fit: "code" }));
+  } else teachPieces.push(slate("Teach", "teach take missing", 28, "placeholder"));
+  beats.push({
+    n: 4,
+    name: "how it learned",
+    dur: 28,
+    pieces: teachPieces,
+    captions: [
+      { first: /^How did it learn/, at: 0.15, to: 10.9 },
+      { first: /^Muse Spark's computer use/, at: 11, to: 19.9 },
+      { first: /^That one run/, at: 20, to: 27.85 },
+    ],
+  });
+
+  // 5. Three in the morning: the real lock screen, the race (the recorded script dies on the left, Dockhand repairs
+  // on the right), the pick at 0.25x, the orange card: the line lands on it, then 2 s with nothing over it.
+  const LOCK = 6;
+  const RACE = 11;
+  const PICK = 11.2;
+  const CARD = 3.8;
+  const hook = opt("--hook") ?? join(first.dir, "phone", "hook.mp4");
+  const lock: Piece = existsSync(hook)
+    ? await clipPiece(hook, LOCK, "phone")
+    : slate(
+        "Lock screen, 3 AM",
+        "the real drift-watch notification",
+        LOCK,
+        "placeholder: Rabin's lock-screen footage goes here",
+      );
   const hero = takeIn(sessions, "hero");
   const heroRun = hero && mainRun(hero.a);
   const heroClip = hero && heroRun ? clipOfRun(hero.s, heroRun.id) : undefined;
@@ -460,7 +768,6 @@ async function buildBeats(): Promise<Beat[]> {
         run?: { ms: number };
       })
     : null;
-  const split = 16.5;
   // Readable in 40 px: no blank lines, no Node internals, the local paths cut down to the script's file name.
   const realLines = (race?.lines ?? [])
     .filter((l) => l.text.trim() && !/node:internal|node_modules|race\.ts|^\s*[{}]|^Call log:/.test(l.text))
@@ -495,215 +802,186 @@ async function buildBeats(): Promise<Beat[]> {
       }),
       true,
     ),
-    dur: split - failAt,
+    dur: RACE - failAt,
   });
-  const racePieces: Piece[] = [];
+  const nightPieces: Piece[] = [lock];
   if (hero && heroRun && heroClip) {
-    const { push: _push, ...right } = await runPiece(hero.s, heroRun.id, heroClip, split);
-    racePieces.push({ kind: "split", left, right, target: split });
+    const { push: _push, ...right } = await runPiece(hero.s, heroRun.id, heroClip, RACE);
+    nightPieces.push({ kind: "split", left, right, target: RACE });
     const heal = healOf(hero.s, heroRun.id);
     if (heal) {
       // The step Muse Spark Open repaired: its spotlight comes up, the model's wait is cut, the pick and its
-      // reason land and hold.
+      // reason land and hold. Whole frame: the status panel top right, the picked element low on the page, so the
+      // caption goes top left.
       const from = sec(heroClip, heal.start);
       const to = sec(heroClip, heal.end);
-      racePieces.push({
+      nightPieces.push({
         kind: "video",
         file: heroClip.file,
         ranges: [
           [Math.max(0, from - 0.5), from],
-          [to - 0.1, Math.min(sec(heroClip, heroClip.end), to + 1.1)],
+          [to - 0.1, Math.min(sec(heroClip, heroClip.end), to + 2.2)],
         ],
-        fit: "browser-low",
-        target: 25 - split,
+        fit: "browser",
+        target: PICK,
         speed: 0.25,
         labels: ["Replay 0.25×"],
+        caption: "top",
       });
-    } else
-      racePieces.push(slate("Replay 0.25×", "no open-weights heal in this take", 25 - split, "placeholder"));
-  } else racePieces.push(slate("The race", "hero take missing", 25, "placeholder"));
-  beats.push({ n: 2, name: "race", dur: 25, pieces: racePieces });
-
-  // 3. Why: a real WhatsApp thread, one sourced stat.
-  const quote = takeIn(sessions, "quote") ?? takeIn(sessions, "supplier2");
-  const stat = overlay(
-    lowerThirdHtml(
-      "91% of online adults in India chat with businesses weekly",
-      "Kantar 2025, cited by Meta Newsroom, Sep 2025",
-    ),
-  );
+    } else nightPieces.push(slate("Replay 0.25×", "no open-weights heal in this take", PICK, "placeholder"));
+  } else nightPieces.push(slate("The race", "hero take missing", RACE + PICK, "placeholder"));
+  nightPieces.push(await overnightCard(CARD));
+  const pickAt = LOCK + RACE;
+  const cardAt = pickAt + PICK;
   beats.push({
-    n: 3,
-    name: "why",
-    dur: 15,
-    pieces: [
-      quote
-        ? await phonePiece(
-            quote.s,
-            (quote.a.readyAt ?? quote.a.startedAt) - 2000,
-            (quote.a.endedAt ?? quote.a.startedAt) + 6000,
-            15,
-            true,
-          )
-        : slate("A WhatsApp thread", "voice notes, photos, PDFs", 15, "placeholder"),
+    n: 5,
+    name: "three in the morning",
+    dur: 32,
+    pieces: nightPieces,
+    captions: [
+      { first: /^Here's what kills/, at: 0.15, to: LOCK - 0.1 },
+      { first: /^A recorded script/, at: LOCK + 0.1, to: LOCK + 5.3 },
+      { first: /^Dockhand repairs/, at: LOCK + 5.4, to: pickAt - 0.1 },
+      { first: /^then Meta's/, at: pickAt, to: cardAt - 0.1 },
+      { first: /^You wake up/, at: cardAt, to: 30 },
     ],
-    extra: [{ png: stat, from: 2, to: 14.5 }],
   });
 
-  // 4. Teach: the recording in, the teach card, the first run (sped up, labeled), the code.
-  const teach = takeIn(sessions, "teach");
-  const teachPieces: Piece[] = [];
-  if (teach) {
-    const m = msgs(teach.a);
-    const card = m.find((x) => x.dir === "out" && x.kind === "interactive" && /^I learned/.test(x.text));
-    const tapped = card ? m.find((x) => x.dir === "in" && x.kind === "button" && x.at > card.at) : undefined;
-    const from = (teach.a.readyAt ?? teach.a.startedAt) - 500;
-    teachPieces.push(await phonePiece(teach.s, from, (tapped?.at ?? from + 8000) + 1500, 7));
-    // what Muse Wonder drafted from the recording (the recorder's teach view, focus mode)
-    teachPieces.push(cameraPiece(teach.s, "__teach", 6));
-    const run = mainRun(teach.a);
-    const clip = run ? clipOfRun(teach.s, run.id) : undefined;
-    teachPieces.push(
-      clip && run
-        ? await runPiece(teach.s, run.id, clip, 12)
-        : slate("First run", "computer use", 12, "placeholder"),
-    );
-    teachPieces.push(cameraPiece(teach.s, "code-v1", 10));
-  } else teachPieces.push(slate("Teach", "teach take missing", 35, "placeholder"));
-  beats.push({ n: 4, name: "teach", dur: 35, pieces: teachPieces });
-
-  // 5. Use: a voice note (live) or the photo, Approve, the 4 s replay at 1x, the receipt; a HubSpot deal beat.
-  const use = takeIn(sessions, "use");
-  const usePieces: Piece[] = [];
-  if (use) {
-    const m = msgs(use.a);
-    const approve = m.find((x) => x.dir === "in" && x.kind === "button");
-    const from = (use.a.readyAt ?? use.a.startedAt) - 500;
-    usePieces.push(await phonePiece(use.s, from, (approve?.at ?? from + 4000) + 800, 5));
-    const run = mainRun(use.a);
-    const clip = run ? clipOfRun(use.s, run.id) : undefined;
-    usePieces.push(
-      clip && run
-        ? await runPiece(use.s, run.id, clip, 9, { speed: 1 })
-        : slate("Replay", "4 s at 1×", 9, "placeholder"),
-    );
-    const receipt = m.find((x) => x.dir === "out" && x.kind === "image" && /Replay ·/.test(x.text));
-    usePieces.push(
-      receipt
-        ? await phonePiece(use.s, receipt.at - 500, receipt.at + 2500, 3, true)
-        : slate("Receipt", "", 3, "placeholder"),
-    );
-  } else usePieces.push(slate("Use", "use take missing", 17, "placeholder"));
-  const hubspot = opt("--hubspot");
-  usePieces.push(
-    hubspot
-      ? {
-          kind: "video",
-          file: hubspot,
-          ranges: [[0, Math.min(3, (await probe(hubspot)).duration)]],
-          fit: "camera",
-          target: 3,
-          speed: 1,
-        }
-      : slate(
-          "HubSpot",
-          "the deal and the quote, through its API",
-          3,
-          "placeholder: a 3 s capture of the HubSpot deal",
-        ),
-  );
-  beats.push({ n: 5, name: "use", dur: 20, pieces: usePieces });
-
-  // 6. EspoCRM: its own admin changed it, the heal, the pick.
+  // 6. The rest of the day: EspoCRM, the supplier form, the ask, HubSpot.
   const espo = takeIn(sessions, "espocrm");
-  const espoPieces: Piece[] = [
+  const dayPieces: Piece[] = [
     slate(
       "EspoCRM, open source, unmodified",
       "Its own admin renames 'First Name' to 'Given Name' and reorders the form",
-      4,
+      2.5,
     ),
   ];
   if (espo) {
     const run = mainRun(espo.a);
     const clip = run ? clipOfRun(espo.s, run.id) : undefined;
-    espoPieces.push(
+    const heal = clip && run ? healOf(espo.s, run.id) : null;
+    dayPieces.push(
       clip && run
-        ? await runPiece(espo.s, run.id, clip, 13)
-        : slate("EspoCRM", "run missing", 13, "placeholder"),
+        ? {
+            ...(await runPiece(espo.s, run.id, clip, 4, {
+              ...(heal ? { from: sec(clip, heal.start) - 2, to: sec(clip, heal.end) + 1.6 } : {}),
+            })),
+            // pushed in, the repair card reaches down to where a bottom caption lands
+            caption: "top" as const,
+          }
+        : slate("EspoCRM", "run missing", 4, "placeholder"),
     );
-    espoPieces.push(cameraPiece(espo.s, "pick-espocrm", 8));
-  } else espoPieces.push(slate("EspoCRM", "EspoCRM take missing", 21, "placeholder"));
-  beats.push({ n: 6, name: "espocrm", dur: 25, pieces: espoPieces });
-
-  // 7. Ask: the new required field, the rep taps Gold.
+    dayPieces.push(cameraPiece(espo.s, "pick-espocrm", 3.5, { still: true }));
+  } else dayPieces.push(slate("EspoCRM", "EspoCRM take missing", 7.5, "placeholder"));
+  const supplier = takeIn(sessions, "supplier") ?? takeIn(sessions, "supplier2");
+  const supplierRun = supplier && mainRun(supplier.a);
+  const supplierClip = supplier && supplierRun ? clipOfRun(supplier.s, supplierRun.id) : undefined;
+  if (supplier && supplierRun && supplierClip) {
+    const commit = supplier.a.events.gates.find((g) => g.kind === "commit");
+    dayPieces.push(
+      await runPiece(supplier.s, supplierRun.id, supplierClip, 5, {
+        ...(commit ? { to: sec(supplierClip, commit.at) } : {}),
+      }),
+    );
+  } else dayPieces.push(slate("Supplier form", "supplier take missing", 5, "placeholder"));
   const ask = takeIn(sessions, "ask");
-  const askPieces: Piece[] = [];
-  if (ask) {
-    const q = ask.a.events.gates.find((g) => g.kind === "question");
-    const run = mainRun(ask.a);
-    const clip = run ? clipOfRun(ask.s, run.id) : undefined;
-    askPieces.push(
-      clip && run
-        ? await runPiece(ask.s, run.id, clip, 9, q ? { to: sec(clip, q.at) + 1.5 } : {})
-        : slate("Ask", "run missing", 9, "placeholder"),
-    );
-    askPieces.push(
-      q
-        ? await phonePiece(ask.s, q.at - 300, (q.resolvedAt ?? q.at + 3000) + 1500, 6)
-        : slate("Ask", "", 6, "placeholder"),
-    );
-  } else askPieces.push(slate("Ask", "ask take missing", 15, "placeholder"));
-  beats.push({ n: 7, name: "ask", dur: 15, pieces: askPieces });
-
-  // 8. Proof: the baseline, heal rungs, cost curve.
-  const assets = join(root, "assets", "video");
+  const q = ask?.a.events.gates.find((g) => g.kind === "question");
+  dayPieces.push(
+    ask && q
+      ? await phonePiece(ask.s, q.at - 300, (q.resolvedAt ?? q.at + 3000) + 1500, 4.5)
+      : slate("Ask", "ask take missing", 4.5, "placeholder"),
+  );
+  const hubspot = opt("--hubspot");
+  dayPieces.push(
+    hubspot
+      ? await clipPiece(hubspot, 4.5, "camera")
+      : slate(
+          "HubSpot",
+          "the deal and the quote, through its API",
+          4.5,
+          "placeholder: a 4.5 s capture of the HubSpot deal",
+        ),
+  );
   beats.push({
-    n: 8,
+    n: 6,
+    name: "the rest of the day",
+    dur: 24,
+    pieces: dayPieces,
+    captions: [
+      { first: /^It works on real software/, at: 0.15, to: 2.4 },
+      { first: /^This is EspoCRM/, at: 2.5, to: 6.4 },
+      { first: /^I renamed a field/, at: 6.5, to: 9.9 },
+      { first: /^A forty-field/, at: 10, to: 14.9 },
+      { first: /^When a form/, at: 15, to: 19.4 },
+      { first: /^And where a tool/, at: 19.5, to: 23.85 },
+    ],
+  });
+
+  // 7. Proof: the baseline with its required footnote, the heal rungs, the cost curve.
+  const assets = join(root, "assets", "video");
+  const lead = CHART_LEAD;
+  beats.push({
+    n: 7,
     name: "proof",
-    dur: 30,
+    dur: 28,
     pieces: [
       await chartPiece(join(assets, "chart-baseline.mp4"), 8),
       await chartPiece(join(assets, "chart-heals.mp4"), 10),
-      await chartPiece(join(assets, "chart-cost.mp4"), 12),
+      await chartPiece(join(assets, "chart-cost.mp4"), 10),
     ],
-    captionsByPiece: {
-      first: [/recorded script broke/, /^Dockhand handled/, /^Over 93 runs/],
-      lead: CHART_LEAD,
-    },
+    extra: [
+      {
+        png: overlay(
+          footnoteHtml(
+            "One selector per step, like a typical recording; with five stored selectors per step it broke on 9 of 42",
+          ),
+        ),
+        from: 0,
+        to: 8,
+      },
+    ],
+    captions: [
+      { first: /recorded script broke/, at: lead, to: 7.9 },
+      { first: /^Dockhand handled/, at: 8 + lead, to: 17.9 },
+      { first: /^Over 93 runs/, at: 18 + lead, to: 27.85 },
+    ],
   });
 
-  // 9. End card: the credits under the first sentence, then the hard cut to orange on "Dockhand:". The card says
-  // that sentence itself, and no caption covers the compliance lines.
+  // 8. End card: the credits (real and simulated) under the voice, then the hard cut to orange on "Dockhand:". The
+  // card says that sentence itself, and no caption covers the compliance lines.
   beats.push({
-    n: 9,
+    n: 8,
     name: "end",
-    dur: 10,
-    pieces: [await assetPiece(join(assets, "endcard.mp4"), 10)],
-    captionsUntil: { chunks: 1, to: 5.9 },
+    dur: 16,
+    pieces: await endPieces(join(assets, "endcard.mp4"), 10.5, 5.5),
+    captions: [{ first: /^Every night/, at: 0.15, to: 10.4 }],
+    captionsStop: /^Dockhand:/,
   });
   return beats;
 }
 
 // ---------- render ----------
 
-/** Top when the piece on screen is a full-bleed browser shot pushing in on something in its lower part. */
+/** The band under the race; otherwise bottom unless the piece on screen says where. */
 function placeAt(b: Beat, t: number): CaptionPos {
   let start = 0;
   for (const p of b.pieces) {
-    if (t < start + p.target && p.kind === "split") return "band";
-    if (t < start + p.target && p.kind === "video" && p.caption) return p.caption;
-    if (t < start + p.target)
-      return p.kind === "video" && p.fit === "browser" && (p.push?.cy ?? 0) > 440 ? "top" : "bottom";
+    if (t < start + p.target) {
+      if (p.kind === "split") return "band";
+      return (p.kind === "video" && p.caption) || "bottom";
+    }
     start += p.target;
   }
   return "bottom";
 }
 
 const beats = await buildBeats();
+const filmLength = beats.reduce((s, b) => s + b.dur, 0);
+if (filmLength !== 180) throw new Error(`the beats last ${filmLength} s, the film 180 s`);
 // captions: each beat's line in chunks of at most two lines, timed by words
-/** Chunks spread over [from, to] by their words. */
+/** Chunks spread over [from, to] by their words; a word or two still stays up long enough to read. */
 function timed(b: Beat, chunks: string[], from: number, to: number) {
-  const words = chunks.map((c) => c.split(/\s+/).length);
+  const words = chunks.map((c) => Math.max(3, c.split(/\s+/).length));
   const total = words.reduce((x, y) => x + y, 0) || 1;
   let at = from;
   return chunks.map((c, i) => {
@@ -715,19 +993,19 @@ function timed(b: Beat, chunks: string[], from: number, to: number) {
 }
 
 const captionPlan = beats.map((b) => {
-  const chunks = captionChunks(lineOf(b.n));
-  if (b.captionsUntil) return timed(b, chunks.slice(0, b.captionsUntil.chunks), 0.15, b.captionsUntil.to);
-  const byPiece = b.captionsByPiece;
-  const starts = byPiece?.first.map((re) => chunks.findIndex((c) => re.test(c))) ?? [];
-  if (!byPiece || starts.some((i) => i < 0)) return timed(b, chunks, 0.15, b.dur - 0.15);
-  // Each group of chunks over its own piece, from the moment the piece's chart is fully drawn.
-  let at = 0;
-  return b.pieces.flatMap((p, i) => {
-    const group = chunks.slice(starts[i] as number, starts[i + 1] ?? chunks.length);
-    const items = timed(b, group, at + byPiece.lead, at + p.target - 0.1);
-    at += p.target;
-    return items;
+  const all = captionChunks(lineOf(b.n));
+  const stop = b.captionsStop ? all.findIndex((c) => b.captionsStop?.test(c)) : -1;
+  const chunks = stop < 0 ? all : all.slice(0, stop);
+  const groups = b.captions ?? [{ first: /./, at: 0.15, to: b.dur - 0.15 }];
+  // A line that lost its anchor must stop the render: left to the word count, it would caption a silence.
+  const starts = groups.map((g) => {
+    const i = chunks.findIndex((c) => g.first.test(c));
+    if (i < 0) throw new Error(`beat ${b.n}: no caption matches ${g.first} in "${lineOf(b.n)}"`);
+    return i;
   });
+  return groups.flatMap((g, i) =>
+    timed(b, chunks.slice(starts[i] as number, starts[i + 1] ?? chunks.length), g.at, g.to),
+  );
 });
 for (const b of beats) for (const p of b.pieces) for (const l of labelsOf(p)) label(l.text, l.slot);
 if (args.includes("--final") && notFinal.length > 0)
@@ -774,9 +1052,55 @@ for (const [i, b] of beats.entries()) {
 
 const filmList = join(work, "film.txt");
 writeFileSync(filmList, `${beatFiles.map((f) => `file '${f.replace(/\\/g, "/")}'`).join("\n")}\n`);
+const picture = join(work, "film-picture.mp4");
+await ffmpeg(["-f", "concat", "-safe", "0", "-i", filmList, "-c", "copy", picture]);
+
+// The sound: silence for the whole film, with the real sound of the pieces that keep theirs laid in at their times.
+const sounds: (Sound & { at: number; dur: number })[] = [];
+let filmAt = 0;
+for (const b of beats)
+  for (const p of b.pieces) {
+    if (p.kind !== "split" && p.sound) sounds.push({ ...p.sound, at: filmAt, dur: p.target });
+    filmAt += p.target;
+  }
+const soundInputs = sounds.flatMap((s) => ["-i", s.file]);
+const soundChains = sounds.map(
+  (s, i) =>
+    `[${i + 2}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${s.dur.toFixed(3)},asetpts=PTS-STARTPTS,` +
+    `afade=t=out:st=${Math.max(0, s.dur - 0.15).toFixed(3)}:d=0.15,volume=${s.gain},` +
+    `adelay=delays=${Math.round(s.at * 1000)}:all=1[s${i}]`,
+);
+const mix = `[1:a]${sounds.map((_, i) => `[s${i}]`).join("")}amix=inputs=${sounds.length + 1}:normalize=0:duration=first[a]`;
 const film = join(outDir, "rough-cut-v2.mp4");
 rmSync(film, { force: true });
-await ffmpeg(["-f", "concat", "-safe", "0", "-i", filmList, "-c", "copy", "-movflags", "+faststart", film]);
+await ffmpeg([
+  "-i",
+  picture,
+  "-f",
+  "lavfi",
+  "-t",
+  String(filmLength),
+  "-i",
+  "anullsrc=r=48000:cl=stereo",
+  ...soundInputs,
+  "-filter_complex",
+  [...soundChains, mix].join(";"),
+  "-map",
+  "0:v",
+  "-map",
+  "[a]",
+  "-c:v",
+  "copy",
+  "-c:a",
+  "aac",
+  "-b:a",
+  "192k",
+  "-t",
+  String(filmLength),
+  "-movflags",
+  "+faststart",
+  film,
+]);
 const sheet = join(outDir, "contact-sheet.png");
 await ffmpeg([
   "-i",
@@ -790,8 +1114,7 @@ await ffmpeg([
 const p = await probe(film);
 // Counted, not read from the container: a dropped frame leaves its duration at 180.00.
 const frames = await countFrames(film);
-const expected = Math.round(beats.reduce((s, b) => s + b.dur, 0) * FPS);
-if (frames !== expected) throw new Error(`the film has ${frames} frames, not ${expected}`);
+if (frames !== filmLength * FPS) throw new Error(`the film has ${frames} frames, not ${filmLength * FPS}`);
 say(
   `rough cut v2: ${relative(root, film)} (${p.duration.toFixed(2)} s, ${frames} frames); contact sheet: ${relative(root, sheet)}`,
 );
