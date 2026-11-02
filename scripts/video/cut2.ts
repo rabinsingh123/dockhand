@@ -19,7 +19,7 @@ import { join, relative } from "node:path";
 import { workspaceRoot } from "../../packages/core/src/index.ts";
 import { COLOR } from "../../packages/design/src/index.ts";
 import { activeRanges, mapTime, span } from "./lib/activity.ts";
-import { ffmpeg, probe } from "./lib/media.ts";
+import { countFrames, ffmpeg, probe } from "./lib/media.ts";
 import {
   type CaptionPos,
   captionChunks,
@@ -63,7 +63,31 @@ const GROUND = COLOR.ground.replace("#", "0x");
 const t0 = Date.now();
 const say = (s: string) =>
   process.stdout.write(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)} s] ${s}\n`);
-const x264 = ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-an"];
+const x264 = [
+  "-c:v",
+  "libx264",
+  "-preset",
+  "medium",
+  "-crf",
+  "18",
+  "-pix_fmt",
+  "yuv420p",
+  "-color_range",
+  "tv",
+  "-colorspace",
+  "bt709",
+  "-color_primaries",
+  "bt709",
+  "-color_trc",
+  "bt709",
+  "-an",
+];
+/**
+ * Every piece ends in the same picture format. Sources differ (full-range browser frames, limited-range charts);
+ * without this the pieces disagree at their seams, ffmpeg rebuilds the filter graph there and loses frames.
+ */
+const SAME_FORMAT =
+  "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,setparams=range=tv:colorspace=bt709:color_primaries=bt709:color_trc=bt709,setsar=1";
 
 // ---------- pieces ----------
 
@@ -216,7 +240,20 @@ async function renderPiece(p: Piece): Promise<string> {
   const out = join(work, `p${String(++pieceN).padStart(3, "0")}.mp4`);
   const frames = String(Math.round(p.target * FPS));
   if (p.kind === "still") {
-    await ffmpeg(["-loop", "1", "-framerate", String(FPS), "-i", p.png, "-frames:v", frames, ...x264, out]);
+    await ffmpeg([
+      "-loop",
+      "1",
+      "-framerate",
+      String(FPS),
+      "-i",
+      p.png,
+      "-vf",
+      SAME_FORMAT,
+      "-frames:v",
+      frames,
+      ...x264,
+      out,
+    ]);
     return out;
   }
   const v = p.kind === "split" ? p.right : p;
@@ -236,16 +273,16 @@ async function renderPiece(p: Piece): Promise<string> {
     inputs.push("-f", "concat", "-safe", "0", "-i", list);
     graph = [
       sourceChain(v, seek),
-      `[1:v]fps=${FPS},scale=1920:1080,tpad=stop_mode=clone:stop_duration=${p.target}[bg]`,
+      `[1:v]fps=${FPS},scale=1920:1080,${SAME_FORMAT},tpad=stop_mode=clone:stop_duration=${p.target}[bg]`,
       // A true split: the whole page, uncropped, beside the terminal (left 30%); the caption has the band below.
-      `[v]scale=1344:840:flags=lanczos,tpad=stop_mode=clone:stop_duration=${p.target}[fv]`,
+      `[v]${SAME_FORMAT},scale=1344:840:flags=lanczos,tpad=stop_mode=clone:stop_duration=${p.target}[fv]`,
       `[bg][fv]overlay=x=576:y=0[f]`,
     ].join(";");
   } else {
-    inputs.push("-f", "lavfi", "-i", `color=c=${GROUND}:s=1920x1080:r=${FPS}`);
+    inputs.push("-f", "lavfi", "-i", `color=c=${GROUND}:s=1920x1080:r=${FPS},${SAME_FORMAT}`);
     graph = [
       sourceChain(v, seek),
-      `[v]tpad=stop_mode=clone:stop_duration=${p.target}[vh]`,
+      `[v]${SAME_FORMAT},tpad=stop_mode=clone:stop_duration=${p.target}[vh]`,
       fitChain(v.fit).replace("[v]", "[vh]").replace("[bg]", "[1:v]"),
     ].join(";");
   }
@@ -256,7 +293,8 @@ async function renderPiece(p: Piece): Promise<string> {
     graph += `;[${last}][${2 + i}:v]overlay=0:0:shortest=1[l${i}]`;
     last = `l${i}`;
   });
-  await ffmpeg([...inputs, "-filter_complex", graph, "-map", `[${last}]`, "-frames:v", frames, ...x264, out]);
+  graph += `;[${last}]setsar=1[out]`;
+  await ffmpeg([...inputs, "-filter_complex", graph, "-map", "[out]", "-frames:v", frames, ...x264, out]);
   return out;
 }
 
@@ -711,27 +749,26 @@ for (const [i, b] of beats.entries()) {
   // captions and extras over the beat
   const items = [...(b.extra ?? []), ...(captionPlan[i] ?? [])];
   const inputs = ["-i", joined];
-  let graph = "";
-  let last = "0:v";
+  // Even frame times: the seams between pieces can repeat a timestamp, and the encoder would drop that frame.
+  let graph = `[0:v]setpts=N/${FPS}/TB[even]`;
+  let last = "even";
   items.forEach((it, k) => {
     inputs.push("-loop", "1", "-i", it.png);
-    graph += `${graph ? ";" : ""}[${last}][${k + 1}:v]overlay=0:0:shortest=1:enable='between(t,${it.from.toFixed(2)},${it.to.toFixed(2)})'[c${k}]`;
+    graph += `;[${last}][${k + 1}:v]overlay=0:0:shortest=1:enable='between(t,${it.from.toFixed(2)},${it.to.toFixed(2)})'[c${k}]`;
     last = `c${k}`;
   });
   const out = join(work, `beat${b.n}.mp4`);
-  if (items.length)
-    await ffmpeg([
-      ...inputs,
-      "-filter_complex",
-      graph,
-      "-map",
-      `[${last}]`,
-      "-frames:v",
-      String(Math.round(b.dur * FPS)),
-      ...x264,
-      out,
-    ]);
-  else await ffmpeg(["-i", joined, "-frames:v", String(Math.round(b.dur * FPS)), ...x264, out]);
+  await ffmpeg([
+    ...inputs,
+    "-filter_complex",
+    graph,
+    "-map",
+    `[${last}]`,
+    "-frames:v",
+    String(Math.round(b.dur * FPS)),
+    ...x264,
+    out,
+  ]);
   beatFiles.push(out);
 }
 
@@ -751,6 +788,10 @@ await ffmpeg([
   sheet,
 ]);
 const p = await probe(film);
+// Counted, not read from the container: a dropped frame leaves its duration at 180.00.
+const frames = await countFrames(film);
+const expected = Math.round(beats.reduce((s, b) => s + b.dur, 0) * FPS);
+if (frames !== expected) throw new Error(`the film has ${frames} frames, not ${expected}`);
 say(
-  `rough cut v2: ${relative(root, film)} (${p.duration.toFixed(2)} s); contact sheet: ${relative(root, sheet)}`,
+  `rough cut v2: ${relative(root, film)} (${p.duration.toFixed(2)} s, ${frames} frames); contact sheet: ${relative(root, sheet)}`,
 );
