@@ -234,8 +234,8 @@ export function paramsFromProfile(
       const slot = Object.entries(FILE_SLOTS).find(([, aliases]) => aliases.includes(name))?.[0] ?? name;
       if (ctx.files[slot]) found.set(name, ctx.files[slot]);
     } else if (byName.has(name.replace(/_/g, ""))) found.set(name, byName.get(name.replace(/_/g, "")));
-    else if (spec.example !== undefined && values.filter((v) => v === spec.example).length === 1) {
-      found.set(name, spec.example);
+    else if (spec.example !== undefined && values.includes(spec.example)) {
+      found.set(name, spec.example); // the first run's value, still in the profile (under any key, even two)
     }
   }
   return finish(specs, found);
