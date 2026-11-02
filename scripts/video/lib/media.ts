@@ -81,3 +81,36 @@ export async function probe(file: string): Promise<Probe> {
     mtime: statSync(file).mtimeMs,
   };
 }
+
+/** The video frames really in the file, counted packet by packet. */
+export async function countFrames(file: string): Promise<number> {
+  const out = await run("ffprobe", [
+    "-v",
+    "error",
+    "-count_packets",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=nb_read_packets",
+    "-of",
+    "csv=p=0",
+    file,
+  ]);
+  return Number(out.trim());
+}
+
+/** Whether the file carries a sound track. */
+export async function hasAudio(file: string): Promise<boolean> {
+  const out = await run("ffprobe", [
+    "-v",
+    "error",
+    "-select_streams",
+    "a",
+    "-show_entries",
+    "stream=index",
+    "-of",
+    "csv=p=0",
+    file,
+  ]);
+  return out.trim().length > 0;
+}

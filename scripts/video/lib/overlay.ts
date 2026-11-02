@@ -21,20 +21,33 @@ const esc = (s: string) =>
 const BASE = `*{box-sizing:border-box;margin:0}html,body{width:1920px;height:1080px;background:transparent;
 font-family:${TYPE.family.sans};color:${TEXT};-webkit-font-smoothing:antialiased}`;
 
+/** The space nearest the middle of a line. */
+function midSpace(s: string): number {
+  const mid = s.length / 2;
+  let best = -1;
+  for (let i = s.indexOf(" "); i >= 0; i = s.indexOf(" ", i + 1))
+    if (best < 0 || Math.abs(i - mid) < Math.abs(best - mid)) best = i;
+  return best;
+}
+
 /**
  * A caption: at most two lines of a sentence-case voiceover line on a black panel, on the grid's left edge at the
  * bottom; "top" puts it top left (under the label, clear of the HUD on the right) when the shot's subject is low on
- * the screen. captionChunks keeps a chunk to two lines, so nothing here cuts text.
+ * the screen. A chunk too long for one line breaks at its middle, so no word is left alone on the second line;
+ * captionChunks keeps a chunk to two lines, so nothing here cuts text.
  */
 export function captionHtml(text: string, pos: CaptionPos = "bottom"): string {
   const place = {
-    top: "left:48px;top:128px;max-width:1300px",
-    bottom: `left:${LEFT - 24}px;bottom:48px;max-width:1648px`,
+    top: { css: "left:48px;top:116px;max-width:920px", line: 40 },
+    // flush with the foot of the phone, so no sliver of it shows under the panel
+    bottom: { css: `left:${LEFT - 24}px;bottom:40px;max-width:1648px`, line: 88 },
     // under the race's two panes, clear of the speed label at the right
-    band: "left:24px;bottom:40px;max-width:1500px",
+    band: { css: "left:24px;bottom:40px;max-width:1500px", line: 76 },
   }[pos];
-  return `<style>${BASE}.c{position:absolute;${place};width:max-content;background:${GROUND};padding:16px 24px 18px;
-font-size:${TYPE.film.label}px;line-height:1.2;font-weight:500;letter-spacing:-0.01em}</style><div class="c">${esc(text)}</div>`;
+  const at = text.length > place.line ? midSpace(text) : -1;
+  const html = at < 0 ? esc(text) : `${esc(text.slice(0, at))}<br>${esc(text.slice(at + 1))}`;
+  return `<style>${BASE}.c{position:absolute;${place.css};width:max-content;background:${GROUND};padding:16px 24px 18px;
+font-size:${TYPE.film.label}px;line-height:1.2;font-weight:500;letter-spacing:-0.01em}</style><div class="c">${html}</div>`;
 }
 
 export type CaptionPos = "bottom" | "top" | "band";
@@ -53,10 +66,35 @@ letter-spacing:-0.01em}</style><div class="l">${esc(text)}</div>`;
 
 /** A sourced stat as a lower third (bottom left, beside the phone and above the caption). */
 export function lowerThirdHtml(stat: string, source: string): string {
-  return `<style>${BASE}.t{position:absolute;left:${LEFT - 24}px;bottom:220px;width:584px;background:${GROUND};
-padding:20px 24px 24px}.s{font-size:${TYPE.film.lead}px;line-height:1.05;font-weight:700;letter-spacing:${TYPE.tracking.tight}}
+  return `<style>${BASE}.t{position:absolute;left:${LEFT - 24}px;bottom:220px;width:760px;background:${GROUND};
+padding:20px 24px 24px}.s{font-size:${TYPE.film.lead}px;line-height:1.05;font-weight:700;letter-spacing:${TYPE.tracking.tight};text-wrap:balance}
 .r{margin-top:14px;font-size:${TYPE.film.label}px;font-weight:500;color:${GRAY};line-height:1.2;letter-spacing:-0.01em}</style>
 <div class="t"><div class="s">${esc(stat)}</div><div class="r">${esc(source)}</div></div>`;
+}
+
+/** A source note under a chart, in the 32 px footnote size, above the line where the caption lands. */
+export function footnoteHtml(text: string): string {
+  return `<style>${BASE}.f{position:absolute;left:${LEFT}px;right:${LEFT}px;top:884px;font-size:${TYPE.film.footnote}px;
+line-height:1.2;font-weight:500;color:${GRAY};letter-spacing:-0.01em}</style><div class="f">${esc(text)}</div>`;
+}
+
+/** The hand-timed run's clock: what it is, then the running time. Top left, where a label sits. */
+export function timerHtml(label: string, time: string): string {
+  return `<style>${BASE}.t{position:absolute;top:40px;left:48px;background:${GROUND};padding:8px 20px 14px}
+.l{font-size:${TYPE.film.label}px;font-weight:600;letter-spacing:-0.01em}.v{font-size:${TYPE.film.hero}px;line-height:1.05;
+font-weight:700;letter-spacing:${TYPE.tracking.tight};font-variant-numeric:tabular-nums}</style>
+<div class="t"><div class="l">${esc(label)}</div><div class="v">${esc(time)}</div></div>`;
+}
+
+/** A real person's words on black: the quote as they gave it, then who said it. */
+export function quoteHtml(o: { quote: string; name: string; title: string; country: string }): string {
+  const size = o.quote.length > 110 ? TYPE.film.lead : TYPE.film.title;
+  return `<style>${BASE}html,body{background:${GROUND}}.w{position:absolute;left:${LEFT}px;right:${LEFT}px;top:${GRID.film.top}px;
+bottom:200px;display:flex;flex-direction:column;justify-content:center;gap:32px}.q{font-size:${size}px;line-height:1.15;
+font-weight:500;letter-spacing:${TYPE.tracking.tight}}.a{font-size:${TYPE.film.body}px;font-weight:500;line-height:1.25;
+letter-spacing:-0.01em;color:${GRAY}}.a b{font-weight:600;color:${TEXT}}</style>
+<div class="w"><div class="q">“${esc(o.quote)}”</div>
+<div class="a"><b>${esc(o.name)}</b>, ${esc(o.title)}, ${esc(o.country)}</div></div>`;
 }
 
 /** A full-frame black card: a title and an optional line under it (placeholders, the time skip, a stat). */
@@ -126,7 +164,7 @@ export async function renderOverlays(dir: string, overlays: Overlay[]): Promise<
 
 /**
  * A voiceover line as caption chunks of at most two lines (about `perLine` characters each), split at sentence
- * and clause boundaries first. Each chunk gets a share of the beat proportional to its words.
+ * and clause boundaries first, then at the middle of a clause too long for two lines. Each chunk gets a share of the beat proportional to its words.
  */
 export function captionChunks(line: string, perLine = 46): string[] {
   const max = perLine * 2;
@@ -148,15 +186,16 @@ export function captionChunks(line: string, perLine = 46): string[] {
         if (cur) chunks.push(cur);
         if (part.length <= max) cur = part;
         else {
-          let w = "";
-          for (const word of part.split(" ")) {
-            if (`${w} ${word}`.trim().length <= max) w = `${w} ${word}`.trim();
-            else {
-              chunks.push(w);
-              w = word;
-            }
+          let rest = part;
+          while (rest.length > max) {
+            // Not on a stray little word: "... reads a" / "text list ..."
+            const mid = midSpace(rest);
+            const before = rest.lastIndexOf(" ", mid - 1);
+            const at = before > 0 && mid - before <= 3 ? before : mid;
+            chunks.push(rest.slice(0, at));
+            rest = rest.slice(at + 1);
           }
-          cur = w;
+          cur = rest;
         }
       }
     }
