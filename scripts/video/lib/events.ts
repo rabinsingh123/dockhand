@@ -2,7 +2,7 @@
 // The director polls this for the cue screen and the cut list; it works the same with real WhatsApp and the
 // emulator, because every inbound and outbound message, gate and run is stored there.
 
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
 export interface Msg {
@@ -218,6 +218,7 @@ export function snapshotDb(dbPath: string, to: string): boolean {
   const db = open(dbPath);
   if (!db) return false;
   try {
+    rmSync(to, { force: true }); // a redo snapshots the same take again, and VACUUM INTO never overwrites
     db.exec(`VACUUM INTO '${to.replace(/'/g, "''")}'`);
     return true;
   } finally {
