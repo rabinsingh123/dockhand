@@ -468,14 +468,14 @@ export const TAKES: Take[] = [
 
 /** Takes for a mode, in session order (EspoCRM after the montage: its gateway restart touches nothing later). */
 /**
- * Live, the "use" take runs on a friend's real voice note (VN1: register Café Aurora, Portuguese and English).
+ * Live, the "use" take runs on a recorded voice note (VN1: register Café Aurora, Portuguese and English).
  * VN1 carries every required field; the optional ones (website, phone, notes) stay empty. `usePhoto` falls back
  * to the referral photo if the transcript comes out wrong. Rehearsals keep the photo: the tapes hold that run.
  */
 const USE_BY_VOICE: Pick<Take, "director" | "phone"> = {
   director: "Portal on v1. Real speed (no pacing): the replay takes about 4 s.",
   phone: [
-    "Forward your friend's voice note VN1 (Café Aurora, Portuguese and English).",
+    "Forward voice note VN1 (Café Aurora, Portuguese and English).",
     'Plan card "… v1" → check the fields it heard → tap Approve.',
     'Card "Ready to submit" → tap Approve.',
     'Receipt "Replay · compiled skill … fields verified".',

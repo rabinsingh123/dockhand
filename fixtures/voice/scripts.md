@@ -15,7 +15,7 @@ Expected values assume "today" is 2026-10-27 in America/Sao_Paulo. A month witho
 - id: `vn1-register-cafe-aurora` (save as `fixtures/voice/vn1-register-cafe-aurora.ogg`)
 - Speaker: Marcos Tavares (Rota Consultoria, referral partner). Forwarded by Ana Ribeiro (rep).
 
-> Oi Ana, é o Marcos, da Rota Consultoria. Registra aí pra mim um deal novo: Café Aurora, vinte e cinco seats do Business, em São Paulo. Fecha em janeiro, dia vinte e nove. The contact is Júlia Prado, julia at cafeaurora dot example. Valeu!
+> Oi Ana, é o Marcos, da Rota Consultoria. Registra aí pra mim um deal novo: Café Aurora, twenty five seats of Business, in São Paulo. It closes January twenty ninth. The contact is Júlia Prado, julia at cafeaurora dot example. Valeu!
 
 Say as:
 
@@ -57,7 +57,7 @@ Expected `Understanding`:
 - id: `vn2-quote-cafe-aurora` (save as `fixtures/voice/vn2-quote-cafe-aurora.ogg`)
 - Speaker: Júlia Prado (Café Aurora, buyer). Forwarded by Ana Ribeiro (rep).
 
-> Oi Ana, aqui é a Júlia, do Café Aurora. Can you send pricing for 25 people em São Paulo, começando em janeiro? A gente tá pensando no plano Business. Obrigada!
+> Oi Ana, aqui é o João, do Café Aurora. Can you send pricing for 25 people em São Paulo, começando em janeiro? A gente tá pensando no plano Business. Obrigado!
 
 Say as:
 
