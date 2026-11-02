@@ -954,7 +954,7 @@ async function buildBeats(): Promise<Beat[]> {
     name: "end",
     dur: 16,
     pieces: await endPieces(join(assets, "endcard.mp4"), 10.5, 5.5),
-    captions: [{ first: /^Every night/, at: 0.15, to: 10.4 }],
+    captions: [{ first: /^Next/, at: 0.15, to: 10.4 }],
     captionsStop: /^Dockhand:/,
   });
   return beats;
