@@ -8,7 +8,7 @@
 // only for the race. Idle stretches (an unchanged page or chat) are cut; whatever is still too long is sped up,
 // and every speed-up is labeled. Push-ins follow the heal: a 600 ms ease-out to at most 1.12x, done with ffmpeg's
 // perspective filter (sub-pixel, bicubic), which moves smoothly where zoompan's whole-pixel crop jitters. Type is
-// rendered in Geist by a headless Chromium (lib/overlay.ts) and laid over by ffmpeg: no new dependency (Remotion
+// rendered in Archivo by a headless Chromium (lib/overlay.ts) and laid over by ffmpeg: no new dependency (Remotion
 // would add React, its renderer and its own Chromium). Captions are the narration's lines; no dev captions, no
 // clock. A rehearsal's emulator chat is labeled "Simulated chat (rehearsal)" wherever it appears.
 //
@@ -17,6 +17,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { workspaceRoot } from "../../packages/core/src/index.ts";
+import { COLOR } from "../../packages/design/src/index.ts";
 import { activeRanges, mapTime, span } from "./lib/activity.ts";
 import { ffmpeg, probe } from "./lib/media.ts";
 import {
@@ -58,7 +59,7 @@ const work = join(outDir, "work");
 const png = join(work, "png");
 mkdirSync(png, { recursive: true });
 const FPS = 30;
-const PAPER = "0xF6F5F1";
+const GROUND = COLOR.ground.replace("#", "0x");
 const t0 = Date.now();
 const say = (s: string) =>
   process.stdout.write(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)} s] ${s}\n`);
@@ -66,7 +67,7 @@ const x264 = ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", 
 
 // ---------- pieces ----------
 
-/** browser-low: the same 1.5x, shifted up with paper under it, for a subject low on the page and a caption below it. */
+/** browser-low: the same 1.5x, shifted up with the ground under it, for a subject low on the page and a caption below it. */
 type Fit = "phone" | "browser" | "browser-low" | "camera";
 interface Push {
   /** Source time (s, in the file) the push starts; it eases in over 600 ms. */
@@ -112,6 +113,8 @@ interface Beat {
   extra?: { png: string; from: number; to: number }[];
   /** One pattern per piece: the first caption of that piece, which lands `lead` seconds into it. */
   captionsByPiece?: { first: RegExp[]; lead: number };
+  /** Only the first `chunks` captions, spread up to second `to`: past that the frame says the words itself. */
+  captionsUntil?: { chunks: number; to: number };
 }
 
 /** What would make this cut not the film: --final refuses to render it. */
@@ -187,7 +190,7 @@ function fitChain(fit: Fit): string {
   if (fit === "phone") return `[v]scale=-2:1000:flags=lanczos[fv];[bg][fv]overlay=x=(W-w)/2:y=40[f]`;
   if (fit === "browser") return `[v]scale=1920:1200:flags=lanczos,crop=1920:1080:0:60[f]`;
   if (fit === "browser-low")
-    return `[v]scale=1920:1200:flags=lanczos,pad=1920:1400:0:0:color=${PAPER},crop=1920:1080:0:200[f]`;
+    return `[v]scale=1920:1200:flags=lanczos,pad=1920:1400:0:0:color=${GROUND},crop=1920:1080:0:200[f]`;
   return `[v]scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos[fv];[bg][fv]overlay=x=(W-w)/2:y=(H-h)/2[f]`;
 }
 
@@ -239,7 +242,7 @@ async function renderPiece(p: Piece): Promise<string> {
       `[bg][fv]overlay=x=576:y=0[f]`,
     ].join(";");
   } else {
-    inputs.push("-f", "lavfi", "-i", `color=c=${PAPER}:s=1920x1080:r=${FPS}`);
+    inputs.push("-f", "lavfi", "-i", `color=c=${GROUND}:s=1920x1080:r=${FPS}`);
     graph = [
       sourceChain(v, seek),
       `[v]tpad=stop_mode=clone:stop_duration=${p.target}[vh]`,
@@ -435,18 +438,18 @@ async function buildBeats(): Promise<Beat[]> {
   const left: { png: string; dur: number }[] = [];
   for (let k = 0; k < Math.floor(failAt); k++)
     left.push({
-      png: overlay(terminalHtml({ title, status: `running · ${k} s`, lines: [], foot }), true),
+      png: overlay(terminalHtml({ title, status: `running, ${k} s`, lines: [], foot }), true),
       dur: 1,
     });
   left.push({
-    png: overlay(terminalHtml({ title, status: `running · ${Math.floor(failAt)} s`, lines: [], foot }), true),
+    png: overlay(terminalHtml({ title, status: `running, ${Math.floor(failAt)} s`, lines: [], foot }), true),
     dur: failAt - Math.floor(failAt),
   });
   left.push({
     png: overlay(
       terminalHtml({
         title,
-        status: `stopped · ${failAt.toFixed(1)} s`,
+        status: `stopped at ${failAt.toFixed(1)} s`,
         lines: race
           ? realLines.map((l, i) => ({ text: l.text, error: i === 0 }))
           : [{ text: "TimeoutError (placeholder until race.ts writes race/race.json)", error: true }],
@@ -631,8 +634,15 @@ async function buildBeats(): Promise<Beat[]> {
     },
   });
 
-  // 9. End card.
-  beats.push({ n: 9, name: "end", dur: 10, pieces: [await assetPiece(join(assets, "endcard.mp4"), 10)] });
+  // 9. End card: the credits under the first sentence, then the hard cut to orange on "Dockhand:". The card says
+  // that sentence itself, and no caption covers the compliance lines.
+  beats.push({
+    n: 9,
+    name: "end",
+    dur: 10,
+    pieces: [await assetPiece(join(assets, "endcard.mp4"), 10)],
+    captionsUntil: { chunks: 1, to: 5.9 },
+  });
   return beats;
 }
 
@@ -668,6 +678,7 @@ function timed(b: Beat, chunks: string[], from: number, to: number) {
 
 const captionPlan = beats.map((b) => {
   const chunks = captionChunks(lineOf(b.n));
+  if (b.captionsUntil) return timed(b, chunks.slice(0, b.captionsUntil.chunks), 0.15, b.captionsUntil.to);
   const byPiece = b.captionsByPiece;
   const starts = byPiece?.first.map((re) => chunks.findIndex((c) => re.test(c))) ?? [];
   if (!byPiece || starts.some((i) => i < 0)) return timed(b, chunks, 0.15, b.dur - 0.15);
@@ -683,7 +694,7 @@ const captionPlan = beats.map((b) => {
 for (const b of beats) for (const p of b.pieces) for (const l of labelsOf(p)) label(l.text, l.slot);
 if (args.includes("--final") && notFinal.length > 0)
   throw new Error(`not the film yet:\n  ${[...new Set(notFinal)].join("\n  ")}`);
-say(`rendering ${overlays.length} overlays (Geist, headless Chromium)`);
+say(`rendering ${overlays.length} overlays (Archivo, headless Chromium)`);
 await renderOverlays(png, overlays);
 
 const beatFiles: string[] = [];
@@ -734,7 +745,7 @@ await ffmpeg([
   "-i",
   film,
   "-vf",
-  `fps=1/5,scale=384:-1,tile=6x6:padding=8:margin=8:color=${PAPER}`,
+  `fps=1/5,scale=384:-1,tile=6x6:padding=8:margin=8:color=${GROUND}`,
   "-frames:v",
   "1",
   sheet,

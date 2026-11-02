@@ -1,78 +1,79 @@
 // Type for the video, rendered by a headless Chromium as 1920x1080 PNGs (transparent unless a slate) and laid over
-// the footage by ffmpeg. HTML sets Geist with real kerning and wraps captions; ffmpeg's drawtext does neither.
-// Colors, type and radii come from @dockhand/design; anything readable is at least 40 px, the accent appears at
-// most once per frame, and there are no gradients, glows, pills or emoji.
+// the footage by ffmpeg. HTML sets Archivo with real kerning and wraps captions; ffmpeg's drawtext does neither.
+// Colors and type come from @dockhand/design: opaque black panels, square corners, left aligned, nothing readable
+// under 40 px, orange at most once per frame and only where Dockhand acted, and no gradients, glows, pills or emoji.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Browser, chromium } from "playwright";
-import { COLOR, fontFaceCss, RADIUS, TYPE } from "../../../packages/design/src/index.ts";
+import { COLOR, fontFaceCss, GRID, TYPE } from "../../../packages/design/src/index.ts";
 
-export const PAPER = COLOR.paper;
-export const INK = COLOR.ink;
-export const GRAY = COLOR.gray;
-export const HAIRLINE = COLOR.hair;
-export const ACCENT = COLOR.accent;
+const GROUND = COLOR.ground;
+const TEXT = COLOR.text;
+const GRAY = COLOR.gray;
+const HAIR = COLOR.hair;
+/** The left edge of the film grid. A panel's padding hangs outside it, so its text sits on the grid. */
+const LEFT = GRID.film.margin;
 
 const esc = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
 
 const BASE = `*{box-sizing:border-box;margin:0}html,body{width:1920px;height:1080px;background:transparent;
-font-family:${TYPE.family.sans};color:${INK};-webkit-font-smoothing:antialiased;font-feature-settings:"ss01"}`;
+font-family:${TYPE.family.sans};color:${TEXT};-webkit-font-smoothing:antialiased}`;
 
 /**
- * A caption: at most two lines of a sentence-case voiceover line on a paper box, bottom center; "top" puts it top
- * left (under the label, clear of the HUD on the right) when the shot's subject is low on the screen.
+ * A caption: at most two lines of a sentence-case voiceover line on a black panel, on the grid's left edge at the
+ * bottom; "top" puts it top left (under the label, clear of the HUD on the right) when the shot's subject is low on
+ * the screen. captionChunks keeps a chunk to two lines, so nothing here cuts text.
  */
 export function captionHtml(text: string, pos: CaptionPos = "bottom"): string {
   const place = {
-    top: "left:48px;top:128px;width:max-content;max-width:1300px;text-align:left",
-    bottom:
-      "left:50%;bottom:48px;transform:translateX(-50%);width:max-content;max-width:1560px;text-align:center",
-    // under the race's two panes, left aligned, clear of the speed label at the right
-    band: "left:24px;bottom:40px;width:max-content;max-width:1500px;text-align:left",
+    top: "left:48px;top:128px;max-width:1300px",
+    bottom: `left:${LEFT - 24}px;bottom:48px;max-width:1648px`,
+    // under the race's two panes, clear of the speed label at the right
+    band: "left:24px;bottom:40px;max-width:1500px",
   }[pos];
-  return `<style>${BASE}.c{position:absolute;${place};
-background:${PAPER};border:1px solid ${HAIRLINE};border-radius:${RADIUS.max}px;padding:16px 28px 18px;font-size:${TYPE.film.label}px;
-line-height:1.22;font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-overflow:hidden}</style><div class="c">${esc(text)}</div>`;
+  return `<style>${BASE}.c{position:absolute;${place};width:max-content;background:${GROUND};padding:16px 24px 18px;
+font-size:${TYPE.film.label}px;line-height:1.2;font-weight:500;letter-spacing:-0.01em}</style><div class="c">${esc(text)}</div>`;
 }
 
 export type CaptionPos = "bottom" | "top" | "band";
 /** Where a label sits: tl, tr (never on a browser shot: the HUD's status panel is there), br (the race's band). */
 export type LabelSlot = "tl" | "tr" | "br";
 
-/** A small label: "8× speed", "Replay 0.25×", "Simulated chat (rehearsal)". Accent marks one per frame. */
+/** A small label: "8× speed", "Replay 0.25×", "Simulated chat (rehearsal)". `accent` spends the frame's orange. */
 export function labelHtml(text: string, o: { accent?: boolean; slot?: LabelSlot } = {}): string {
   const at = { tl: "top:40px;left:48px", tr: "top:40px;right:48px", br: "bottom:48px;right:48px" }[
     o.slot ?? "tl"
   ];
-  return `<style>${BASE}.l{position:absolute;${at};background:${o.accent ? ACCENT : PAPER};
-color:${o.accent ? "#fff" : INK};border:1px solid ${o.accent ? ACCENT : HAIRLINE};border-radius:${RADIUS.max}px;padding:8px 20px 10px;
-font-size:${TYPE.film.label}px;font-weight:600;letter-spacing:-0.01em}</style><div class="l">${esc(text)}</div>`;
+  return `<style>${BASE}.l{position:absolute;${at};background:${o.accent ? COLOR.accent : GROUND};
+color:${o.accent ? COLOR.onAccent : TEXT};padding:8px 20px 10px;font-size:${TYPE.film.label}px;font-weight:600;
+letter-spacing:-0.01em}</style><div class="l">${esc(text)}</div>`;
 }
 
-/** A sourced stat as a lower third (bottom left, above the caption band). */
+/** A sourced stat as a lower third (bottom left, beside the phone and above the caption). */
 export function lowerThirdHtml(stat: string, source: string): string {
-  return `<style>${BASE}.t{position:absolute;left:64px;bottom:220px;max-width:600px;background:${PAPER};
-border:1px solid ${HAIRLINE};border-radius:4px;padding:22px 30px 24px}.s{font-size:48px;line-height:1.15;font-weight:600;
-letter-spacing:-0.02em}.r{margin-top:10px;font-size:40px;color:${GRAY};line-height:1.2}</style>
+  return `<style>${BASE}.t{position:absolute;left:${LEFT - 24}px;bottom:220px;width:584px;background:${GROUND};
+padding:20px 24px 24px}.s{font-size:${TYPE.film.lead}px;line-height:1.05;font-weight:700;letter-spacing:${TYPE.tracking.tight}}
+.r{margin-top:14px;font-size:${TYPE.film.label}px;font-weight:500;color:${GRAY};line-height:1.2;letter-spacing:-0.01em}</style>
 <div class="t"><div class="s">${esc(stat)}</div><div class="r">${esc(source)}</div></div>`;
 }
 
-/** A full-frame paper card: a title and an optional line under it (placeholders, the time skip, a stat). */
+/** A full-frame black card: a title and an optional line under it (placeholders, the time skip, a stat). */
 export function slateHtml(title: string, sub = "", o: { note?: string } = {}): string {
-  return `<style>${BASE}html,body{background:${PAPER}}.w{position:absolute;inset:0;display:flex;flex-direction:column;
-justify-content:center;align-items:center;gap:24px;padding:0 160px;text-align:center}.h{font-size:72px;line-height:1.08;
-font-weight:600;letter-spacing:-0.03em}.s{font-size:44px;line-height:1.25;color:${GRAY};max-width:1400px}
-.n{position:absolute;left:160px;right:160px;bottom:220px;text-align:center;font-size:40px;color:${GRAY}}</style>
+  return `<style>${BASE}html,body{background:${GROUND}}.w{position:absolute;left:${LEFT}px;right:${LEFT}px;top:0;bottom:0;
+display:flex;flex-direction:column;justify-content:center;gap:28px}.h{font-size:${TYPE.film.display}px;line-height:1;
+font-weight:700;letter-spacing:${TYPE.tracking.tight}}.s{font-size:${TYPE.film.body}px;font-weight:500;line-height:1.25;
+letter-spacing:-0.01em;color:${GRAY}}.n{position:absolute;left:${LEFT}px;right:${LEFT}px;bottom:220px;
+font-size:${TYPE.film.label}px;font-weight:500;color:${GRAY}}</style>
 <div class="w"><div class="h">${esc(title)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div>
 ${o.note ? `<div class="n">${esc(o.note)}</div>` : ""}`;
 }
 
 /**
- * The race's left pane: a terminal with the recorded Playwright script's real output (40 px Geist Mono), a status
- * line on top and a footnote at the bottom. The error lines carry the frame's one accent.
+ * The race's left pane: a terminal with the recorded Playwright script's real output (40 px Geist Mono, the one place
+ * the film sets mono), a status line on top and a footnote at the bottom. Its failure is set in the error red: the
+ * frame's orange belongs to Dockhand on the right.
  */
 export function terminalHtml(o: {
   title: string;
@@ -80,12 +81,12 @@ export function terminalHtml(o: {
   lines: { text: string; error?: boolean }[];
   foot?: string;
 }): string {
-  return `<style>${BASE}html,body{background:${PAPER}}.p{position:absolute;left:24px;top:24px;width:528px;height:816px;
-background:${INK};border-radius:6px;overflow:hidden;display:flex;flex-direction:column}.b{padding:22px 26px 18px;
-border-bottom:1px solid #2a2a2a;color:#D9D9D9;font:600 40px/1.15 "Geist"}.st{padding:16px 26px 0;color:#BDBDBD;
-font:400 40px/1.2 "Geist Mono"}.x{padding:16px 26px;font:400 40px/1.25 "Geist Mono";color:${PAPER};white-space:pre-wrap;
-word-break:break-word;flex:1;overflow:hidden}.e{color:${ACCENT}}.f{padding:16px 26px 22px;border-top:1px solid #2a2a2a;
-color:#BDBDBD;font:400 40px/1.2 "Geist"}</style>
+  return `<style>${BASE}html,body{background:${GROUND}}.p{position:absolute;left:24px;top:24px;width:528px;height:816px;
+background:${COLOR.surface};overflow:hidden;display:flex;flex-direction:column}.b{padding:22px 26px 18px;
+border-bottom:1px solid ${HAIR};font:600 40px/1.15 "Archivo";letter-spacing:-0.01em}.st{padding:16px 26px 0;color:${GRAY};
+font:400 40px/1.2 "Geist Mono"}.x{padding:16px 26px;font:400 40px/1.25 "Geist Mono";white-space:pre-wrap;
+word-break:break-word;flex:1;overflow:hidden}.e{color:${COLOR.error}}.f{padding:16px 26px 22px;border-top:1px solid ${HAIR};
+color:${GRAY};font:500 40px/1.2 "Archivo";letter-spacing:-0.01em}</style>
 <div class="p"><div class="b">${esc(o.title)}</div><div class="st">${esc(o.status)}</div><div class="x">${o.lines
     .map((l) => `<div${l.error ? ' class="e"' : ""}>${esc(l.text)}</div>`)
     .join("")}</div>${o.foot ? `<div class="f">${esc(o.foot)}</div>` : ""}</div>`;
