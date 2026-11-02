@@ -670,9 +670,9 @@ async function buildBeats(): Promise<Beat[]> {
     if (clip) {
       const commit = use.a.events.gates.find((g) => g.kind === "commit");
       const end = sec(clip, clip.end);
-      const held = commit ? sec(clip, commit.at) + 0.6 : end;
+      const held = commit ? sec(clip, commit.at) + 0.2 : end;
       const on = commit?.resolvedAt ? sec(clip, commit.resolvedAt) : held;
-      const done = Math.min(end, on + 1.1);
+      const done = Math.min(end, on + 0.7);
       // The first frames are the blank page before it paints: a white flash in a dark film.
       const paint = (await activeRanges(clip.file, 0, 1.5, { threshold: 4, pad: 0 }))[0]?.[0] ?? 0;
       const ranges: [number, number][] =
@@ -686,7 +686,7 @@ async function buildBeats(): Promise<Beat[]> {
       replay = { kind: "video", file: clip.file, ranges, fit: "browser", target: silent, speed: 1 };
     }
     const toApprove = (approve?.at ?? from + 4000) + 800;
-    usePieces.push(await phonePiece(use.s, from, toApprove, onFrame(22 - silent - receiptFor)));
+    usePieces.push(await phonePiece(use.s, from, toApprove, onFrame(24 - silent - receiptFor)));
     usePieces.push(replay ?? slate("Replay", "at 1×", silent, "placeholder"));
     const receipt = m.find((x) => x.dir === "out" && x.kind === "image" && /Replay ·/.test(x.text));
     usePieces.push(
@@ -694,12 +694,12 @@ async function buildBeats(): Promise<Beat[]> {
         ? await phonePiece(use.s, receipt.at - 500, receipt.at + 3500, receiptFor, true)
         : slate("Receipt", "", receiptFor, "placeholder"),
     );
-  } else usePieces.push(slate("Use", "use take missing", 22, "placeholder"));
-  const replayAt = onFrame(22 - silent - receiptFor);
+  } else usePieces.push(slate("Use", "use take missing", 24, "placeholder"));
+  const replayAt = onFrame(24 - silent - receiptFor);
   beats.push({
     n: 3,
     name: "the forward",
-    dur: 22,
+    dur: 24,
     pieces: usePieces,
     captions: [
       { first: /^So I built/, at: 0.15, to: replayAt - 0.1 },
@@ -852,7 +852,7 @@ async function buildBeats(): Promise<Beat[]> {
   const dayPieces: Piece[] = [
     slate(
       "EspoCRM, open source, unmodified",
-      "Its own admin renames 'First Name' to 'Given Name' and reorders the form",
+      "Its own admin renames two fields and reorders the form",
       2.5,
     ),
   ];
@@ -923,11 +923,11 @@ async function buildBeats(): Promise<Beat[]> {
   beats.push({
     n: 7,
     name: "proof",
-    dur: 28,
+    dur: 26,
     pieces: [
       await chartPiece(join(assets, "chart-baseline.mp4"), 8),
-      await chartPiece(join(assets, "chart-heals.mp4"), 10),
-      await chartPiece(join(assets, "chart-cost.mp4"), 10),
+      await chartPiece(join(assets, "chart-heals.mp4"), 9),
+      await chartPiece(join(assets, "chart-cost.mp4"), 9),
     ],
     extra: [
       {
