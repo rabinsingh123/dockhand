@@ -25,7 +25,7 @@ import type {
 } from "@dockhand/core";
 import type { Page } from "playwright";
 import type { DockhandApprovalBroker, GateDecision } from "../approvals.ts";
-import { clipText } from "../messages.ts";
+import { CARD_BODY_MAX, clipText } from "../messages.ts";
 import type { PortalDirectory } from "../portals.ts";
 import type { CompanyKit } from "../profile.ts";
 import type { Repos } from "../repo.ts";
@@ -151,22 +151,28 @@ export function runTotals(env: FlowEnv, runId: Id): { calls: number; costUsd: nu
 
 // ---------- gates ----------
 
-/** Room for read-back lines in a submit message (WhatsApp caps a button message's body at 1024 characters). */
-const READBACK_CHARS = 880;
+/** A read-back line longer than this is clipped; the whole value is on the form in the picture. */
+const READBACK_LINE_MAX = 300;
 
-/** As many lines as fit in `max` characters, then how many are left: the rest are on the form in the picture. */
-function listWithin(lines: string[], max: number): string[] {
-  const out: string[] = [];
-  let used = 0;
-  for (const line of lines) {
-    if (used + line.length + 1 > max) {
-      out.push(`${lines.length - out.length} more on the form above.`);
-      break;
-    }
-    out.push(line);
-    used += line.length + 1;
+const codePoints = (s: string) => [...s].length;
+
+/**
+ * A submit message: the head, as many read-back lines as fit, "N more on the form above." for the rest (they
+ * are on the form in the picture), then the ask. The room for lines is what the head, the "more" line, the ask
+ * and the newlines leave of WhatsApp's 1024-character button body, counted in code points as WhatsApp counts,
+ * so the body never needs clipping and the ask is always whole.
+ */
+export function readbackBody(head: string, lines: string[], ask: string, max = CARD_BODY_MAX): string {
+  const clipped = lines.map((l) => clipText(l, READBACK_LINE_MAX));
+  const more = (n: number) => (n < clipped.length ? [`${clipped.length - n} more on the form above.`] : []);
+  const build = (n: number) => [head, ...clipped.slice(0, n), ...more(n), ask].join("\n");
+  for (let n = clipped.length; n >= 0; n--) {
+    const body = build(n);
+    if (codePoints(body) <= max) return body;
   }
-  return out;
+  // Not even the head fits beside the ask: the head gives way, never the ask.
+  const rest = [...more(0), ask].join("\n");
+  return `${clipText(head, Math.max(1, max - codePoints(rest) - 1))}\n${rest}`;
 }
 
 /** Approval hooks for a browser run: commit and safety gates in WhatsApp, with the screenshot as header. */
@@ -219,16 +225,13 @@ export function gateHooks(
         ...lines.filter((f) => answered.has(f.label) && f !== company),
       ];
       const ordered = [...named, ...lines.filter((f) => !named.includes(f))];
-      const body = [
+      const body = readbackBody(
         lines.length > 0
           ? `Ready to submit on ${run.portalName}. ${lines.length} fields, read back from the page:`
           : `Ready to submit on ${run.portalName}. Check the review page on the card.`,
-        ...listWithin(
-          ordered.map((f) => `${f.label}: ${f.value}`),
-          READBACK_CHARS,
-        ),
+        ordered.map((f) => `${f.label}: ${f.value}`),
         "Approve to submit. Nothing is sent until you tap.",
-      ].join("\n");
+      );
       const card = await cardOr(r.screenshot, (shot) =>
         submitPhoneCardHtml({
           portalName: run.portalName,
