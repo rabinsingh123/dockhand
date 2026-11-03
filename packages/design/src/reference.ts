@@ -15,23 +15,25 @@ const ROLE: Record<keyof typeof COLOR, string> = {
   rule: "Panel borders",
   accent: "Where Dockhand acted, or a whole finished job",
   onAccent: "Text on the signal ground",
+  onAccentMuted: "Secondary text on the signal ground",
+  accentStub: "The stub of a signal card",
   error: "Only a real failure",
 };
 
 export const DOS = [
-  "Design for the size it is seen at. A card is 290 px wide in a chat, so nothing on it goes below 20 CSS px.",
-  "One statement, one real picture from the run, one line of proof. Detail goes in the WhatsApp message under it.",
-  "Black is Dockhand speaking. A whole orange ground means one thing: it finished the work by itself.",
+  "Design for the size it is seen at. A card is 290 px wide in a chat, so what must be read is 28 CSS px or more, and only labels are 22.",
+  "One hero, one real picture from the run, and the proof in the stub. Detail goes in the WhatsApp message under it.",
+  "Black is Dockhand speaking. A whole lemon ground means one thing: it finished the work by itself.",
   "Pictures are real: a screenshot of the page, a frame of the video, edge to edge, cropped so they can be read.",
   "Say status in words, with who, time and cost: Fixed by Muse Spark Open in 2.7 s for $0.0029.",
-  "Label every series where it ends. Orange is Dockhand, gray the comparison, dashed gray a projection.",
-  "Align everything to the left edge. Corners 0 to 4 px. Hard cuts, 150 ms fades, one push-in per shot.",
+  "Label every series where it ends. Lemon is Dockhand, gray the comparison, dashed gray a projection.",
+  "Align everything to the left edge. Square corners. Hard cuts, 150 ms fades, one push-in per shot.",
 ];
 
 export const DONTS = [
   "Report layouts: a masthead over tables, a row of stat tiles, three numbers with tiny captions.",
-  "Monospace for numbers or labels. Mono is for real code and terminals only.",
-  "Warm off-white with an orange accent, the default of generated design. Glass, glow, gradient, blur.",
+  "Monospace or tabular figures for numbers or labels. Mono is for real code and terminals only.",
+  "Warm off-white with an orange accent, the default of generated design. Glass, glow, gradient, blur, rounded cards.",
   "Endpoint dots, circle icons, status dots, pill badges, boxes with the same soft shadow.",
   "Centered hero headlines, letter-spaced capital eyebrows, decorative arrows and checkmarks, emoji.",
   "Ellipsis truncation in anything the reader needs. Counting-up numbers, bouncy easing.",
@@ -55,7 +57,7 @@ export function referenceSheetHtml(img: ReferenceImages = {}): string {
       .filter(([k]) => k !== "mark")
       .map(
         ([k, v]) =>
-          `<tr><td class="k">${k}, ${v} px</td><td style="white-space:nowrap"><span style="font-size:${Math.min(v, 72)}px;font-weight:${v >= 44 ? 700 : 500};letter-spacing:${v >= 44 ? "-.04em" : "-.01em"};line-height:1.1">Nothing to do.</span></td></tr>`,
+          `<tr><td class="k">${k}, ${v} px</td><td style="white-space:nowrap"><span style="font-size:${Math.min(v, 72)}px;font-weight:${v >= 40 ? 600 : 400};line-height:1.1">Nothing to do.</span></td></tr>`,
       )
       .join("");
   const spaces = SPACE.slice(1, 13)
@@ -71,10 +73,10 @@ export function referenceSheetHtml(img: ReferenceImages = {}): string {
   return `<!doctype html><html><head><meta charset="utf-8"><style>${fontFaceCss()}${cssVariables("ui")}${COMPONENT_CSS}
 body{margin:0;background:var(--dh-ground)}
 .sheet{width:2400px;padding:96px 120px 120px}
-.sheet h1{font-size:96px;font-weight:700;letter-spacing:-.04em;line-height:1}
+.sheet h1{font-size:96px;font-weight:600;letter-spacing:-.035em;line-height:1;font-stretch:125%}
 .sheet .lede{margin-top:20px;font-size:28px;line-height:1.3;max-width:1300px}
-.sheet h2{margin:80px 0 24px;padding-top:16px;border-top:2px solid var(--dh-text);font-size:36px;font-weight:700;letter-spacing:-.03em}
-.sheet h3{margin:0 0 12px;font-size:20px;font-weight:600;color:var(--dh-gray)}
+.sheet h2{margin:80px 0 24px;padding-top:16px;border-top:2px solid var(--dh-text);font-size:40px;font-weight:600}
+.sheet h3{margin:0 0 16px;font-size:22px;font-weight:400;color:var(--dh-gray)}
 .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:48px}
 .marks{display:flex;gap:32px;align-items:stretch}
 .tile{width:360px;height:360px;display:grid;place-items:center}.tile .dh-mark{height:190px}
@@ -91,15 +93,15 @@ body{margin:0;background:var(--dh-ground)}
 .do{list-style:none}.do li{padding:12px 0;border-top:1px solid var(--dh-hair);font-size:22px;line-height:1.3}
 </style></head><body class="dh"><div class="sheet">
 <h1>Dockhand design system</h1>
-<p class="lede">One source for every surface Dockhand draws: the WhatsApp cards, the HUD, the flight recorder and the film. Black, white and one signal orange, the color of a port's high-visibility gear. Archivo, set big. Real pictures from the run.</p>
+<p class="lede">One source for every surface Dockhand draws: the WhatsApp cards, the HUD, the flight recorder and the film. Black, white and one signal lemon, the other high-visibility color of a port's gear. Mona Sans in two weights, on Primer's sizes. Real pictures from the run, and every card ends in the stub, with the mark's dock slot cut into it.</p>
 <h2>Mark: a D with a slot cut into it, a dock for whatever comes in</h2>
 <div class="marks"><div class="tile o">${mark()}</div><div class="tile k">${mark()}</div><div class="lock">${lockup()}</div></div>
 <h2>Color</h2><div class="cols">${swatches}</div>
-<h2>Type: Archivo 700 for statements, 500 for sentences, Geist Mono for real code only</h2>
+<h2>Type: Mona Sans 600 for the hero, 400 for the rest, Geist Mono for real code only</h2>
 <div class="cols" style="grid-template-columns:1fr 1fr"><div><h3>Card scale, CSS px of a 540 px card</h3><table class="dh-table">${typeRow("card")}</table></div>
 <div><h3>Film scale, px of a 1080p frame</h3><table class="dh-table">${typeRow("film")}</table></div></div>
 <h2>Space, grid, motion</h2>
-<div class="cols"><div><h3>Spacing, 4 px base</h3>${spaces}</div>
+<div class="cols"><div><h3>Spacing, an 8 px rhythm</h3>${spaces}</div>
 <div><h3>Grid</h3><p class="note">Card: ${GRID.card.width} x ${GRID.card.height} CSS px at 2x (4:5), ${GRID.card.margin} px margins, pictures to the edge.</p><p class="note">Film: ${GRID.film.columns} columns, ${GRID.film.margin} px margins, ${GRID.film.gutter} px gutters, everything left-aligned.</p></div>
 <div><h3>Motion</h3><p class="note">Hard cuts. Overlays fade in over ${MOTION.fadeMs} ms. At most one push-in per shot, ${MOTION.pushMs} ms ease-out, up to ${MOTION.pushMaxScale}x.</p></div></div>
 <h2>Phone cards</h2><div class="gal">${gallery(img.cards, 400)}</div>
