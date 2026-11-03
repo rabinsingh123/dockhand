@@ -234,7 +234,7 @@ async function main(): Promise<void> {
 body{margin:0;background:#E3E1DB;font:500 14px system-ui;color:#6B6B6B}
 .g{display:grid;grid-template-columns:repeat(4,480px);gap:16px;padding:16px}
 .c{display:grid;grid-template-columns:repeat(8,228px);gap:16px;padding:0 16px 16px}
-img{width:100%;display:block;background:#0A0A0A}figure{margin:0}figcaption{padding:4px 0}
+img{width:100%;display:block;background:#000000}figure{margin:0}figcaption{padding:4px 0}
 </style></head><body><div class="g">${tiles
     .map((f) => `<figure><img src="${pathToFileURL(f).href}"><figcaption>${f.split(/[\\/]/).at(-1)}</figcaption></figure>`)
     .join("")}</div><div class="c">${cardNames
