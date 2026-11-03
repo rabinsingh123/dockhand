@@ -169,6 +169,7 @@ describe("hero loop through WhatsApp", () => {
       images.some((r) => r.caption?.includes(submission?.id ?? "NW-REG-") && r.caption.includes("First run")),
     ).toBe(true);
     expect(images.at(-1)?.caption).toContain("New skill: register_partner_deal v1");
+    expect(images.at(-1)?.caption).toMatch(/\nPassed (\d+) of \1 dry runs before I saved it\.$/);
   }, 180_000);
 
   it("(c) replays the second referral with zero execution model calls", async () => {

@@ -33,14 +33,7 @@ import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
 import { fitSpecsToValues, inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS, subjectOf } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
-import {
-  basetenHeal,
-  diffCardLedger,
-  diffPhoneCardHtml,
-  draftCounts,
-  skillCounts,
-  skillPhoneCardHtml,
-} from "../tools/phone-cards.ts";
+import { basetenHeal, diffCardLedger, diffPhoneCardHtml, skillPhoneCardHtml } from "../tools/phone-cards.ts";
 import { receiptCaption } from "../tools/receipts.ts";
 import {
   type FlowEnv,
@@ -380,18 +373,15 @@ export async function runFirstRun(
   });
   await sendImage(env, job, receipt.image, receiptCaption(receipt));
   if (compiled.skill && compiled.card) {
-    // Counts from one source (phone-cards.ts): the same numbers as the card, the teach card and the code view.
-    const n = skillCounts(compiled.skill);
-    const from = draft ? draftCounts(draft) : undefined;
+    // The dry runs, as the card shows them; step and value counts stay on the card (in the caption they drifted
+    // from the teach card's and the next plan's).
     await sendImage(
       env,
       job,
       compiled.card,
       [
         `New skill: ${compiled.skill.name} v${compiled.skill.version}. Next time it replays in seconds with no model calls.`,
-        from
-          ? `Your ${from.steps} steps and ${from.values} values became a ${n.steps}-step program that takes ${n.values} values.`
-          : `A ${n.steps}-step program that takes ${n.values} values.`,
+        `Passed ${compiled.verified.passed} of ${compiled.verified.total} dry runs before I saved it.`,
       ].join("\n"),
     );
   }
@@ -688,7 +678,7 @@ async function promotePatch(
     await trySend(
       env,
       job,
-      `${o.portal.name} changed. This run got through, but the fixed skill failed ${canary.total - canary.passed} of ${canary.total} dry runs, so ${parent.name} v${parent.version} stays active.`,
+      `${o.portal.name} changed. Your request went through, but my fix failed ${canary.total - canary.passed} of ${canary.total} dry runs, so I kept ${parent.name} v${parent.version}. The next request repairs it again before anything is submitted.`,
     );
     return;
   }
