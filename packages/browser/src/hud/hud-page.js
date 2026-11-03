@@ -32,7 +32,7 @@
   const css = `
 :host{all:initial}
 *{box-sizing:border-box}
-.root{position:fixed;inset:0;pointer-events:none;overflow:hidden;font:400 20px/1.25 "Dockhand Mona","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:${C.text};-webkit-font-smoothing:antialiased;font-kerning:normal}
+.root{position:fixed;inset:0;pointer-events:none;overflow:hidden;font:400 20px/1.25 "Dockhand Mona","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:${C.text};-webkit-font-smoothing:antialiased;font-kerning:normal;font-variant-ligatures:no-common-ligatures}
 .root *{pointer-events:none}
 .card{position:absolute;left:0;top:0;background:${C.ground};border:1px solid ${C.rule};border-top:2px solid ${C.rule};opacity:0}
 .strip{right:${SAFE.x}px;top:${SAFE.y}px;left:auto;max-width:700px;padding:13px 22px 14px}

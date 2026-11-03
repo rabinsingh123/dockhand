@@ -32,6 +32,8 @@ body {
   letter-spacing: var(--dh-track-body);
   -webkit-font-smoothing: antialiased;
   font-kerning: normal;
+  /* Mona Sans joins "ti" by default; the joined, dotless form reads as a quirk at a glance. */
+  font-variant-ligatures: no-common-ligatures;
 }
 h1, h2, h3, p { margin: 0; }
 

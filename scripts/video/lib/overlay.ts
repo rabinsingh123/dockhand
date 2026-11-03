@@ -25,7 +25,7 @@ const DISPLAY = TYPE.tracking.display;
 
 const BASE = `*{box-sizing:border-box;margin:0}html,body{width:1920px;height:1080px;background:transparent;
 font-family:${TYPE.family.sans};font-weight:${W.regular};color:${TEXT};letter-spacing:${TYPE.tracking.body};
-font-kerning:normal;-webkit-font-smoothing:antialiased}`;
+font-kerning:normal;font-variant-ligatures:no-common-ligatures;-webkit-font-smoothing:antialiased}`;
 
 /** The space nearest the middle of a line. */
 function midSpace(s: string): number {

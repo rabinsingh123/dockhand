@@ -15,7 +15,7 @@ export const RECORDER_CSS = `
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--ground);color:var(--text)}
-body{font:400 16px/1.4 var(--sans);-webkit-font-smoothing:antialiased;font-kerning:normal}
+body{font:400 16px/1.4 var(--sans);-webkit-font-smoothing:antialiased;font-kerning:normal;font-variant-ligatures:no-common-ligatures}
 a{color:inherit;text-decoration:none}
 a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 code,pre,.mono{font-family:var(--mono);font-size:13.5px;letter-spacing:-.01em}
