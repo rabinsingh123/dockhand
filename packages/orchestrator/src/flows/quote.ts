@@ -106,14 +106,15 @@ export async function runQuote(
   }
   if (!quote || !request || !pdf) throw new DockhandError("TOOL_ERROR", "the quote plan made no PDF");
 
+  // The reply goes out alone, so the rep can forward that message as is: a header line would go along with it.
   await sendDocument(
     env,
     job,
     pdf,
     quoteFilename(quote, request),
-    `Quote ${quote.number} for ${request.company}`,
+    `Quote ${quote.number} for ${request.company}.${reply ? " The reply below is ready to forward as is (I never message buyers)." : ""}`,
   );
-  if (reply) await sendText(env, job, `Draft reply for you to forward (I never message buyers):\n\n${reply}`);
+  if (reply) await sendText(env, job, reply);
   const total = formatMoney(quote.totalMinor, quote.currency, request.language);
   const receipt = await env.cards.receipt(job.id, {
     title: `Quote for ${request.company}`,

@@ -78,8 +78,12 @@ describe("quote flow (voice note -> HubSpot fake -> PDF -> drafted reply)", () =
     expect(state.notes).toHaveLength(1);
     const pdf = outbox().find((r) => r.type === "document");
     expect(pdf?.media?.mime).toBe("application/pdf");
-    const reply = outbox().find((r) => r.body?.startsWith("Draft reply for you to forward"));
-    expect(reply?.body).toContain("Olá, Júlia! Segue a proposta da Tidewater Cloud para Café Aurora");
+    expect(pdf?.caption).toMatch(/^Quote \S+ for Café Aurora\. The reply below is ready to forward as is/);
+    // The reply is the next message, alone: the rep forwards it as is, with no header line to delete.
+    const all = outbox();
+    const reply = all[all.findIndex((r) => r.type === "document") + 1];
+    expect(reply?.type).toBe("text");
+    expect(reply?.body).toMatch(/^Olá, Júlia! Segue a proposta da Tidewater Cloud para Café Aurora/);
     const receipt = outbox().findLast((r) => r.type === "image");
     expect(receipt?.caption).toContain("Through the API · ");
     expect(receipt?.caption).toContain("Cost: $0.00 to run + ");

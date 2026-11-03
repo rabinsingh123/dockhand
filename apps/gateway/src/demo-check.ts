@@ -774,7 +774,8 @@ export const STEPS: Step[] = [
       await rep.tap(plan, "Approve");
       const pdf = await rep.expect("the quote PDF", (e) => e.type === "document");
       same(pdf.media?.mime, "application/pdf", "quote document type");
-      await rep.textMsg(/^Draft reply for you to forward/);
+      check(/The reply below is ready to forward as is/.test(pdf.caption ?? ""), "the quote PDF caption");
+      await rep.textMsg(/^Olá, Júlia! Segue a proposta da Tidewater Cloud/);
       const receipt = await rep.image(/Through the API · /);
       check(receipt.caption?.includes("Quote for Café Aurora"), "the quote receipt lacks its title");
       await rep.shot("quote-receipt");
