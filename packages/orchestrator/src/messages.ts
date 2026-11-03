@@ -120,8 +120,8 @@ export function firstRunStop(message: string | undefined, budget: boolean): stri
 }
 
 const RUNG_GROUP: Record<HealRung, string> = {
-  fallback: "free from stored selectors",
-  similarity: "free by similarity",
+  fallback: "found again for free",
+  similarity: "matched for free",
   open_weights: "by Muse Spark Open",
   computer_use: "by Muse computer use",
   ask_rep: "from your answer",
@@ -130,7 +130,7 @@ const RUNG_ORDER: HealRung[] = ["fallback", "similarity", "open_weights", "compu
 
 /**
  * Repairs grouped by rung, cheapest first, with what changed for the rungs that found something new:
- * "12 steps repaired: 10 free from stored selectors, 2 by Muse Spark Open ('Product' → 'Solution', …)".
+ * "12 steps repaired: 10 found again for free, 2 by Muse Spark Open ('Product' → 'Solution', …)".
  * Null when nothing was repaired.
  */
 export function repairSummary(results: StepResult[], before: Step[], after: Step[]): string | null {

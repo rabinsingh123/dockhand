@@ -96,7 +96,7 @@ describe("drift watch", () => {
 
     await tap(card, "Details");
     expect(last()?.type).toBe("image");
-    expect(last()?.caption).toMatch(/steps repaired: \d+ free from stored selectors/);
+    expect(last()?.caption).toMatch(/steps repaired: \d+ found again for free/);
   }, 180_000);
 
   it("lets the next real job replay v2 with no heals and no model calls", async () => {

@@ -595,7 +595,10 @@ export const STEPS: Step[] = [
       const diff = await rep.image(/^Portal changed: Caravela Partner Hub\./);
       const caption = diff.caption ?? "";
       check(caption.includes(`Saved ${w.skill} v2 (`), `the diff does not save v2: ${caption}`);
-      check(/\d+\/\d+ dry runs/.test(caption), `the diff does not report the canary: ${caption}`);
+      check(
+        /Passed \d+ of \d+ dry runs, nothing submitted\./.test(caption),
+        `the diff does not report the canary: ${caption}`,
+      );
       check(caption.includes(`/rollback ${w.skill} 1`), "the diff does not offer the rollback");
       await rep.shot("v2-diff");
       const sub = (await submissions(w.partner)).at(-1) as Submission;

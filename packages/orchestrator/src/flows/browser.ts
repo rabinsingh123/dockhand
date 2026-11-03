@@ -726,7 +726,7 @@ async function promotePatch(
     [
       `Portal changed: ${o.portal.name}.`,
       o.summary ?? `Fixed by ${how}.`,
-      `Checked on ${canary.passed}/${canary.total} dry runs. Saved ${saved.name} v${saved.version} (v${parent.version} kept: /rollback ${saved.name} ${parent.version}).`,
+      `Passed ${canary.passed} of ${canary.total} dry runs, nothing submitted. Saved ${saved.name} v${saved.version} (v${parent.version} kept: /rollback ${saved.name} ${parent.version}).`,
     ].join("\n"),
   );
 }

@@ -39,7 +39,7 @@ describe("repairSummary", () => {
       { idx: 4, stepId: "s5", status: "ok" as const, ms: 1 },
     ];
     expect(repairSummary(results, before, after)).toBe(
-      "4 steps repaired: 1 free from stored selectors, 2 by Muse Spark Open ('Product' → 'Solution', 'Submit registration' → 'Register opportunity'), 1 from your answer ('Partner tier')",
+      "4 steps repaired: 1 found again for free, 2 by Muse Spark Open ('Product' → 'Solution', 'Submit registration' → 'Register opportunity'), 1 from your answer ('Partner tier')",
     );
     expect(repairSummary([{ idx: 0, stepId: "s1", status: "ok", ms: 1 }], before, before)).toBeNull();
   });
