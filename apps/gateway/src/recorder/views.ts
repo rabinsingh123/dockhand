@@ -604,7 +604,7 @@ const TEACH_FOCUS_CSS = `
 .stage{position:fixed;inset:0;padding:48px 84px 40px;display:flex;flex-direction:column;gap:16px}
 .thead{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 24px}
 .tk{font-size:27px;color:var(--gray);line-height:1.2}
-.th{font-size:56px;font-weight:700;letter-spacing:-.04em;line-height:1.05}
+.th{font-size:56px;font-weight:600;letter-spacing:-.035em;line-height:1.08}
 .tframes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .tframes img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:var(--surface)}
 .tcols{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:40px;min-height:0}

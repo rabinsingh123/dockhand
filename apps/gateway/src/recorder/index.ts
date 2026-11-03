@@ -112,11 +112,9 @@ export function createRecorder(deps: RecorderDeps): Hono {
     });
   });
 
-  // Archivo (the same file the demo HUD inlines) and Geist Mono for code (SIL OFL 1.1).
+  // Mona Sans (the same file the demo HUD inlines) and Geist Mono for code (SIL OFL 1.1).
   app.get("/fonts/:name", (c) => {
-    const bytes = { "archivo.woff2": HUD_FONTS.sans, "geist-mono.woff2": HUD_FONTS.mono }[
-      c.req.param("name")
-    ];
+    const bytes = { "mona.woff2": HUD_FONTS.sans, "geist-mono.woff2": HUD_FONTS.mono }[c.req.param("name")];
     return bytes
       ? new Response(Buffer.from(bytes), {
           headers: { "content-type": "font/woff2", "cache-control": "public, max-age=86400" },
