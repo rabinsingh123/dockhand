@@ -238,11 +238,8 @@ export async function runFirstRun(
     portalId: portal.id,
     params: action.params,
   });
-  await trySend(
-    env,
-    job,
-    `First run on ${portal.name} with computer use${draft ? ", following your recording" : ""}. I'll show you the filled form before anything is submitted.`,
-  );
+  // Short: the plan just said how and that the form comes back first.
+  await trySend(env, job, `Filling the form on ${portal.name} now.`);
 
   const t0 = performance.now();
   const reporter = progressReporter({

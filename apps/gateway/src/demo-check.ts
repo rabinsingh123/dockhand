@@ -520,7 +520,7 @@ export const STEPS: Step[] = [
       );
       await rep.shot("first-run-plan");
       await rep.tap(plan, "Approve");
-      await rep.textMsg(/^First run on Caravela Partner Hub with computer use/);
+      await rep.textMsg(/^Filling the form on Caravela Partner Hub now\./);
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       check(commit.header?.type === "image", "the submit card has no screenshot of the filled form");
       check(
@@ -712,7 +712,7 @@ export const STEPS: Step[] = [
       );
       await rep.shot("supplier-plan");
       await rep.tap(plan, "Approve");
-      await rep.textMsg(/^First run on Supplier Portal with computer use/);
+      await rep.textMsg(/^Filling the form on Supplier Portal now\./);
       const commit = await rep.card(/^Ready to submit on Supplier Portal/, ["Approve", "Cancel"], 300_000);
       same((await submissions(w.supplier)).length, before, "supplier submissions before the submit tap");
       await rep.shot("supplier-submit-card");
