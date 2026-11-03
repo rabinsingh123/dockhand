@@ -65,7 +65,7 @@ describe("the question for a new required field", () => {
 });
 
 const chars = (s: string) => [...s].length;
-const ASK = /\nApprove to submit\. Nothing is (sent|submitted) until you tap\.$/;
+const ASK = /\nApprove to submit\. Nothing is submitted until you tap\.$/;
 
 describe("the submit message", () => {
   it("keeps the ask whole when the read-back fills the list right up to its old budget", async () => {

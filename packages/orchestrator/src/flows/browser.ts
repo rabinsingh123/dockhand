@@ -340,7 +340,7 @@ export async function runFirstRun(
       env,
       job,
       outcome === "rejected"
-        ? "Cancelled before submitting. Nothing was sent."
+        ? "Cancelled. Nothing was submitted."
         : "This request expired. Send it again to retry.",
     );
     return { ok: false, errorCode: outcome === "rejected" ? "APPROVAL_REJECTED" : "APPROVAL_EXPIRED" };
@@ -628,7 +628,7 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
       return { ok: true };
     }
     case "rejected":
-      await trySend(env, job, "Cancelled before submitting. Nothing was sent.");
+      await trySend(env, job, "Cancelled. Nothing was submitted.");
       return { ok: false, errorCode: "APPROVAL_REJECTED" };
     case "expired":
       await trySend(env, job, "This request expired. Send it again to retry.");

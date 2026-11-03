@@ -86,7 +86,7 @@ describe("edge cases through WhatsApp", () => {
     const commit = lastCard();
     expect(commit.body, dump()).toContain("Ready to submit on Caravela Partner Hub");
     await tap(commit, "r");
-    expect(last()?.body).toBe("Cancelled before submitting. Nothing was sent.");
+    expect(last()?.body).toBe("Cancelled. Nothing was submitted.");
     await tap(commit, "a");
     expect(last()?.body).toBe(REPLIES.alreadyResolved);
     expect(submissions()).toBe(0);
@@ -125,7 +125,7 @@ describe("edge cases through WhatsApp", () => {
     await send({ text: "hmm, is that right?" });
     expect(last()?.body).toBe(WAITING_ON_CARD);
     await send({ text: "cancel" });
-    expect(last()?.body).toBe("Cancelled before submitting. Nothing was sent.");
+    expect(last()?.body).toBe("Cancelled. Nothing was submitted.");
     expect(jobs()).toBe(before + 1); // the question became a reply, never a second task
     expect(submissions()).toBe(1);
   }, 120_000);
