@@ -621,7 +621,7 @@ export const STEPS: Step[] = [
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       check((commit.text ?? "").includes("Partner tier: Gold"), "the submit card does not show the answer");
       await rep.tap(commit, "Approve");
-      await rep.image(/^Register a partner deal|Replay ·/);
+      await rep.image(/^Register a partner deal|registration for|Replay ·/);
       const diff = await rep.image(/^Portal changed: Caravela Partner Hub\./);
       check((diff.caption ?? "").includes(`Saved ${w.skill} v3 (`), `no v3: ${diff.caption}`);
       await rep.shot("ask-rep-v3");

@@ -79,9 +79,17 @@ describe("supplier onboarding", () => {
     const skill = sys.skills.active("supplier_onboarding");
     expect(skill?.version, dump()).toBe(1);
     expect(skill?.params.some((p) => p.type === "file")).toBe(true);
+    // The receipt names this request's buyer, not the portal.
+    const receipt = outbox().findLast((r) => r.type === "image" && /SG-ACME-/.test(r.caption ?? ""));
+    expect(receipt?.caption, dump()).toMatch(/^\*Supplier registration for Acme Group\* `SG-ACME-\d+`/);
   }, 300_000);
 
   it("(g2) replays on globex with a different invite code and no execution model calls", async () => {
+    // Live, the annotate model titled the skill after the first buyer (live-sim-4). A replay for another buyer
+    // must not carry that title onto its receipt.
+    sys.db.raw
+      .prepare("UPDATE skills SET json = json_set(json, '$.title', ?) WHERE name = 'supplier_onboarding'")
+      .run("Supplier Registration for Acme Group");
     await sendPdf("globex-supplier-invitation.pdf");
     const plan = lastCard();
     expect(plan.body, dump()).toContain("supplier_onboarding v1");
@@ -101,5 +109,10 @@ describe("supplier onboarding", () => {
       )
       .get() as { id: string; mode: string; model_calls: number };
     expect(run).toMatchObject({ mode: "replay", model_calls: 0 });
+    const receipt = outbox().findLast((r) => r.type === "image" && /SG-GLOBEX-/.test(r.caption ?? ""));
+    expect(receipt?.caption, dump()).toMatch(
+      /^\*Supplier registration for Globex Industrial\* `SG-GLOBEX-\d+`/,
+    );
+    expect(receipt?.caption).not.toContain("Acme");
   }, 300_000);
 });

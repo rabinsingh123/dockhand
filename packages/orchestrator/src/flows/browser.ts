@@ -28,9 +28,10 @@ import {
   runCanary,
   runSkill,
 } from "@dockhand/skills";
+import { leadSubject } from "../espocrm.ts";
 import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
 import { fitSpecsToValues, inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
-import { FIRST_RUN_LIMITS } from "../plan.ts";
+import { FIRST_RUN_LIMITS, subjectOf } from "../plan.ts";
 import { type PortalTarget, writeGuardFor } from "../portals.ts";
 import {
   basetenHeal,
@@ -73,6 +74,40 @@ export const OPEN_WEIGHTS_RUNG: HealRung = "open_weights";
  */
 export function realOpenWeights(env: Pick<FlowEnv, "db">, jobId: string, runId: string): boolean {
   return basetenHeal(env.db, jobId, runId); // one rule for receipts and cards (tools/phone-cards.ts)
+}
+
+/**
+ * What a receipt is titled: this job's record (the deal's company, the buyer, the lead), in the words /history
+ * uses. Never the skill's own title first: the annotate model writes that once, from the first run's buyer
+ * ("Supplier Registration for Acme Group"), and every later replay would repeat it. The skill's title, then
+ * `fallback`, only when the job names nothing.
+ */
+export function receiptTitle(
+  env: Pick<FlowEnv, "repos">,
+  jobId: string,
+  params: Record<string, ParamValue>,
+  fallback: string,
+): string {
+  const row = env.repos.jobs.get(jobId);
+  const u = row?.understanding;
+  const text = (v: ParamValue | string | null | undefined) =>
+    typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+  switch (row?.plan?.intent ?? row?.intent) {
+    case "register_deal": {
+      const company = subjectOf(params)?.value ?? text(u?.company);
+      return company ? `Deal registration for ${company}` : fallback;
+    }
+    case "supplier_onboarding": {
+      const buyer = text(u?.buyerName) ?? text(u?.company) ?? text(params.tenant);
+      return buyer ? `Supplier registration for ${buyer}` : fallback;
+    }
+    case "create_lead": {
+      const lead = leadSubject(params) ?? text(u?.contactName) ?? text(u?.company);
+      return lead ? `Lead: ${lead}` : fallback;
+    }
+    default:
+      return fallback;
+  }
 }
 
 export function portalOf(env: FlowEnv, portalId: string): PortalTarget {
@@ -294,7 +329,7 @@ export async function runFirstRun(
 
   const t = runTotals(env, runId);
   const receipt = await env.cards.receipt(job.id, {
-    title: draft?.title ?? `${portal.name}: first run`,
+    title: receiptTitle(env, job.id, action.params, draft?.title ?? `${portal.name}: first run`),
     tier: "agentic",
     ...(id ? { headline: id } : {}),
     lines: [
@@ -528,7 +563,7 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
       const id = Object.values(result.extracted)[0];
       const summary = repairSummary(result.steps, skill.steps, result.patched?.steps ?? skill.steps);
       const receipt = await env.cards.receipt(job.id, {
-        title: skill.title,
+        title: receiptTitle(env, job.id, action.params, skill.title),
         tier: repaired ? "repair" : "replay",
         ...(id ? { headline: id } : {}),
         lines: [

@@ -185,6 +185,7 @@ describe("hero loop through WhatsApp", () => {
     expect(sys.repos.runs.get(runId)).toMatchObject({ mode: "replay", outcome: "success", modelCalls: 0 });
     expect(sys.ledger.totals({ runId }).calls).toBe(0);
     const receipt = outbox().findLast((r) => r.type === "image");
+    expect(receipt?.caption).toMatch(/^\*Deal registration for Vila Nova Logística Ltda\.\* `NW-REG-\d+`/);
     expect(receipt?.caption).toContain("Replay · compiled skill");
     expect(receipt?.caption).toContain("execution $0.00 +");
     expect(receipt?.caption).toMatch(/\d+\/\d+ fields verified/);

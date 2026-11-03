@@ -211,7 +211,7 @@ export function mapLead(
 // ---------- plan ----------
 
 /** Who the lead is, for the message: the person and the account, as the rep would check them. */
-function leadSubject(params: Record<string, ParamValue>): string | undefined {
+export function leadSubject(params: Record<string, ParamValue>): string | undefined {
   const name = [params.first_name, params.last_name]
     .filter((v) => typeof v === "string" && v.trim())
     .join(" ");
