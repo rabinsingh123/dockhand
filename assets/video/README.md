@@ -1,6 +1,6 @@
 # Demo video motion graphics
 
-Clips for the demo video (storyboard shots 2, 8 and 9), in Dockhand's brand (`docs/DESIGN.md`): black ground `#0A0A0A`, white text, gray `#A3A3A3`, hairlines `#2A2A2A`, and one signal orange `#FF4F00`, used at most once per frame and only where Dockhand acted. A whole orange ground is the end card alone. Type is Archivo (SIL OFL, bundled in `packages/design/fonts`), 700 at tight tracking for statements and 500 for sentences. There are no gradients, glows, blur, icons or count-ups. Motion is limited to hard cuts and overlays that fade in over 150 ms. Must-read text is at least 40 px, and every chart ends above y = 880, where the film's caption lands.
+Clips for the demo video (storyboard shots 2, 8 and 9), in Dockhand's brand (`docs/DESIGN.md`): black ground `#000000`, white text, gray `#A4AEA6`, hairlines `#262C28`, and one signal lemon `#F9E76A`, used at most once per frame and only where Dockhand acted. A whole lemon ground, with black text on it, is the end card alone; its compliance lines sit in the stub, the lemon-2 `#F4DA38` band with the mark's dock slot cut into its top-left corner. Type is Mona Sans (SIL OFL, bundled in `packages/design/fonts`), 600 for statements, with -0.035em tracking at 64 px and up, and 400 for sentences. Figures are never tabular. There are no gradients, glows, blur, icons or count-ups. Motion is limited to hard cuts and overlays that fade in over 150 ms. Must-read text is at least 40 px, and every chart ends above y = 880, where the film's caption lands.
 
 All clips are 1920×1080 at 30 fps. The `.mp4` files are H.264 High, yuv420p, BT.709, with no audio. The `.mov` file is QuickTime Animation with alpha.
 
@@ -12,8 +12,8 @@ All clips are 1920×1080 at 30 fps. The `.mp4` files are H.264 High, yuv420p, BT
 | `chart-baseline.mp4` | 8 | 8 s | 42 UI changes as bars: 21/42 with one selector per step, 33/42 with five stored selectors, 42/42 Dockhand |
 | `chart-cost.mp4` | 8 | 10 s | $0.26 vs $10.30 over 93 runs; computer use solid through run 8, dashed after |
 | `chart-heals.mp4` | 8 | 8 s | The heal ladder: 100 of 102 repairs used no closed model (84 free, 16 Muse Spark Open, 2 computer use) |
-| `endcard.mp4` | 9 | 8 s | What is real and what is simulated on black, then at 6 s a hard cut to the wordmark on the orange ground with the compliance lines (the last frame) |
-| `endcard-wordmark.mp4` | any | 3 s | The wordmark and tagline only on the orange ground, for a hard cut |
+| `endcard.mp4` | 9 | 8 s | What is real and what is simulated on black, then at 6 s a hard cut to the wordmark in black on the lemon ground with the compliance lines in the stub (the last frame) |
+| `endcard-wordmark.mp4` | any | 3 s | The wordmark and tagline only on the lemon ground, for a hard cut |
 
 ## Re-render
 
