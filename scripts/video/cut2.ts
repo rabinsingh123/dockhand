@@ -4,12 +4,17 @@
 //   pnpm video:cut2 --session live-1,live-sim-4      takes come from the first session that has them (--also adds more)
 //      [--hands <clip>] [--founder <clip>] [--by-hand <clip> --by-hand-seconds <n>] [--voices <list.json>]
 //      [--race <race.json>] [--hook <lock-screen.mp4>] [--overnight-card <clip>] [--hubspot <deal-capture.mp4>]
-//      [--narration <file>]
+//      [--narration <file>] [--vo <dir>]
 //      [--final]   fails if a placeholder, taped footage or an emulator chat would reach the film. A live-sim session
 //                  may supply browser footage: its models were live, and only its rep was the emulator
 //
 //   --voices is a JSON list of { name, title, country, quote, clip? }: one quote card each in beat 2, shown only when
 //   given. A clip plays its sound under the card; the picture stays the card.
+//
+//   --vo is a folder of Rabin's voiceover, one clip per beat: beat<n>.<wav|m4a|mp3|aac|ogg|flac> starts at the
+//   beat's first spoken caption group, and beat<n>-<k> at group k (from 1) for a line with a silence in it (beat 3
+//   waits for the replay). Each is leveled and runs at most up to the next clip or the beat's end; its captions
+//   follow its real length.
 //
 // One subject full-bleed per beat (the phone at full height, or the browser filling the frame); a split screen
 // only for the race. Idle stretches (an unchanged page or chat) are cut; whatever is still too long is sped up,
@@ -167,6 +172,8 @@ interface Beat {
   captions?: CaptionGroup[];
   /** No captions from the one matching this on: the frame says the words itself. */
   captionsStop?: RegExp;
+  /** The caption group the voiceover starts at; the groups before it are spoken on camera. Default 0. */
+  voFrom?: number;
 }
 interface CaptionGroup {
   first: RegExp;
@@ -505,6 +512,8 @@ function loadVoices(): Voice[] {
     for (const key of ["name", "title", "country", "quote"] as const)
       if (!v[key]) throw new Error(`--voices: no ${key} in ${JSON.stringify(v)}`);
     if (v.clip && !existsSync(v.clip)) throw new Error(`--voices: ${v.clip} does not exist`);
+    if (/\b(sample|placeholder|example)\b/i.test(`${v.name} ${v.quote}`))
+      notFinal.push(`--voices: "${v.name}" is a placeholder, not a real person's words`);
   }
   return list;
 }
@@ -617,10 +626,14 @@ async function buildBeats(): Promise<Beat[]> {
   const byHandTarget = onFrame(18 - voicesEnd);
   // The voice turns from the login to the typing here: on the by-hand shot, a little into it if it has the beat alone.
   const typed = Math.max(10, voicesEnd);
+  // The rules, sourced, over the by-hand shot: Dell's while the voice says them, then Microsoft's.
+  const rulesAt = voicesEnd + 0.1;
+  const rulesMid = onFrame((rulesAt + 17.85) / 2);
   beats.push({
     n: 2,
     name: "who, and what it costs",
     dur: 18,
+    voFrom: founder ? 1 : 0,
     pieces: [
       founder
         ? await clipPiece(founder, 5, "camera", 1)
@@ -639,18 +652,25 @@ async function buildBeats(): Promise<Beat[]> {
       {
         png: overlay(
           lowerThirdHtml(
-            "Reps spend 60% of the week not selling",
-            "Salesforce State of Sales, 7th ed., 2026",
+            "Dell: the partner must be first to submit the deal.",
+            "Dell Deal Registration Terms, 2025",
           ),
         ),
-        from: typed,
+        from: rulesAt,
+        to: rulesMid - 0.05,
+      },
+      {
+        png: overlay(
+          lowerThirdHtml("Microsoft: five days to answer a referral.", "Microsoft, SMB referrals, Nov 2026"),
+        ),
+        from: rulesMid,
         to: 17.85,
       },
     ],
     captions: [
       { first: /^I'm Rabin/, at: 0.15, to: 4.9 },
       { first: /^Big companies/, at: 5.1, to: typed - 0.05 },
-      { first: /^So every deal/, at: typed, to: 17.85 },
+      { first: /^By hand/, at: typed, to: 17.85 },
     ],
   });
 
@@ -838,6 +858,19 @@ async function buildBeats(): Promise<Beat[]> {
     name: "three in the morning",
     dur: 32,
     pieces: nightPieces,
+    // "Portals change", sourced, beside the lock screen.
+    extra: [
+      {
+        png: overlay(
+          lowerThirdHtml(
+            "SAP Ariba redesigned a supplier profile screen.",
+            "SAP Ariba release 2602, Feb 2026",
+          ),
+        ),
+        from: 1,
+        to: LOCK - 0.1,
+      },
+    ],
     captions: [
       { first: /^Here's what kills/, at: 0.15, to: LOCK - 0.1 },
       { first: /^A recorded script/, at: LOCK + 0.1, to: LOCK + 5.3 },
@@ -974,6 +1007,63 @@ function placeAt(b: Beat, t: number): CaptionPos {
 const beats = await buildBeats();
 const filmLength = beats.reduce((s, b) => s + b.dur, 0);
 if (filmLength !== 180) throw new Error(`the beats last ${filmLength} s, the film 180 s`);
+
+// The voiceover: where each clip lands, and how long it really is.
+interface VoClip {
+  file: string;
+  /** Seconds into the film. */
+  at: number;
+  /** Seconds it may play: up to the next clip or the beat's end. */
+  slot: number;
+}
+const VO_EXT = ["wav", "m4a", "mp3", "aac", "ogg", "flac"];
+const voDir = opt("--vo");
+const vo: VoClip[] = [];
+/** Per beat, the caption groups a clip covers alone: they end when the voice does. */
+const voEnds = new Map<number, Map<number, number>>();
+if (!voDir) notFinal.push("no voiceover: --vo <dir>");
+{
+  let beatAt = 0;
+  for (const b of beats) {
+    const groups = b.captions ?? [{ first: /./, at: 0.15, to: b.dur - 0.15 }];
+    const from = b.voFrom ?? 0;
+    const find = (name: string) =>
+      voDir ? VO_EXT.map((e) => join(voDir, `${name}.${e}`)).find((f) => existsSync(f)) : undefined;
+    const whole = find(`beat${b.n}`);
+    const parts = groups.flatMap((_, k) => {
+      const f = k >= from ? find(`beat${b.n}-${k + 1}`) : undefined;
+      return f ? [{ file: f, group: k }] : [];
+    });
+    if (whole && parts.length)
+      throw new Error(`--vo: beat ${b.n} has both beat${b.n} and beat${b.n}-<k> clips`);
+    const placed = whole ? [{ file: whole, group: from }] : parts;
+    if (voDir && !placed.length) notFinal.push(`--vo: no voiceover for beat ${b.n}`);
+    // A whole clip would talk through the line's silence (beat 3's replay): it has to come in parts.
+    if (whole)
+      for (let k = from; k + 1 < groups.length; k++)
+        if ((groups[k + 1] as CaptionGroup).at - (groups[k] as CaptionGroup).to > 1.5)
+          notFinal.push(
+            `--vo: beat ${b.n} has a silence before group ${k + 2}; split it into beat${b.n}-<k> clips`,
+          );
+    const ends = new Map<number, number>();
+    for (const [j, c] of placed.entries()) {
+      const g = groups[c.group] as CaptionGroup;
+      const next = placed[j + 1];
+      const until = next ? (groups[next.group] as CaptionGroup).at - 0.05 : b.dur - 0.05;
+      const dur = (await probe(c.file)).duration;
+      if (dur > until - g.at + 0.05)
+        notFinal.push(
+          `--vo: ${relative(root, c.file)} is ${dur.toFixed(1)} s, ${(dur - (until - g.at)).toFixed(1)} s past its slot in beat ${b.n}`,
+        );
+      vo.push({ file: c.file, at: beatAt + g.at, slot: until - g.at });
+      // A part, or a whole clip for a single group, sets that group's captions to the voice's real length.
+      const covers = whole ? groups.length - from : 1;
+      if (covers === 1) ends.set(c.group, Math.min(until, g.at + dur));
+    }
+    voEnds.set(b.n, ends);
+    beatAt += b.dur;
+  }
+}
 // captions: each beat's line in chunks of at most two lines, timed by words
 /** Chunks spread over [from, to] by their words; a word or two still stays up long enough to read. */
 function timed(b: Beat, chunks: string[], from: number, to: number) {
@@ -1000,7 +1090,12 @@ const captionPlan = beats.map((b) => {
     return i;
   });
   return groups.flatMap((g, i) =>
-    timed(b, chunks.slice(starts[i] as number, starts[i + 1] ?? chunks.length), g.at, g.to),
+    timed(
+      b,
+      chunks.slice(starts[i] as number, starts[i + 1] ?? chunks.length),
+      g.at,
+      voEnds.get(b.n)?.get(i) ?? g.to,
+    ),
   );
 });
 for (const b of beats) for (const p of b.pieces) for (const l of labelsOf(p)) label(l.text, l.slot);
@@ -1059,14 +1154,23 @@ for (const b of beats)
     if (p.kind !== "split" && p.sound) sounds.push({ ...p.sound, at: filmAt, dur: p.target });
     filmAt += p.target;
   }
-const soundInputs = sounds.flatMap((s) => ["-i", s.file]);
+const soundInputs = [...sounds, ...vo].flatMap((s) => ["-i", s.file]);
 const soundChains = sounds.map(
   (s, i) =>
     `[${i + 2}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${s.dur.toFixed(3)},asetpts=PTS-STARTPTS,` +
     `afade=t=out:st=${Math.max(0, s.dur - 0.15).toFixed(3)}:d=0.15,volume=${s.gain},` +
     `adelay=delays=${Math.round(s.at * 1000)}:all=1[s${i}]`,
 );
-const mix = `[1:a]${sounds.map((_, i) => `[s${i}]`).join("")}amix=inputs=${sounds.length + 1}:normalize=0:duration=first[a]`;
+// The voice: one channel, rumble cut, leveled so the two channels together sit near -16 LUFS, then both sides.
+const voChains = vo.map(
+  (v, j) =>
+    `[${sounds.length + j + 2}:a]aresample=48000,aformat=channel_layouts=mono,highpass=f=80,` +
+    `loudnorm=I=-19:TP=-2:LRA=11,aresample=48000,pan=stereo|c0=c0|c1=c0,` +
+    `atrim=0:${v.slot.toFixed(3)},asetpts=PTS-STARTPTS,afade=t=out:st=${Math.max(0, v.slot - 0.1).toFixed(3)}:d=0.1,` +
+    `adelay=delays=${Math.round(v.at * 1000)}:all=1[v${j}]`,
+);
+const labelsIn = [...sounds.map((_, i) => `[s${i}]`), ...vo.map((_, j) => `[v${j}]`)];
+const mix = `[1:a]${labelsIn.join("")}amix=inputs=${labelsIn.length + 1}:normalize=0:duration=first,alimiter=limit=0.95:level=0[a]`;
 const film = join(outDir, "rough-cut-v2.mp4");
 rmSync(film, { force: true });
 await ffmpeg([
@@ -1080,7 +1184,7 @@ await ffmpeg([
   "anullsrc=r=48000:cl=stereo",
   ...soundInputs,
   "-filter_complex",
-  [...soundChains, mix].join(";"),
+  [...soundChains, ...voChains, mix].join(";"),
   "-map",
   "0:v",
   "-map",
