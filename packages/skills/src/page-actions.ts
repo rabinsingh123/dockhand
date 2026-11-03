@@ -1,7 +1,8 @@
 // Page-level actions and checks the runner needs beyond Playwright's built-ins: ARIA combobox selection by
 // exact option name, accessible validation errors, and the post-commit success wait.
 
-import { DockhandError } from "@dockhand/core";
+import { toLocator } from "@dockhand/browser";
+import { type Candidate, DockhandError } from "@dockhand/core";
 import type { Locator, Page } from "playwright";
 import { normalizeText } from "./template.ts";
 
@@ -336,6 +337,43 @@ export async function claimElement(locator: Locator, stepId: string): Promise<st
     if (prev === undefined) w.__dhBound.set(el, id);
     return prev !== undefined && prev !== id ? prev : null;
   }, stepId);
+}
+
+/**
+ * Which stored candidates now find another element on this page. A heal keeps the old candidates after the
+ * fresh ones in case the page flips back, but one that finds a different element is the stale path the heal
+ * replaced: kept, it disagrees with the fresh candidates on every later run, and a canary (no similarity) stops
+ * with STEP_AMBIGUOUS. One that finds nothing, or finds this element among others, is not stale.
+ */
+export async function pointsElsewhere(
+  page: Page,
+  element: Locator,
+  candidates: readonly Candidate[],
+  allowHidden: boolean,
+): Promise<boolean[]> {
+  const handle = await element.elementHandle({ timeout: 1000 }).catch(() => null);
+  if (!handle) return candidates.map(() => false);
+  try {
+    return await Promise.all(
+      candidates.map(async (c) => {
+        try {
+          const loc = toLocator(page, c, { allowHidden });
+          if ((await loc.count()) === 0) return false;
+          // Same rule as resolveTarget: a text candidate may hit a child of the element.
+          const hits = await loc.evaluateAll(
+            (els, [target, isText]) =>
+              els.some((el) => el === target || (isText && (target as Element).contains(el))),
+            [handle, c.by === "text"] as const,
+          );
+          return !hits;
+        } catch {
+          return false;
+        }
+      }),
+    );
+  } finally {
+    await handle.dispose();
+  }
 }
 
 export async function sameElement(a: Locator, b: Locator): Promise<boolean> {

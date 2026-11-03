@@ -24,6 +24,7 @@ import type {
 import type { Locator, Page } from "playwright";
 import { z } from "zod";
 import { compile } from "./compile.ts";
+import { pointsElsewhere } from "./page-actions.ts";
 import {
   displayName,
   interactionClass,
@@ -179,8 +180,13 @@ export function createOpenWeightsRepairer(
       if (!loc) return { ok: false, rung, reason: "the picked element has no unique selector", costUsd };
       const fresh = await describeLocator(loc);
       chosen = displayName(fresh.fingerprint);
+      // Old candidates stay as fallbacks, except those that now find another element (the stale path).
+      const stale = await pointsElsewhere(req.page, loc, target.candidates, cls === "file");
       const retargeted: Target = {
-        candidates: mergeCandidates(fresh.candidates, target.candidates),
+        candidates: mergeCandidates(
+          fresh.candidates,
+          target.candidates.filter((_, i) => !stale[i]),
+        ),
         fingerprint: fresh.fingerprint,
       };
       return {

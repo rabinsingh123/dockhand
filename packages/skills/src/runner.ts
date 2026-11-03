@@ -44,6 +44,7 @@ import {
   harvestOptions,
   invalidFields,
   issueCount,
+  pointsElsewhere,
   sameElement,
   selectOption,
   waitForOutcome,
@@ -508,7 +509,8 @@ class SkillRun {
 
   private async resolve(idx: number, step: Step): Promise<Resolved> {
     const original = stepTarget(step) as Target;
-    const r = await resolveTarget(this.page, this.renderTarget(original), {
+    const rendered = this.renderTarget(original);
+    const r = await resolveTarget(this.page, rendered, {
       timeoutMs: this.opts.stepTimeoutMs,
       allowSimilarity: this.opts.allowFallbackHeal,
     });
@@ -532,8 +534,18 @@ class SkillRun {
       };
     const rung: HealRung = r.via === "similarity" ? "similarity" : "fallback";
     const fresh = await describeLocator(r.locator).catch(() => null);
+    // Old candidates stay as fallbacks, except those that now find another element (the stale path).
+    const stale = await pointsElsewhere(
+      this.page,
+      r.locator,
+      rendered.candidates,
+      interactionClass(original.fingerprint) === "file",
+    );
     this.steps[idx] = withStepTarget(step, {
-      candidates: mergeCandidates(fresh?.candidates ?? [], original.candidates),
+      candidates: mergeCandidates(
+        fresh?.candidates ?? [],
+        original.candidates.filter((_, i) => !stale[i]),
+      ),
       fingerprint: fresh?.fingerprint ?? r.descriptor,
     });
     this.changed = true;
