@@ -17,7 +17,7 @@
 // carries sound only where a shot keeps its own (the hands, the founder, a voice clip); the rest is silence for the
 // voiceover. Push-ins follow the heal: a 600 ms ease-out to at most 1.12x, done with ffmpeg's perspective filter
 // (sub-pixel, bicubic) on the full-size frame before the downscale, which moves smoothly where zoompan's whole-pixel
-// crop jitters. Type is rendered in Archivo by a headless Chromium (lib/overlay.ts) and laid over by ffmpeg: no new
+// crop jitters. Type is rendered in Mona Sans by a headless Chromium (lib/overlay.ts) and laid over by ffmpeg: no new
 // dependency (Remotion would add React, its renderer and its own Chromium). Captions are the narration's lines; no
 // dev captions, no clock. A rehearsal's emulator chat is labeled "Simulated chat (rehearsal)" wherever it appears.
 //
@@ -567,7 +567,7 @@ async function overnightCard(target: number): Promise<Piece> {
   };
 }
 
-/** The credits, held under the voice, then the hard cut to orange that the clip itself makes at 6 s. */
+/** The credits, held under the voice, then the hard cut to lemon that the clip itself makes at 6 s. */
 async function endPieces(file: string, credits: number, card: number): Promise<Piece[]> {
   if (!existsSync(file)) return [slate("Asset missing", relative(root, file), credits + card, "placeholder")];
   const { duration } = await probe(file);
@@ -740,7 +740,7 @@ async function buildBeats(): Promise<Beat[]> {
   });
 
   // 5. Three in the morning: the real lock screen, the race (the recorded script dies on the left, Dockhand repairs
-  // on the right), the pick at 0.25x, the orange card: the line lands on it, then 2 s with nothing over it.
+  // on the right), the pick at 0.25x, the lemon card: the line lands on it, then 2 s with nothing over it.
   const LOCK = 6;
   const RACE = 11;
   const PICK = 11.2;
@@ -850,11 +850,7 @@ async function buildBeats(): Promise<Beat[]> {
   // 6. The rest of the day: EspoCRM, the supplier form, the ask, HubSpot.
   const espo = takeIn(sessions, "espocrm");
   const dayPieces: Piece[] = [
-    slate(
-      "EspoCRM, open source, unmodified",
-      "Its own admin renames two fields and reorders the form",
-      2.5,
-    ),
+    slate("EspoCRM, open source, unmodified", "Its own admin renames two fields and reorders the form", 2.5),
   ];
   if (espo) {
     const run = mainRun(espo.a);
@@ -947,7 +943,7 @@ async function buildBeats(): Promise<Beat[]> {
     ],
   });
 
-  // 8. End card: the credits (real and simulated) under the voice, then the hard cut to orange on "Dockhand:". The
+  // 8. End card: the credits (real and simulated) under the voice, then the hard cut to lemon on "Dockhand:". The
   // card says that sentence itself, and no caption covers the compliance lines.
   beats.push({
     n: 8,
@@ -1010,7 +1006,7 @@ const captionPlan = beats.map((b) => {
 for (const b of beats) for (const p of b.pieces) for (const l of labelsOf(p)) label(l.text, l.slot);
 if (args.includes("--final") && notFinal.length > 0)
   throw new Error(`not the film yet:\n  ${[...new Set(notFinal)].join("\n  ")}`);
-say(`rendering ${overlays.length} overlays (Archivo, headless Chromium)`);
+say(`rendering ${overlays.length} overlays (Mona Sans, headless Chromium)`);
 await renderOverlays(png, overlays);
 
 const beatFiles: string[] = [];
