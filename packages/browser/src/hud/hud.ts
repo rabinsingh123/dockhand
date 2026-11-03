@@ -26,13 +26,16 @@ import type { ElementHandle, Locator, Page } from "playwright";
 import { toLocator } from "../helpers/locators.ts";
 
 const fontFile = (name: string) => readFileSync(new URL(`./fonts/${name}`, import.meta.url));
-/** Archivo and Geist Mono (SIL OFL 1.1, fonts/OFL.txt), variable: the HUD's type, and the flight recorder's code. */
+/**
+ * Mona Sans and Geist Mono (SIL OFL 1.1, fonts/OFL.txt), variable: the HUD's type, and the flight recorder's (Geist
+ * Mono only for its code). Mona Sans is the Google Fonts latin subset, weight 200 to 900, width 75% to 125%.
+ */
 export const HUD_FONTS: { sans: Uint8Array; mono: Uint8Array } = {
-  sans: fontFile("Archivo-Variable.woff2"),
+  sans: fontFile("MonaSans-Variable.woff2"),
   mono: fontFile("GeistMono-Variable.woff2"),
 };
 
-/** The in-page overlay, with Archivo inlined. Installed with addInitScript on every leased context when the HUD is on. */
+/** The in-page overlay, with Mona Sans inlined. Installed with addInitScript on every leased context when the HUD is on. */
 export const HUD_SCRIPT: string = readFileSync(new URL("./hud-page.js", import.meta.url), "utf8").replace(
   "/*__DOCKHAND_FONTS__*/null",
   JSON.stringify({ sans: Buffer.from(HUD_FONTS.sans).toString("base64") }),
