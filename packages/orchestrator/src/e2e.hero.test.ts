@@ -186,9 +186,9 @@ describe("hero loop through WhatsApp", () => {
     expect(sys.ledger.totals({ runId }).calls).toBe(0);
     const receipt = outbox().findLast((r) => r.type === "image");
     expect(receipt?.caption).toMatch(/^\*Deal registration for Vila Nova Logística Ltda\.\* `NW-REG-\d+`/);
-    expect(receipt?.caption).toContain("Replay · compiled skill");
-    expect(receipt?.caption).toContain("execution $0.00 +");
-    expect(receipt?.caption).toMatch(/\d+\/\d+ fields verified/);
+    expect(receipt?.caption).toContain("Replayed, no model calls");
+    expect(receipt?.caption).toContain("Cost: $0.00 to run +");
+    expect(receipt?.caption).toMatch(/(\d+) of \1 fields verified/);
     expect(sys.portals.partner.submissions().at(-1)?.fields.companyName).toBe("Vila Nova Logística Ltda.");
   }, 120_000);
 
@@ -208,7 +208,7 @@ describe("hero loop through WhatsApp", () => {
     const receipt = outbox()
       .filter((r) => r.type === "image")
       .at(-2);
-    expect(receipt?.caption).toContain("Replay · repaired");
+    expect(receipt?.caption).toContain("Replayed and repaired");
     // The heal here is a stand-in (provider "fake"), so no Muse Spark Open credit.
     expect(receipt?.caption).not.toContain("Built with Muse Spark Open");
     expect(sys.portals.partner.submissions().at(-1)?.version).toBe("v2");

@@ -424,10 +424,10 @@ export interface ReceiptCardView {
 }
 
 export const TIER_LABEL: Record<ReceiptTier, string> = {
-  api: "API",
-  replay: "Replay · compiled skill",
-  agentic: "First run · computer use",
-  repair: "Replay · repaired",
+  api: "Through the API",
+  replay: "Replayed, no model calls",
+  agentic: "First run with computer use",
+  repair: "Replayed and repaired",
 };
 
 const TIER_WORDS: Record<ReceiptTier, string> = {

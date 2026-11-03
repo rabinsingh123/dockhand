@@ -208,14 +208,14 @@ export const TAKES: Take[] = [
       "Forward referral-vila-nova.jpg.",
       'Plan card "… v1" → tap Approve.',
       'Card "Ready to submit" → tap Approve.',
-      'Receipt "Replay · compiled skill … 13/13 fields verified".',
+      'Receipt "Replayed, no model calls … 13 of 13 fields verified".',
     ],
     approxMin: 2,
     async setup(c) {
       await portal(c, "v1", null);
     },
     rehearse: (c) => c.steps("replay with zero model calls"),
-    done: (msgs) => !!out(msgs, "image", /Replay · compiled skill/),
+    done: (msgs) => !!out(msgs, "image", /Replay · compiled skill|Replayed, no model calls/),
   },
   {
     id: "hero",
@@ -229,7 +229,7 @@ export const TAKES: Take[] = [
       "Forward referral-cafe-aurora.jpg.",
       "Plan card → tap Approve.",
       'Card "Ready to submit" → tap Approve.',
-      'Receipt "Replay · repaired", then "Portal changed: Caravela Partner Hub … Saved … v2".',
+      'Receipt "Replayed and repaired", then "Portal changed: Caravela Partner Hub … Saved … v2".',
     ],
     approxMin: 3,
     async setup(c) {
@@ -287,7 +287,7 @@ export const TAKES: Take[] = [
       "Forward referral-vila-nova.jpg.",
       "Plan card → tap Approve.",
       'Card "Ready to submit" → tap Approve.',
-      'Receipt "Replay · compiled skill" with execution $0.00.',
+      'Receipt "Replayed, no model calls" with $0.00 to run.',
     ],
     approxMin: 3,
     async setup(c) {
@@ -313,12 +313,17 @@ export const TAKES: Take[] = [
       await w.rep.tap(plan, "Approve");
       const commit = await w.rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       await w.rep.tap(commit, "Approve");
-      const receipt = await w.rep.image(/Replay · compiled skill/);
-      if (!/execution \$0\.00\b/.test(receipt.caption ?? ""))
+      const receipt = await w.rep.image(/Replay · compiled skill|Replayed, no model calls/);
+      if (!/execution \$0\.00\b|Cost: \$0\.00 to run/.test(receipt.caption ?? ""))
         throw new Error(`overnight replay cost: ${receipt.caption}`);
     },
     done: (msgs) =>
-      !!after(msgs, out(msgs, "interactive", /changed overnight/), "image", /Replay · compiled skill/),
+      !!after(
+        msgs,
+        out(msgs, "interactive", /changed overnight/),
+        "image",
+        /Replay · compiled skill|Replayed, no model calls/,
+      ),
   },
   {
     id: "supplier",
@@ -353,12 +358,12 @@ export const TAKES: Take[] = [
       "Forward globex-supplier-invitation.pdf.",
       "Plan card → tap Approve.",
       'Card "Ready to submit" → tap Approve.',
-      'Receipt "Replay · compiled skill".',
+      'Receipt "Replayed, no model calls".',
     ],
     approxMin: 2,
     async setup() {},
     rehearse: (c) => c.steps("supplier onboarding: globex replays"),
-    done: (msgs) => !!out(msgs, "image", /Replay · compiled skill/),
+    done: (msgs) => !!out(msgs, "image", /Replay · compiled skill|Replayed, no model calls/),
   },
   {
     id: "quote",
@@ -389,9 +394,9 @@ export const TAKES: Take[] = [
       const plan = await w.rep.card("Quote for Café Aurora", ["Approve", "Cancel"], 300_000);
       await w.rep.tap(plan, "Approve");
       await w.rep.expect("the quote PDF", (e) => e.type === "document", 300_000);
-      await w.rep.image(/API · /, 300_000);
+      await w.rep.image(/API · |Through the API/, 300_000);
     },
-    done: (msgs) => !!out(msgs, "image", /API · /),
+    done: (msgs) => !!out(msgs, "image", /API · |Through the API/),
   },
   {
     id: "espocrm",
@@ -413,10 +418,10 @@ export const TAKES: Take[] = [
     async rehearse(c) {
       const w = c.world as World;
       await w.rep.sendText(ESPO_TEXT);
-      await converse(w, /Cost: execution/);
+      await converse(w, /\nCost: /);
     },
     done: (msgs, now) => {
-      const receipt = out(msgs, "image", /Cost: execution/);
+      const receipt = out(msgs, "image", /\nCost: /);
       if (!receipt) return false;
       return !!after(msgs, receipt, "image", /^Portal changed: EspoCRM/) || now - receipt.at > 20_000;
     },
@@ -441,7 +446,7 @@ export const TAKES: Take[] = [
       await portal(c, "v2", OVERNIGHT);
     },
     async rehearse() {},
-    done: (msgs) => !!out(msgs, "image", /Cost: execution/),
+    done: (msgs) => !!out(msgs, "image", /\nCost: /),
   },
   {
     id: "vn3",
@@ -462,7 +467,7 @@ export const TAKES: Take[] = [
       await portal(c, "v2", OVERNIGHT);
     },
     async rehearse() {},
-    done: (msgs) => !!out(msgs, "image", /Cost: execution/),
+    done: (msgs) => !!out(msgs, "image", /\nCost: /),
   },
 ];
 
@@ -478,7 +483,7 @@ const USE_BY_VOICE: Pick<Take, "director" | "phone"> = {
     "Forward voice note VN1 (Café Aurora, Portuguese and English).",
     'Plan card "… v1" → check the fields it heard → tap Approve.',
     'Card "Ready to submit" → tap Approve.',
-    'Receipt "Replay · compiled skill … fields verified".',
+    'Receipt "Replayed, no model calls … fields verified".',
     "If the plan got a field wrong: tap Cancel, then redo this take with the photo (I switch it).",
   ],
 };

@@ -106,7 +106,7 @@ describe("drift watch", () => {
     await tap(plan, "Approve");
     await tap(lastCard(), "Approve");
     const receipt = outbox().findLast((r) => r.type === "image");
-    expect(receipt?.caption).toContain("Replay · compiled skill");
+    expect(receipt?.caption).toContain("Replayed, no model calls");
     const run = sys.db.raw
       .prepare(
         "SELECT mode, model_calls FROM runs WHERE eval_suite IS NULL AND id NOT LIKE '%-%' ORDER BY started_at DESC, rowid DESC LIMIT 1",

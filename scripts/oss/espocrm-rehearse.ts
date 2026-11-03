@@ -239,7 +239,7 @@ async function converse(deadlineMs: number): Promise<{ ok: boolean; why: string 
       } else if (e.type === "interactive" && e.buttons?.some((b) => b.title === "Approve")) {
         log("rep      -> [Approve]");
         await tap(e, "Approve");
-      } else if (e.type === "image" && /Cost: execution/.test(e.caption ?? "")) {
+      } else if (e.type === "image" && /\nCost: /.test(e.caption ?? "")) {
         receipt = e.caption ?? "receipt";
       } else if (e.type === "text" && /stopped|Nothing was (submitted|sent)|went wrong/i.test(body)) {
         return { ok: false, why: body.slice(0, 200) };

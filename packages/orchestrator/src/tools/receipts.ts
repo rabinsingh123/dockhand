@@ -1,6 +1,6 @@
 // Receipts: the phone card a finished run sends (tools/phone-cards.ts draws it) and its WhatsApp caption.
-// Text comes from templates (zero model calls); costs always show execution and intake separately, at the
-// ledger's precision.
+// Text comes from templates (zero model calls); costs always show running the job and reading the rep's message
+// separately, at the ledger's precision.
 
 import type { ArtifactRef, ArtifactStore, Id, Receipt } from "@dockhand/core";
 import {
@@ -91,18 +91,22 @@ export function createCardRenderer(deps: { artifacts: ArtifactStore; render: Ren
 /** A record ID ("NW-REG-48213", "Q-2026-0001"): shown in monospace, nothing else is. */
 export const looksLikeRecordId = (s: string): boolean => /^[A-Z0-9][A-Z0-9-]{4,}$/.test(s) && /\d/.test(s);
 
-/** The caption under a receipt image: three short lines, WhatsApp formatting. */
+/**
+ * The caption under a receipt image: three short lines, WhatsApp formatting, in the card's words ("13 of 13
+ * fields verified", "$0.00 to run"). The second cost is the model reading the rep's message, which a replay with
+ * no model calls still has.
+ */
 export function receiptCaption(r: Receipt, usedOpenWeights = false): string {
   const first = r.lines[0];
   const facts = [
     `${TIER_LABEL[r.tier]} · ${seconds(r.seconds)}`,
-    ...(r.verified ? [`${r.verified.matched}/${r.verified.checked} fields verified`] : []),
+    ...(r.verified ? [`${r.verified.matched} of ${r.verified.checked} fields verified`] : []),
     ...(r.skill ? [`${r.skill.name} v${r.skill.version}`] : []),
   ];
   const parts = [
     `*${r.title}*${first ? ` ${looksLikeRecordId(first) ? `\`${first}\`` : first}` : ""}`,
     facts.join(" · "),
-    `Cost: execution ${usd(r.execCostUsd)} + intake ${usd(r.intakeCostUsd)}${usedOpenWeights ? ` · ${OPEN_WEIGHTS_CREDIT}` : ""}`,
+    `Cost: ${usd(r.execCostUsd)} to run + ${usd(r.intakeCostUsd)} to read your message${usedOpenWeights ? ` · ${OPEN_WEIGHTS_CREDIT}` : ""}`,
   ];
   return parts.join("\n");
 }

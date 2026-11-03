@@ -530,7 +530,7 @@ export const STEPS: Step[] = [
       same((await submissions(w.partner)).length, before, "partner submissions before the submit tap");
       await rep.shot("first-run-submit-card");
       await rep.tap(commit, "Approve");
-      const receipt = await approveRepeats(w, /First run · computer use/);
+      const receipt = await approveRepeats(w, /First run with computer use/);
       const id = REG_ID.exec(receipt.caption ?? "")?.[0];
       check(id, `the first-run receipt has no registration ID: ${receipt.caption}`);
       const skill = await rep.image(`New skill: ${w.skill} v1.`);
@@ -558,10 +558,10 @@ export const STEPS: Step[] = [
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       check((commit.text ?? "").includes("Vila Nova Logística Ltda."), "the submit card lacks the company");
       await rep.tap(commit, "Approve");
-      const receipt = await rep.image(/Replay · compiled skill/);
+      const receipt = await rep.image(/Replayed, no model calls/);
       const caption = receipt.caption ?? "";
-      check(/execution \$0\.00\b/.test(caption), `a replay must cost $0.00 to execute: ${caption}`);
-      const verified = /(\d+)\/(\d+) fields verified/.exec(caption);
+      check(/Cost: \$0\.00 to run\b/.test(caption), `a replay must cost $0.00 to run: ${caption}`);
+      const verified = /(\d+) of (\d+) fields verified/.exec(caption);
       check(verified && verified[1] === verified[2], `read-back must verify every field: ${caption}`);
       check(REG_ID.test(caption), "the replay receipt has no registration ID");
       await rep.shot("replay-receipt");
@@ -590,7 +590,7 @@ export const STEPS: Step[] = [
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       await rep.shot("v2-submit-card");
       await rep.tap(commit, "Approve");
-      const receipt = await rep.image(/Replay · repaired/);
+      const receipt = await rep.image(/Replayed and repaired/);
       check(REG_ID.test(receipt.caption ?? ""), "the repaired receipt has no registration ID");
       const diff = await rep.image(/^Portal changed: Caravela Partner Hub\./);
       const caption = diff.caption ?? "";
@@ -621,7 +621,7 @@ export const STEPS: Step[] = [
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       check((commit.text ?? "").includes("Partner tier: Gold"), "the submit card does not show the answer");
       await rep.tap(commit, "Approve");
-      await rep.image(/^Register a partner deal|registration for|Replay ·/);
+      await rep.image(/registration for|Replayed/);
       const diff = await rep.image(/^Portal changed: Caravela Partner Hub\./);
       check((diff.caption ?? "").includes(`Saved ${w.skill} v3 (`), `no v3: ${diff.caption}`);
       await rep.shot("ask-rep-v3");
@@ -686,9 +686,9 @@ export const STEPS: Step[] = [
       await rep.tap(plan, "Approve");
       const commit = await rep.card(/^Ready to submit on Caravela Partner Hub/, ["Approve", "Cancel"]);
       await rep.tap(commit, "Approve");
-      const receipt = await rep.image(/Replay · compiled skill/);
+      const receipt = await rep.image(/Replayed, no model calls/);
       check(
-        /execution \$0\.00\b/.test(receipt.caption ?? ""),
+        /Cost: \$0\.00 to run\b/.test(receipt.caption ?? ""),
         `the replay after the watch must cost $0.00: ${receipt.caption}`,
       );
       const run = latestRun(w);
@@ -717,7 +717,7 @@ export const STEPS: Step[] = [
       same((await submissions(w.supplier)).length, before, "supplier submissions before the submit tap");
       await rep.shot("supplier-submit-card");
       await rep.tap(commit, "Approve");
-      const receipt = await approveRepeats(w, /First run · computer use/);
+      const receipt = await approveRepeats(w, /First run with computer use/);
       check(/SG-ACME-\d{6}/.test(receipt.caption ?? ""), `no supplier ID on the receipt: ${receipt.caption}`);
       await rep.image(/^New skill: supplier_onboarding v1\b/, 240_000);
       await rep.shot("supplier-receipt");
@@ -741,8 +741,8 @@ export const STEPS: Step[] = [
       await rep.tap(plan, "Approve");
       const commit = await rep.card(/^Ready to submit on Supplier Portal/, ["Approve", "Cancel"]);
       await rep.tap(commit, "Approve");
-      const receipt = await rep.image(/Replay · compiled skill/);
-      check(/execution \$0\.00\b/.test(receipt.caption ?? ""), "the globex replay must cost $0.00");
+      const receipt = await rep.image(/Replayed, no model calls/);
+      check(/Cost: \$0\.00 to run\b/.test(receipt.caption ?? ""), "the globex replay must cost $0.00");
       await rep.shot("globex-receipt");
       const run = latestRun(w);
       same([run.mode, run.model_calls], ["replay", 0], "globex run (mode, model calls)");
@@ -772,7 +772,7 @@ export const STEPS: Step[] = [
       const pdf = await rep.expect("the quote PDF", (e) => e.type === "document");
       same(pdf.media?.mime, "application/pdf", "quote document type");
       await rep.textMsg(/^Draft reply for you to forward/);
-      const receipt = await rep.image(/API · /);
+      const receipt = await rep.image(/Through the API · /);
       check(receipt.caption?.includes("Quote for Café Aurora"), "the quote receipt lacks its title");
       await rep.shot("quote-receipt");
       const crm = await getJson<{

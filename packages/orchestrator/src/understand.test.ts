@@ -92,8 +92,8 @@ describe("receipts", () => {
     );
     expect(caption.split("\n")).toEqual([
       "*Register a partner deal* `NW-REG-48219`",
-      "Replay · compiled skill · 6.4 s · 12/12 fields verified · register_partner_deal v2",
-      "Cost: execution $0.00 + intake $0.0041 · Built with Muse Spark Open",
+      "Replayed, no model calls · 6.4 s · 12 of 12 fields verified · register_partner_deal v2",
+      "Cost: $0.00 to run + $0.0041 to read your message · Built with Muse Spark Open",
     ]);
   });
 

@@ -688,7 +688,7 @@ async function buildBeats(): Promise<Beat[]> {
     const toApprove = (approve?.at ?? from + 4000) + 800;
     usePieces.push(await phonePiece(use.s, from, toApprove, onFrame(24 - silent - receiptFor)));
     usePieces.push(replay ?? slate("Replay", "at 1×", silent, "placeholder"));
-    const receipt = m.find((x) => x.dir === "out" && x.kind === "image" && /Replay ·/.test(x.text));
+    const receipt = m.find((x) => x.dir === "out" && x.kind === "image" && /Replay ·|Replayed/.test(x.text));
     usePieces.push(
       receipt
         ? await phonePiece(use.s, receipt.at - 500, receipt.at + 3500, receiptFor, true)
@@ -850,11 +850,7 @@ async function buildBeats(): Promise<Beat[]> {
   // 6. The rest of the day: EspoCRM, the supplier form, the ask, HubSpot.
   const espo = takeIn(sessions, "espocrm");
   const dayPieces: Piece[] = [
-    slate(
-      "EspoCRM, open source, unmodified",
-      "Its own admin renames two fields and reorders the form",
-      2.5,
-    ),
+    slate("EspoCRM, open source, unmodified", "Its own admin renames two fields and reorders the form", 2.5),
   ];
   if (espo) {
     const run = mainRun(espo.a);
