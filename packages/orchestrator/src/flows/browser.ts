@@ -110,6 +110,39 @@ export function receiptTitle(
   }
 }
 
+/** No "still working" line in a run's first 30 s, then at most one a minute: a 5-minute run sends four or five. */
+const PROGRESS_FIRST_MS = 30_000;
+const PROGRESS_EVERY_MS = 60_000;
+
+/**
+ * "Still working" lines on a long first run. A line goes out only when the action count went up since the last
+ * one (the loop's model-wait heartbeat repeats the count, and the same line twice looks stuck), and never once
+ * the submit card is out: the rep's tap there is the last thing the run waits for.
+ */
+export function progressReporter(o: {
+  portalName: string;
+  startedAt: number;
+  now: () => number;
+  send: (text: string) => void;
+}): { progress(r: { action: number; note: string }): void; commitGateOpened(): void } {
+  let lastAt = Number.NEGATIVE_INFINITY;
+  let lastCount = 0;
+  let quiet = false;
+  return {
+    progress(r) {
+      const now = o.now();
+      if (quiet || r.action <= lastCount) return;
+      if (now - o.startedAt < PROGRESS_FIRST_MS || now - lastAt < PROGRESS_EVERY_MS) return;
+      lastAt = now;
+      lastCount = r.action;
+      o.send(`Still working on ${o.portalName}: ${r.action} actions so far.`);
+    },
+    commitGateOpened() {
+      quiet = true;
+    },
+  };
+}
+
 export function portalOf(env: FlowEnv, portalId: string): PortalTarget {
   const portal = env.portals[portalId];
   if (!portal) throw new DockhandError("TOOL_ERROR", `portal "${portalId}" is not configured`);
@@ -212,26 +245,29 @@ export async function runFirstRun(
   );
 
   const t0 = performance.now();
-  const startedAt = env.clock.now();
-  let lastProgress = 0;
+  const reporter = progressReporter({
+    portalName: portal.name,
+    startedAt: env.clock.now(),
+    now: () => env.clock.now(),
+    send: (text) => void trySend(env, job, text),
+  });
   const lease = await leaseFor(env, portal, runId);
   let res: CuRunResult;
   try {
     await lease.page.goto(action.startUrl, { waitUntil: "load" });
+    const gates = gateHooks(env, job, {
+      runId,
+      origin: portal.url,
+      portalName: portal.name,
+      extendLease: (ms: number) => lease.extend(ms),
+    });
     const hooks = {
-      ...gateHooks(env, job, {
-        runId,
-        origin: portal.url,
-        portalName: portal.name,
-        extendLease: (ms: number) => lease.extend(ms),
-      }),
-      // A plain "still working" line every 20 s or so on long runs; quiet on short ones.
-      progress(r: { action: number; note: string }) {
-        const now = env.clock.now();
-        if (now - startedAt < 15_000 || now - lastProgress < 20_000) return;
-        lastProgress = now;
-        void trySend(env, job, `Still working on ${portal.name}: ${r.action} actions so far.`);
+      ...gates,
+      approveCommit(r: Parameters<typeof gates.approveCommit>[0]) {
+        reporter.commitGateOpened();
+        return gates.approveCommit(r);
       },
+      progress: reporter.progress,
     };
     res = await runComputerUse(
       modelFor(env.cu, {
