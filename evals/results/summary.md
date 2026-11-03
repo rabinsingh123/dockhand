@@ -2,12 +2,12 @@
 
 **Silent wrong: 0 of 105 runs** (a submission with any wrong field; the number that must stay at 0).
 
-Generated 2026-10-28T05:35:39.740Z. Ground truth is each portal's own submission log. Scripted and fake runs are labeled by provider and never reported as agentic or first runs.
+Generated 2026-11-03T08:38:09.358Z. Ground truth is each portal's own submission log. Scripted and fake runs are labeled by provider and never reported as agentic or first runs.
 
 ## Runs
 
-- mutation · caravela_register_deal · seed 1 · repair none · provider none · N=55: correct 50/55 (90.9%: 45 right submissions + 5 required safe stops) · silent wrong 0 · safe stops 5 · failed 5 · heals fallback 10 runs (73 steps), similarity 5 runs (5 steps) · p50 3.88 s, p90 5.88 s · 0 model calls, $0.0000/run
-- replay · caravela_register_deal · seed 1 · repair none · provider none · N=50: correct 50/50 (100.0%) · silent wrong 0 · safe stops 0 · failed 0 · heals none · p50 3.12 s, p90 3.68 s · 0 model calls, $0.0000/run
+- mutation · caravela_register_deal · seed 1 · repair none · provider none · N=55: correct 50/55 (90.9%: 45 right submissions + 5 required safe stops) · silent wrong 0 · safe stops 5 · failed 5 · heals fallback 10 runs (73 steps), similarity 5 runs (5 steps) · p50 3.22 s, p90 3.81 s · 0 model calls, $0.0000/run
+- replay · caravela_register_deal · seed 1 · repair none · provider none · N=50: correct 50/50 (100.0%) · silent wrong 0 · safe stops 0 · failed 0 · heals none · p50 3.28 s, p90 3.57 s · 0 model calls, $0.0000/run
 
 ## mutation by change · caravela_register_deal · seed 1 · repair none · provider none · N=55
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T05:35:39.740Z",
+  "generatedAt": "2026-11-03T08:38:09.358Z",
   "totals": {
     "runs": 105,
     "silentWrong": 0,
@@ -46,9 +46,9 @@
       },
       "healedRuns": 15,
       "ms": {
-        "p50": 3884,
-        "p90": 5875,
-        "mean": 4384
+        "p50": 3216,
+        "p90": 3815,
+        "mean": 3278
       },
       "modelCalls": 0,
       "costUsd": 0,
@@ -272,9 +272,9 @@
       },
       "healedRuns": 0,
       "ms": {
-        "p50": 3118,
-        "p90": 3683,
-        "mean": 3187
+        "p50": 3278,
+        "p90": 3567,
+        "mean": 3241
       },
       "modelCalls": 0,
       "costUsd": 0,
