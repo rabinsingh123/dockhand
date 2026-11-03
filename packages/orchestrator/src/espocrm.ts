@@ -243,7 +243,8 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
   const skill = activeSkillFor(ctx.skills, ESPOCRM, LEAD_SKILL);
   const plan = (
     actions: Extract<PlanOutcome, { type: "plan" }>["plan"]["actions"],
-    head: string,
+    /** What this Approve does: it fills the form; the save has its own Approve. */
+    then: string,
     extra: string[] = [],
   ) =>
     ({
@@ -253,14 +254,14 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
         intent: "create_lead",
         actions,
         writes: true,
-        // The message says what, for whom, and that the form comes back first, with every value read back.
+        // The message asks first, says for whom, then what Approve does and that the form comes back first.
         approvalText: [
-          head,
+          "Create this lead in EspoCRM?",
           ...(leadSubject(actionParams(actions[0]))
             ? [`Lead: ${leadSubject(actionParams(actions[0]))}`]
             : []),
           ...extra,
-          `${Object.keys(actionParams(actions[0])).length} values from your message. I'll show you the filled form before saving.`,
+          then,
         ].join("\n"),
       },
       card: {
@@ -268,7 +269,7 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
         where: "EspoCRM",
         how:
           actions[0]?.kind === "skill_replay"
-            ? `Replay of ${actions[0].skill} v${actions[0].version}, no model calls`
+            ? `Replay of ${actions[0].skill} v${actions[0].version}, no model calls if the page is unchanged`
             : "First run with computer use",
         figure: {
           value: `${Object.keys(actionParams(actions[0])).length} values`,
@@ -287,7 +288,7 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
     const notIn = m.unused.map((k) => humanize(k));
     return plan(
       [{ kind: "skill_replay", skill: skill.name, version: skill.version, params: m.params }],
-      `Create this lead in EspoCRM with ${skill.name} v${skill.version}.`,
+      `Approve and I'll fill the form by replaying ${skill.name} v${skill.version}. You check it before anything is saved.`,
       notIn.length > 0 ? [`Not in this skill yet, left as the form has it: ${notIn.join(", ")}.`] : [],
     );
   }
@@ -309,7 +310,7 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
           compileAs: LEAD_SKILL,
         },
       ],
-      "Create this lead in EspoCRM. First time: computer use, following the steps you taught me, then I turn the run into a skill.",
+      "First time, so I'll fill the form with computer use, following your recording, then save the run as a skill. Approve to start. You check the form before anything is saved.",
     );
   }
   return plan(
@@ -323,7 +324,7 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
         compileAs: LEAD_SKILL,
       },
     ],
-    "Create this lead in EspoCRM. First time: computer use, then I turn the run into a skill.",
+    "First time, so I'll fill the form with computer use, then save the run as a skill. Approve to start. You check the form before anything is saved.",
   );
 }
 

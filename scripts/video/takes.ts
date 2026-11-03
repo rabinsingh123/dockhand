@@ -171,7 +171,7 @@ export const TAKES: Take[] = [
       "Forward caravela-register-deal.mp4 (it is a Document).",
       'Card "I learned …" → tap Looks right.',
       "Forward referral-cafe-aurora.jpg.",
-      'Card "First time: computer use" → tap Approve.',
+      'Card "Register this deal … First time, so …" → tap Approve.',
       "Wait about 2.5 min while computer use fills the form.",
       'Card "Ready to submit on Caravela Partner Hub" → tap Approve (again if it asks again).',
       'Receipt, then "New skill: … v1" arrive.',

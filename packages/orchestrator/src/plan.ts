@@ -172,13 +172,14 @@ export function registerPlan(
 ): { text: string; card: PlanCardView } {
   const who = subjectOf(params);
   const n = Object.keys(params).length;
-  // The company stays in the text, with its field label: the rep's check that the right one gets registered.
+  // The ask first, then the company with its field label (the rep's check that the right one gets registered),
+  // then what this Approve does: it fills the form; the submit has its own Approve.
   const text = [
-    "skill" in via
-      ? `Register this deal on ${portalName} with ${via.skill.name} v${via.skill.version}.`
-      : `Register this deal on ${portalName}. First time: computer use, following the steps you taught me, then I turn the run into a skill.`,
+    `Register this deal on ${portalName}?`,
     ...(who ? [`${who.label}: ${who.value}`] : []),
-    `${count(n, "value")} from your message. I'll show you the filled form before anything is submitted.`,
+    "skill" in via
+      ? `Approve and I'll fill the form by replaying ${via.skill.name} v${via.skill.version}. You check it before anything is submitted.`
+      : "First time, so I'll fill the form with computer use, following your recording, then save the run as a skill. Approve to start. You check the form before anything is submitted.",
   ].join("\n");
   return {
     text,
@@ -187,7 +188,7 @@ export function registerPlan(
       where: portalName,
       how:
         "skill" in via
-          ? `Replay of ${via.skill.name} v${via.skill.version}, no model calls`
+          ? `Replay of ${via.skill.name} v${via.skill.version}, no model calls if the page is unchanged`
           : "First run with computer use",
       figure: { value: count(n, "value"), label: "from your message" },
       rows: valueRows(params),
@@ -325,9 +326,9 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
       [
         `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}) with ${skill.name} v${skill.version}.`,
         `${Object.keys(m.params).length} values and ${docs.length} documents from the company profile.`,
-        "I'll stop before the final submit and show you the filled form.",
+        "Approve and I'll fill it. I stop before the final submit and show you the filled form.",
       ].join("\n"),
-      supplierCard(m.params, `${skill.name} v${skill.version}, no model calls`),
+      supplierCard(m.params, `${skill.name} v${skill.version}, no model calls if the page is unchanged`),
     );
   }
 
@@ -353,7 +354,7 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
     true,
     [
       `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}). First time on this portal: computer use fills every step from the company profile and uploads the documents.`,
-      "I'll stop before the final submit and show you the filled form.",
+      "Approve to start. I stop before the final submit and show you the filled form.",
     ].join("\n"),
     supplierCard(params, "First run with computer use"),
   );

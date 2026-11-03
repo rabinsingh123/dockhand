@@ -135,7 +135,7 @@ describe("hero loop through WhatsApp", () => {
   it("(b) runs a referral photo once with computer use, then compiles v1", async () => {
     await send({ file: { path: inbound("referral-cafe-aurora.jpg"), mime: "image/jpeg" } });
     const plan = lastCard();
-    expect(plan.body).toContain("First time: computer use");
+    expect(plan.body).toContain("First time, so I'll fill the form with computer use");
     expect(plan.body).toMatch(/: Café Aurora Ltda\.$/m); // the company stays in the text, labelled
     expect(plan.headerImagePath).toBeTruthy(); // the plan card lists every value
     await tap(plan, "a");

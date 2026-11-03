@@ -512,7 +512,7 @@ export const STEPS: Step[] = [
       const { rep } = w;
       const before = (await submissions(w.partner)).length;
       await rep.sendFile(fixture("inbound", "referral-cafe-aurora.jpg"));
-      const plan = await rep.card("First time: computer use", ["Approve", "Cancel"]);
+      const plan = await rep.card("First time, so I'll fill", ["Approve", "Cancel"]);
       check(
         // The label follows the param name the teach model chose ("Company name", "End customer company").
         /: Café Aurora Ltda.$/m.test(plan.text ?? ""),
