@@ -591,6 +591,8 @@ async function main(): Promise<number> {
         for (const d of ["required", "layout", "label"] as const) await DRIFTS[d].revert().catch(() => "");
         log(`EspoCRM drift label: ${await DRIFTS.label.apply()}`);
         log(`EspoCRM drift layout: ${await DRIFTS.layout.apply()}`);
+        // The admin changes empty those caches again; warm them so the take's first page load isn't a rebuild.
+        await warmEspo();
         espoDrifted = true;
         const needSkill = activeSkills(dbPath)[LEAD_SKILL] === undefined;
         if (needSkill || !gw.env.ESPOCRM_URL) {

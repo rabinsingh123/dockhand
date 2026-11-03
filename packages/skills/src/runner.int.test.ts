@@ -776,6 +776,70 @@ describe("uploads and extraction on a fixture page", () => {
   });
 });
 
+describe("a page still drawing after load", () => {
+  it("waits for the app's requests after a navigation instead of repairing a half-drawn page", async () => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await context.addInitScript({ content: DH_SCRIPT });
+    // The app shell loads at once; the form comes after a request that takes twice the step's wait.
+    await context.route("http://slow.test/api/metadata", async (route) => {
+      await new Promise((r) => setTimeout(r, 3000));
+      await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    });
+    await context.route("http://slow.test/app", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "text/html; charset=utf-8",
+        body: `<!doctype html><html><body><main id="app">Loading…</main><script>
+          fetch("/api/metadata").then(() => {
+            document.getElementById("app").innerHTML =
+              '<label for="fn">First Name</label><input id="fn" name="firstName" type="text">';
+          });
+        </script></body></html>`,
+      }),
+    );
+    const page = await context.newPage();
+    try {
+      const skill: Skill = {
+        name: "slow_app",
+        version: 1,
+        parentVersion: null,
+        title: "Fill a slow app",
+        portalId: "fixture",
+        params: [{ name: "first_name", type: "string", required: true, description: "First name" }],
+        steps: [
+          { id: "s1", op: "goto", intent: "Open the app", url: "http://slow.test/app" },
+          {
+            id: "s2",
+            op: "fill",
+            intent: "Enter the first name",
+            value: "{{first_name}}",
+            target: {
+              candidates: [{ by: "label", value: "First Name", exact: true }],
+              fingerprint: {
+                tag: "input",
+                inputType: "text",
+                label: "First Name",
+                bbox: { x: 0, y: 0, w: 0, h: 0 },
+              },
+            },
+          },
+        ],
+        success: { extract: [] },
+        createdFrom: { kind: "goal", traceRunId: "x" },
+        changelog: "",
+      };
+      const rec = recordingHooks();
+      const r = await runSkill(page, skill, { first_name: "Rafaela" }, rec.hooks, options("slow"));
+      expect(r.error).toBeUndefined();
+      expect(r.outcome).toBe("success");
+      expect(r.steps[1]).toMatchObject({ status: "ok", candidateIdx: 0 });
+      expect(await page.inputValue("#fn")).toBe("Rafaela");
+    } finally {
+      await context.close();
+    }
+  });
+});
+
 describe("runCanary", () => {
   it("passes dry runs on the UI the skill was learned on and reports failures on another", async () => {
     const contexts: (() => Promise<void>)[] = [];

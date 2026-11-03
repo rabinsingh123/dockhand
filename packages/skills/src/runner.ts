@@ -92,6 +92,10 @@ export type RunSkillOptions = RunOptions & RunEnv;
 const DEFAULT_SUCCESS_TIMEOUT_MS = 15_000;
 /** Navigations (goto, waits for a new screen) get at least this long. */
 const NAV_TIMEOUT_FLOOR_MS = 8_000;
+/** How long the first step after a navigation waits for a still-loading app before it counts as a miss. */
+const SETTLE_MS = 8_000;
+/** The second look after the page settled: the element is either there now or it changed. */
+const SETTLED_LOOK_MS = 1_500;
 const REPAIR_TIMEOUT_MS = 120_000;
 /** At most this many questions to the rep per run. */
 const MAX_ASKS = 3;
@@ -197,6 +201,8 @@ class SkillRun {
   private asks = 0;
   private commitWindow = false;
   private lastClick: { idx: number; baseline: number } | null = null;
+  /** Set by a goto, cleared by the next step's lookup: only that lookup can be racing the app's first render. */
+  private justNavigated = false;
   private readback: { label: string; value: string }[] = [];
   private verification: Verification | undefined;
   private guard: WriteGuard | undefined;
@@ -375,6 +381,7 @@ class SkillRun {
       waitUntil: "load",
       timeout: Math.max(this.opts.stepTimeoutMs, NAV_TIMEOUT_FLOOR_MS),
     });
+    this.justNavigated = true;
   }
 
   private async waitFor(
@@ -510,10 +517,16 @@ class SkillRun {
   private async resolve(idx: number, step: Step): Promise<Resolved> {
     const original = stepTarget(step) as Target;
     const rendered = this.renderTarget(original);
-    const r = await resolveTarget(this.page, rendered, {
-      timeoutMs: this.opts.stepTimeoutMs,
-      allowSimilarity: this.opts.allowFallbackHeal,
-    });
+    const look = (timeoutMs: number) =>
+      resolveTarget(this.page, rendered, { timeoutMs, allowSimilarity: this.opts.allowFallbackHeal });
+    let r = await look(this.opts.stepTimeoutMs);
+    // A single-page app can still be drawing after "load" (EspoCRM rebuilding its caches after an admin change).
+    // Repairing a half-drawn page finds nothing, so wait for its requests to stop and look once more first.
+    if (!r.ok && r.code === "STEP_NOT_FOUND" && this.justNavigated) {
+      await this.page.waitForLoadState("networkidle", { timeout: SETTLE_MS }).catch(() => {});
+      r = await look(SETTLED_LOOK_MS);
+    }
+    this.justNavigated = false;
     if (!r.ok) return r;
     if (isWriteStep(step)) {
       const prev = await claimElement(r.locator, step.id).catch(() => null);
