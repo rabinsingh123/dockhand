@@ -232,7 +232,8 @@ async function startGateway(o: {
   child.stdout?.on("data", (d: Buffer) => appendFileSync(gwLog, d));
   child.stderr?.on("data", (d: Buffer) => appendFileSync(gwLog, d));
   const stop = async () => {
-    if (child.exitCode === null && child.connected) child.send("shutdown");
+    if (child.exitCode !== null) return;
+    if (child.connected) child.send("shutdown");
     await Promise.race([new Promise((r) => child.once("exit", r)), sleep(15_000)]);
     if (child.exitCode === null) child.kill();
   };
@@ -356,13 +357,14 @@ async function main(): Promise<number> {
   }
 
   const awake = keepAwake();
-  const real = await startGateway({
+  const realOpts = {
     varDir: seedVar(join(dir, "var"), rows),
-    ports: [gwPort, partnerPort, supplierPort],
-    whatsapp: rehearse ? "emulator" : "cloud",
-    models: rehearse ? "fake" : "live",
+    ports: [gwPort, partnerPort, supplierPort] as [number, number, number],
+    whatsapp: rehearse ? ("emulator" as const) : ("cloud" as const),
+    models: rehearse ? ("fake" as const) : ("live" as const),
     logName: "gateway.log",
-  });
+  };
+  let real = await startGateway(realOpts);
   try {
     log(`gateway up at ${real.base}${awake ? "; keeping the machine awake" : ""}`);
 
@@ -394,6 +396,12 @@ async function main(): Promise<number> {
       log("NOT SENT: no candidate change was repaired in pre-flight, so nothing goes to the phone");
       return 1;
     }
+
+    // A gateway armed hours ago runs the code it loaded then, and a merge since can delete a file it reads only
+    // when it renders (Nov 3: the old card font, so the 3 AM card failed). Restart it on the code the pre-flight ran.
+    await real.stop();
+    real = await startGateway(realOpts);
+    log("gateway restarted on the code on disk now");
 
     await until(target, "the time");
     const o = await changeAndWatch(real, chosen, skill, rep);
