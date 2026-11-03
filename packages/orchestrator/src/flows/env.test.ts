@@ -1,5 +1,5 @@
-// The submit message: every value read back from the page, in a WhatsApp button body (1024 characters at most),
-// and the ask at the end always whole.
+// The gate messages of a browser run: the submit message (every value read back from the page, in a WhatsApp
+// button body of 1024 characters at most, the ask at the end always whole) and the question for a new field.
 
 import type { ArtifactRef } from "@dockhand/core";
 import { describe, expect, it } from "vitest";
@@ -7,30 +7,62 @@ import { type FlowEnv, gateHooks } from "./env.ts";
 
 const REF: ArtifactRef = { id: "a1", sha256: "0", mime: "image/png", bytes: 1, relPath: "a/1.png" };
 
-/** The body approveCommit hands to the approval broker (before any clipping). */
-async function submitBody(readback: { label: string; value: string }[]): Promise<string> {
-  let body = "";
+/** Gate hooks over a stand-in env; `opened` gets what each gate hands the approval broker (before clipping). */
+function hooksFor(portalName: string) {
+  const opened: { body: string; buttons?: { title: string }[] }[] = [];
   const env = {
     gateTtlMs: 60_000,
     park: <T>(p: Promise<T>) => p,
     log: { warn() {}, info() {}, error() {} },
     artifacts: { read: async () => Promise.reject(new Error("no bytes in this test")) },
     phoneCards: { render: async () => REF },
+    textAnswers: new Map(),
     approvals: {
-      async open(g: { body: string }) {
-        body = g.body;
-        return { gateId: "g1", decision: Promise.resolve("approved" as const) };
+      async open(g: { body: string; buttons?: { title: string }[] }) {
+        opened.push(g);
+        return { gateId: "g1", decision: Promise.resolve("opt0") };
       },
     },
   } as unknown as FlowEnv;
   const hooks = gateHooks(
     env,
     { id: "j1", rep: { phone: "5511999990000" } as never },
-    { runId: "r1", origin: "http://127.0.0.1", portalName: "Supplier Portal", extendLease() {} },
+    { runId: "r1", origin: "http://127.0.0.1", portalName, extendLease() {} },
   );
-  await hooks.approveCommit({ summary: "Submit", screenshot: REF, readback });
-  return body;
+  return { hooks, opened };
 }
+
+async function submitBody(readback: { label: string; value: string }[]): Promise<string> {
+  const { hooks, opened } = hooksFor("Supplier Portal");
+  await hooks.approveCommit({ summary: "Submit", screenshot: REF, readback });
+  return opened[0]?.body ?? "";
+}
+
+describe("the question for a new required field", () => {
+  it("asks first, offers the options as buttons, and says nothing is submitted yet", async () => {
+    const { hooks, opened } = hooksFor("Caravela Partner Hub");
+    const answer = await hooks.askRep?.({
+      label: "Partner tier",
+      options: ["Gold", "Silver", "Bronze"],
+      screenshot: REF,
+    });
+    expect(answer).toBe("Gold");
+    expect(opened[0]?.body.split("\n")).toEqual([
+      'Caravela Partner Hub now requires "Partner tier", which I don\'t have. Which one should I use?',
+      'Tap one or type it. I\'ll remember it for next time. Nothing is submitted yet ("skip" stops here).',
+    ]);
+    expect(opened[0]?.buttons?.map((b) => b.title)).toEqual(["Gold", "Silver", "Bronze"]);
+  });
+
+  it("asks for a typed value when the field has no options", async () => {
+    const { hooks, opened } = hooksFor("EspoCRM");
+    await hooks.askRep?.({ label: "Tax ID", screenshot: REF });
+    expect(opened[0]?.body).toMatch(
+      /^EspoCRM now requires "Tax ID", which I don't have\. What should I enter\?\n/,
+    );
+    expect(opened[0]?.body).toMatch(/\nType it\. I'll remember it for next time\./);
+  });
+});
 
 const chars = (s: string) => [...s].length;
 const ASK = /\nApprove to submit\. Nothing is (sent|submitted) until you tap\.$/;

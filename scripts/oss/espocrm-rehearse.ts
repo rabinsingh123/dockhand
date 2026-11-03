@@ -233,7 +233,7 @@ async function converse(deadlineMs: number): Promise<{ ok: boolean; why: string 
       lastMessage = Date.now();
       log(`dockhand -> ${short(e)}`);
       const body = e.text ?? "";
-      if (e.type === "interactive" && /now asks for "Tax ID"/.test(body)) {
+      if (e.type === "interactive" && /now (asks for|requires) "Tax ID"/.test(body)) {
         log(`rep      -> ${fixture.taxIdAnswer}`);
         await send(fixture.taxIdAnswer);
       } else if (e.type === "interactive" && e.buttons?.some((b) => b.title === "Approve")) {

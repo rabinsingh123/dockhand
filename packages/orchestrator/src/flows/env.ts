@@ -259,11 +259,9 @@ export function gateHooks(
           ? options.map((o, i) => ({ id: `opt${i}` as const, title: o }))
           : undefined;
       const body = [
-        `${run.portalName} now asks for "${q.label}", and I have no value for it.`,
+        `${run.portalName} now requires "${q.label}", which I don't have. ${options.length > 0 ? "Which one should I use?" : "What should I enter?"}`,
         options.length > 3 ? clipText(`Options: ${options.join(", ")}.`, 400) : "",
-        buttons
-          ? `Tap one, or reply with the value ("skip" stops here). I'll remember it.`
-          : `Reply with the value ("skip" stops here). I'll remember it.`,
+        `${buttons ? "Tap one or type it." : "Type it."} I'll remember it for next time. Nothing is submitted yet ("skip" stops here).`,
       ]
         .filter(Boolean)
         .join("\n");
