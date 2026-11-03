@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { describeAt } from "../helpers/describe.ts";
 import { formSnapshot, listInteractive } from "../helpers/forms.ts";
 import { createBrowserPool, type DockhandBrowserPool } from "../pool.ts";
-import { HUD_TAG, Hud, hudOf, hudOptionsFromEnv, modelLabel } from "./hud.ts";
+import { HUD_FONTS, HUD_SCRIPT, HUD_TAG, Hud, hudOf, hudOptionsFromEnv, modelLabel } from "./hud.ts";
 
 let portal: PortalHandle;
 let withHud: DockhandBrowserPool;
@@ -155,6 +155,13 @@ describe("demo HUD", () => {
     } finally {
       await lease.release();
     }
+  });
+
+  it("sets its own Mona Sans in two weights, with no tabular figures", () => {
+    expect(Buffer.from(HUD_FONTS.sans).subarray(0, 4).toString("latin1")).toBe("wOF2");
+    expect(HUD_SCRIPT).toContain("new FontFace('Dockhand Mona'");
+    expect(HUD_SCRIPT).not.toMatch(/tabular-nums|"tnum"/);
+    expect(HUD_SCRIPT.match(/font-weight:\d+/g)?.every((w) => /:(400|600)$/.test(w))).toBe(true);
   });
 
   it("names models honestly", () => {

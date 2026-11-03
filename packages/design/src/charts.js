@@ -1,13 +1,14 @@
 // Dockhand chart primitives (browser, classic script: window.DHChart). The title states the finding, the subtitle
 // the unit; horizontal hairline gridlines, a white zero line; every series is labelled directly where it ends, in
-// words. No legends, no markers or dots on lines, no rounded bars. Orange is Dockhand, once per frame; gray is the
-// comparison; a dashed gray line is a projection. Sizes are 1080p frame px (film scale).
+// words. No legends, no markers or dots on lines, no rounded bars. Lemon is Dockhand, once per frame; gray is the
+// comparison; a dashed gray line is a projection. Sizes are 1080p frame px (film scale). Colors are
+// packages/design/src/tokens.ts (text, gray, hair, accent).
 (() => {
   const NS = "http://www.w3.org/2000/svg";
   const TEXT = "#FFFFFF";
-  const GRAY = "#A3A3A3";
-  const HAIR = "#2A2A2A";
-  const ACCENT = "#FF4F00";
+  const GRAY = "#A4AEA6";
+  const HAIR = "#262C28";
+  const ACCENT = "#F9E76A";
   const f2 = (v) => Number(v).toFixed(2);
 
   function el(tag, attrs, parent, text) {
@@ -95,7 +96,7 @@
 
   /**
    * Cumulative cost, run by run: computer use solid while measured, dashed once projected; Dockhand in `dockColor`
-   * (orange unless the frame's one orange is already spent). Each line is labelled where it ends: to its right with
+   * (lemon unless the frame's one lemon is already spent). Each line is labelled where it ends: to its right with
    * `o.side` when the box leaves room, otherwise above the end of the line. Returns the groups to reveal, in order.
    */
   function costChart(svg, box, data, o = {}) {
@@ -142,7 +143,7 @@
   /**
    * The same cases for each arm, as horizontal bars on one 0..cases scale with a hairline at the end of the scale.
    * Each bar is labelled above in words and at its end with the count. rows: [{ name, qual, handled, cases, dock }];
-   * the `dock` row is Dockhand's, and takes the frame's orange.
+   * the `dock` row is Dockhand's, and takes the frame's lemon.
    */
   function armBars(svg, box, rows, o = {}) {
     const cases = rows[0]?.cases ?? 1;

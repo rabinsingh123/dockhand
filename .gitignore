@@ -26,3 +26,4 @@ evals/results/*.jsonl
 
 # Local debug scratch scripts
 .debug/
+.claude/worktrees/

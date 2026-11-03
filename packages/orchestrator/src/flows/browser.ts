@@ -32,8 +32,15 @@ import { leadSubject } from "../espocrm.ts";
 import { firstRunStop, repairSummary, stopReason } from "../messages.ts";
 import { fitSpecsToValues, inferSpecs, syntheticParamSets, withExamples } from "../params.ts";
 import { FIRST_RUN_LIMITS, subjectOf } from "../plan.ts";
-import { type PortalTarget, writeGuardFor } from "../portals.ts";
-import { basetenHeal, diffCardLedger, diffPhoneCardHtml, skillPhoneCardHtml } from "../tools/phone-cards.ts";
+import { type PortalTarget, RECEIPT_CROP, RECEIPT_DONE, writeGuardFor } from "../portals.ts";
+import {
+  basetenHeal,
+  diffCardLedger,
+  diffPhoneCardHtml,
+  draftCounts,
+  skillCounts,
+  skillPhoneCardHtml,
+} from "../tools/phone-cards.ts";
 import { receiptCaption } from "../tools/receipts.ts";
 import {
   type FlowEnv,
@@ -140,6 +147,13 @@ export function portalOf(env: FlowEnv, portalId: string): PortalTarget {
   const portal = env.portals[portalId];
   if (!portal) throw new DockhandError("TOOL_ERROR", `portal "${portalId}" is not configured`);
   return portal;
+}
+
+/** The receipt card's picture, its status line and the crop of the portal's confirmation panel. */
+function receiptLook(portalId: string, screenshot: Uint8Array | undefined) {
+  const done = RECEIPT_DONE[portalId];
+  const crop = screenshot ? RECEIPT_CROP[portalId]?.(screenshot) : undefined;
+  return { ...(done ? { done } : {}), ...(crop ? { crop } : {}), ...(screenshot ? { screenshot } : {}) };
 }
 
 export async function leaseFor(env: FlowEnv, portal: PortalTarget, runId: string): Promise<Lease> {
@@ -358,6 +372,7 @@ export async function runFirstRun(
     title: receiptTitle(env, job.id, action.params, draft?.title ?? `${portal.name}: first run`),
     tier: "agentic",
     ...(id ? { headline: id } : {}),
+    ...receiptLook(portal.id, await screenshotBytes(env, res.trace.final.screenshot)),
     lines: [
       `Submitted on ${portal.name} after your approval`,
       `${res.trace.steps.length} computer-use actions, ${t.calls} model calls`,
@@ -369,7 +384,6 @@ export async function runFirstRun(
     execCostUsd: t.costUsd,
     intakeCostUsd: intakeCost(env, job.id),
     ...(compiled.skill ? { skill: { name: compiled.skill.name, version: compiled.skill.version } } : {}),
-    screenshot: await screenshotBytes(env, res.trace.final.screenshot),
   });
   await sendImage(env, job, receipt.image, receiptCaption(receipt));
   if (compiled.skill && compiled.card) {
@@ -589,6 +603,7 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
         title: receiptTitle(env, job.id, action.params, skill.title),
         tier: repaired ? "repair" : "replay",
         ...(id ? { headline: id } : {}),
+        ...receiptLook(portal.id, await screenshotBytes(env, result.finalScreenshot)),
         lines: [
           `Submitted on ${portal.name} after your approval`,
           summary ?? "Every step matched the compiled program: no model calls",
@@ -601,7 +616,6 @@ export async function runReplay(env: FlowEnv, job: JobCtx, action: ReplayAction)
           ? { verified: { matched: result.verification.matched, checked: result.verification.checked } }
           : {}),
         usedOpenWeights: realOpenWeights(env, job.id, runId),
-        screenshot: await screenshotBytes(env, result.finalScreenshot),
       });
       await sendImage(env, job, receipt.image, receiptCaption(receipt, realOpenWeights(env, job.id, runId)));
       if (result.patched)

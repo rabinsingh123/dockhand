@@ -14,7 +14,7 @@
 .rung .meta { margin-top: 8px; font-size: 40px; color: var(--gray); white-space: nowrap; }
 .rung .bar { display: flex; align-items: center; gap: 24px; white-space: nowrap; }
 .rung .bar i { display: block; height: 64px; }
-.rung .bar b { font-size: 72px; font-weight: 700; letter-spacing: var(--tight); line-height: 1; }
+.rung .bar b { font-size: 72px; font-weight: 600; letter-spacing: var(--tight); line-height: 1; }
 .rung .bar span { font-size: 40px; color: var(--gray); }
 </style>
 </head>
@@ -35,7 +35,7 @@
   const H = D.heals;
   const { fade } = DH;
   const $ = (id) => document.getElementById(id);
-  // The frame's one orange: the headline's key number.
+  // The frame's one lemon: the headline's key number.
   $("title").innerHTML = `<span class="accent">${H.noClosedModel} of ${H.repairs}</span> repairs used no closed model`;
   $("sub").textContent = `Steps healed on ${H.cases} held-out UI changes, cheapest rung first. ${H.wrongWrites} wrong writes.`;
   const ms = (v) => `${(v / 1000).toFixed(1)} s`;

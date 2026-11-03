@@ -1,14 +1,15 @@
 /* Chart type and marks (with charts.js). Sizes are for 1080p: must-read text is 40 px or more. A caption lands over
-   the bottom of the frame, so every chart ends above y = 880. */
+   the bottom of the frame, so every chart ends above y = 880. Titles and values are Mona Sans 600 at display
+   tracking; everything else is 400 at normal tracking. */
 .head { left: 160px; top: 88px; width: 1600px; }
-.ctitle { font-size: 96px; font-weight: 700; letter-spacing: var(--tight); line-height: 1; white-space: nowrap; }
-.csub { margin-top: 18px; font-size: 44px; color: var(--gray); line-height: 1.2; }
-.ptitle { font-size: 64px; font-weight: 700; letter-spacing: var(--tight); line-height: 1; white-space: nowrap; }
-.psub { margin-top: 14px; font-size: 40px; color: var(--gray); white-space: nowrap; }
+.ctitle { font-size: 96px; font-weight: 600; letter-spacing: var(--tight); line-height: 1; white-space: nowrap; }
+.csub { margin-top: 16px; font-size: 44px; color: var(--gray); line-height: 1.2; }
+.ptitle { font-size: 64px; font-weight: 600; letter-spacing: var(--tight); line-height: 1; white-space: nowrap; }
+.psub { margin-top: 16px; font-size: 40px; color: var(--gray); white-space: nowrap; }
 .source { left: 160px; right: 160px; top: 262px; font-size: 32px; color: var(--gray); white-space: nowrap; }
 
-svg text { font-family: var(--sans); font-weight: 500; letter-spacing: -0.01em; }
+svg text { font-family: var(--sans); font-weight: 400; letter-spacing: 0; }
 svg .tick { font-size: 40px; fill: var(--gray); }
 svg .lbl { font-size: 44px; fill: var(--text); }
-svg .val { font-size: 72px; font-weight: 700; letter-spacing: var(--tight); fill: var(--text); }
+svg .val { font-size: 72px; font-weight: 600; letter-spacing: var(--tight); fill: var(--text); }
 svg .note { font-size: 40px; fill: var(--gray); }

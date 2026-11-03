@@ -1,6 +1,8 @@
-// Phone cards: 4:5 renders at 2x, escaped data, counts from one source, money at the ledger's precision.
+// Phone cards: 4:5 renders at 2x, escaped data, counts from one source, money at the ledger's precision, and the
+// proof in the stub at the foot of every card.
 
 import { createMemoryArtifactStore, type Skill, type SkillDraft, type Step } from "@dockhand/core";
+import { tells } from "@dockhand/design";
 import { describe, expect, it } from "vitest";
 import {
   askPhoneCardHtml,
@@ -12,6 +14,7 @@ import {
   PHONE_CARD_WIDTH,
   phoneCardHtml,
   planPhoneCardHtml,
+  pngPixel,
   receiptPhoneCardHtml,
   repairCost,
   skillCounts,
@@ -20,6 +23,11 @@ import {
   teachPhoneCardHtml,
   withParams,
 } from "./phone-cards.ts";
+
+/** A stub field as the card writes it: the label over its value. */
+const stubField = (k: string, v: string) => `<span class="k">${k}</span><span class="v">${v}</span>`;
+const TINY_TOP = [0, 0, 0];
+const TINY_BOTTOM = [255, 255, 255];
 
 const draft: SkillDraft = {
   name: "register_partner_deal",
@@ -89,12 +97,14 @@ describe("phone cards", () => {
     const n = draftCounts(draft);
     expect(n).toEqual({ steps: 3, values: 3, required: 2 });
     expect(html).toContain("Register &#60;b&#62;a&#60;/b&#62; deal");
-    expect(html).toContain(`${n.values} values, ${n.steps} steps, on Caravela Partner Hub`);
+    expect(html).toContain(">On Caravela Partner Hub</p>"); // the title does not name the portal
+    expect(html).toContain(stubField("Values", String(n.values)));
+    expect(html).toContain(stubField("Steps", String(n.steps)));
     expect(html).toContain("Seen in your 45 s recording.");
     expect(html.indexOf("Company name")).toBeLessThan(
       html.indexOf('Notes <span class="was">(optional)</span>'),
     );
-    expect(html).toContain("Submit registration");
+    expect(html).toContain('<span class="k">Submits with</span><span class="v">Submit registration</span>');
     expect(withParams("{{close_date|date:DD/MM/YYYY}} <x>")).toBe("<b>Close date</b> &#60;x&#62;");
   });
 
@@ -119,28 +129,39 @@ describe("phone cards", () => {
       draft,
     });
     expect(html).toContain("0 model calls");
-    expect(html).toContain("4 program steps, 2 values. 2 of 2 dry runs passed.");
+    expect(html).toContain(stubField("Program", "4 steps"));
+    expect(html).toContain(stubField("Values", "2"));
+    expect(html).toContain(stubField("Dry runs", "2 of 2"));
   });
 
   it("plan, submit, question and receipt cards say where, what and that nothing is sent before the tap", () => {
     const plan = planPhoneCardHtml({
       title: "Register Café Aurora",
       where: "Caravela Partner Hub",
-      how: "Replay of register_partner_deal v1, no model calls",
-      figure: { value: "12 values", label: "to write" },
-      rows: [["Seats", "25"]],
-      foot: "Nothing is submitted until you approve the filled form",
+      rows: [
+        ["Seats", "25"],
+        ["Product", "Tidewater Cloud Business"],
+        ["Close date", "29 Jan 2027"],
+        ["City", "São Paulo"],
+      ],
+      stub: [
+        ["Values", "12"],
+        ["Model calls", "0"],
+        ["Stops at", "Submit"],
+      ],
     });
-    expect(plan).toContain("12 values on Caravela Partner Hub");
-    expect(plan).toContain("Replay of register_partner_deal v1, no model calls.");
-    expect(plan).toContain("Nothing is submitted until you approve the filled form.");
-    expect(plan).toContain('<td class="k">Seats</td><td>25</td>');
+    expect(plan).toContain('<span class="k">Seats</span><span class="v">25</span>');
+    expect(plan).toContain(">29 Jan 2027<");
+    expect(plan).not.toContain("São Paulo"); // three values on the card; every value is in the message
+    expect(plan).toContain(stubField("Values", "12"));
+    expect(plan).toContain(stubField("Stops at", "Submit"));
     const submit = submitPhoneCardHtml({
       portalName: "Caravela",
       readback: [{ label: "Seats", value: "25" }],
     });
-    expect(submit).toContain("Read back from the page just now.");
-    expect(submit).toContain("Nothing is sent until you tap Approve");
+    expect(submit).toContain("1 field filled on Caravela");
+    expect(submit).toContain(stubField("Read back", "Just now"));
+    expect(submit).toContain(stubField("Nothing is submitted until", "You tap Approve"));
     const ask = askPhoneCardHtml({
       portalName: "Caravela",
       label: "Partner tier",
@@ -148,18 +169,54 @@ describe("phone cards", () => {
     });
     expect(ask).toContain(">Partner tier</h1>");
     expect(ask).toContain("Which should I use: Gold or Silver?");
+    expect(ask).toContain("Caravela now requires a new field.");
+    expect(ask).toContain(stubField("Submitted", "Nothing yet"));
     const receipt = receiptPhoneCardHtml({
       title: "Register a deal",
       tier: "repair",
       headline: "NW-REG-48221",
+      done: "Deal registered",
       seconds: 6.3,
       execCostUsd: 0.00473,
       intakeCostUsd: 0.0153,
       verified: { matched: 13, checked: 13 },
     });
-    expect(receipt).toContain("dh-accent");
+    expect(receipt).toContain('<p class="dh-kicker">Deal registered</p>'); // the status, in the accent
     expect(receipt).toContain(">NW-REG-48221</h1>");
-    expect(receipt).toContain("13 of 13 fields verified. 6.3 s. $0.0047 to run.");
+    expect(receipt).toContain('class="dh-state dh-id dh-nowrap"'); // an ID never breaks at a hyphen
+    expect(receipt).toContain(">Replayed and repaired<"); // the tier is the card's context
+    expect(receipt).toContain(stubField("Read back", "13 of 13"));
+    expect(receipt).toContain(stubField("Time", "6.3 s"));
+    expect(receipt).toContain(stubField("Cost", "$0.0047"));
+    expect(
+      receiptPhoneCardHtml({ title: "Quote", tier: "api", seconds: 1, execCostUsd: 0, intakeCostUsd: 0 }),
+    ).toContain('<p class="dh-kicker">Done</p>');
+  });
+
+  it("every card ends in the stub, and nothing uses tabular figures", () => {
+    const cards = [
+      teachPhoneCardHtml(draft, { portalName: "Caravela", frames: [] }),
+      submitPhoneCardHtml({ portalName: "Caravela", readback: [] }),
+      askPhoneCardHtml({ portalName: "Caravela", label: "Tier", options: [] }),
+      phoneCardHtml({ context: "Note", title: "Hello" }),
+    ];
+    for (const html of cards) {
+      expect(html).toMatch(/<footer class="dh-stub">[\s\S]*<\/footer><\/main>/);
+      expect(tells(html.replace(/url\(data:[^)]*\)/g, ""))).toEqual([]);
+    }
+  });
+
+  it("pngPixel reads one pixel of a screenshot (the receipt picks its crop by the page's layout)", () => {
+    // A 2 x 2 RGB PNG: a black top row, then a white row stored with the "sub" filter.
+    const tiny = Uint8Array.from(
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEUlEQVR4nGNgAAPG////AykADwYC/9Mmud0AAAAASUVORK5CYII=",
+        "base64",
+      ),
+    );
+    expect(pngPixel(tiny, 0, 0)).toEqual(TINY_TOP);
+    expect(pngPixel(tiny, 1, 1)).toEqual(TINY_BOTTOM);
+    expect(pngPixel(tiny, 5, 5)).toBeUndefined();
   });
 
   it("diff card: renamed controls with their rung, free heals counted, canary, cost and rollback", () => {
@@ -197,11 +254,13 @@ describe("phone cards", () => {
       costUsd: 0.0031,
       usedOpenWeights: true,
     });
-    expect(html).toContain("Product is now"); // the change a model repaired leads the card
+    expect(html).toContain('<p class="dh-kicker">Product is now</p>'); // the change a model repaired leads the card
     expect(html).toContain(">Solution</h1>");
-    expect(html).toContain("2 other steps found again by stored selectors, free");
-    expect(html).toContain("3 steps repaired for $0.0031. 3 of 3 dry runs passed. Version 1 is kept.");
-    expect(html).toContain("Version 2 is live. New value: Partner tier.");
+    expect(html).toContain("2 other steps found again for free");
+    expect(html).toContain(stubField("Repaired", "3 steps"));
+    expect(html).toContain(stubField("Dry runs", "3 of 3"));
+    expect(html).toContain(stubField("Cost", "$0.0031"));
+    expect(html).toContain("Version 2 is live. Version 1 is kept. New value: Partner tier.");
     expect(html).toContain("Built with Muse Spark Open");
     // A paid rung with no recorded cost (the fake stand-in) shows no figure, never "$0"; free rungs only is $0.
     expect(repairCost({ steps, costUsd: 0 })).toBeUndefined();
@@ -215,10 +274,11 @@ describe("phone cards", () => {
       costUsd: 0,
       watch: { when: "overnight" },
     });
-    expect(watch).toContain('class="dh-card signal"'); // finished alone: the orange card
+    expect(watch).toContain('class="dh-card signal"'); // finished alone: the lemon card
     expect(watch).toContain("Caravela Partner Hub changed overnight");
-    expect(watch).toContain(">Nothing<br>to do.</h1>");
-    expect(watch).toContain(">3 steps repaired</p>"); // no recorded cost, no figure
-    expect(watch).toContain(">5 of 5 dry runs passed</p>");
+    expect(watch).toContain('class="dh-state dh-display">Nothing<br>to do.</h1>');
+    expect(watch).toContain(stubField("Repaired", "3 steps"));
+    expect(watch).not.toContain(">Cost<"); // no recorded cost, no figure
+    expect(watch).toContain(stubField("Dry runs", "5 of 5"));
   });
 });

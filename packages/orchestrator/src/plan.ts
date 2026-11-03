@@ -152,6 +152,26 @@ export function valueRows(params: Record<string, ParamValue>): [string, string][
   return Object.entries(params).map(([k, v]) => [label(k), displayValue(v)]);
 }
 
+/**
+ * The values a wrong approval would break, first (the plan card shows three): the first key matching each pattern,
+ * in the patterns' order, then every other value in its own order.
+ */
+export function keyRowsFirst(params: Record<string, ParamValue>, first: RegExp[]): [string, string][] {
+  const keys = Object.keys(params);
+  const picked: string[] = [];
+  for (const re of first) {
+    const k = keys.find((x) => re.test(x) && !picked.includes(x));
+    if (k) picked.push(k);
+  }
+  return [...picked, ...keys.filter((k) => !picked.includes(k))].map((k) => [
+    label(k),
+    displayValue(params[k] as ParamValue),
+  ]);
+}
+
+/** A deal registration's key values: what is sold, how many, and when it closes. */
+const DEAL_KEYS = [/product|plan/, /seats|users|licen/, /close/];
+
 /** Whom a deal registration is for: the first company or customer value and its label, if any. */
 export function subjectOf(params: Record<string, ParamValue>): { label: string; value: string } | undefined {
   const key = Object.keys(params).find((k) => /(^|_)(company|customer|account)(_|$)/.test(k));
@@ -186,13 +206,13 @@ export function registerPlan(
     card: {
       title: who ? `Register ${who.value}` : "Register this deal",
       where: portalName,
-      how:
-        "skill" in via
-          ? `Replay of ${via.skill.name} v${via.skill.version}, no model calls if the page is unchanged`
-          : "First run with computer use",
-      figure: { value: count(n, "value"), label: "from your message" },
-      rows: valueRows(params),
-      foot: "Nothing is submitted until you approve the filled form",
+      rows: keyRowsFirst(params, DEAL_KEYS),
+      // How many values, how it runs, and that it stops for the filled form before anything is submitted.
+      stub: [
+        ["Values", String(n)],
+        "skill" in via ? ["Model calls", "0"] : ["Run", "Computer use"],
+        ["Stops at", "Submit"],
+      ],
     },
   };
 }
@@ -290,23 +310,23 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
   }
   const company = ctx.company;
   const docs = Object.values(files).map((f) => f.filename);
-  const supplierCard = (params: Record<string, ParamValue>, how: string): PlanCardView => ({
+  // Legal name, tax ID and bank first: the values a wrong approval would break.
+  const supplierCard = (params: Record<string, ParamValue>): PlanCardView => ({
     title: `Register as a supplier for ${buyer}`,
     where: `${portal.name}, invite ${inviteCode}`,
-    how,
-    figure: {
-      value: `${Object.keys(params).length} values`,
-      label: `and ${docs.length} documents from the company profile`,
-    },
     rows: [
       ["Legal name", company.legalName ?? "?"],
       ["Tax ID", company.taxId ?? "?"],
+      ["Bank", company.bankName ?? "?"],
       ["Address", [company.street1, company.city, company.country].filter(Boolean).join(", ")],
       ["Primary contact", `${company.primaryContactName ?? "?"} (${company.primaryContactEmail ?? "?"})`],
-      ["Bank", company.bankName ?? "?"],
       ...docs.map((d): [string, string] => ["Document", d]),
     ],
-    foot: "I stop before the final submit and show you the filled form",
+    stub: [
+      ["Values", String(Object.keys(params).length)],
+      ["Invite", inviteCode],
+      ["Stops at", "Final submit"],
+    ],
   });
 
   const skill = activeSkillFor(ctx.skills, SUPPLIER, SUPPLIER_SKILL);
@@ -328,7 +348,7 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
         `${Object.keys(m.params).length} values and ${docs.length} documents from the company profile.`,
         "Approve and I'll fill it. I stop before the final submit and show you the filled form.",
       ].join("\n"),
-      supplierCard(m.params, `${skill.name} v${skill.version}, no model calls if the page is unchanged`),
+      supplierCard(m.params),
     );
   }
 
@@ -356,7 +376,7 @@ function planSupplier(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
       `Register Tidewater Cloud as a supplier for ${buyer} (invite ${inviteCode}). First time on this portal: computer use fills every step from the company profile and uploads the documents.`,
       "Approve to start. I stop before the final submit and show you the filled form.",
     ].join("\n"),
-    supplierCard(params, "First run with computer use"),
+    supplierCard(params),
   );
 }
 
@@ -428,17 +448,22 @@ function planQuote(u: Understanding, ctx: BuildPlanContext): PlanOutcome {
     {
       title: `Quote for ${u.company}`,
       where: "HubSpot",
-      how: "Through the API, 4 writes",
-      figure: { value: total, label: `${u.seats} seats of ${planName} for 12 months` },
+      // The amount, seats and close date first: the values a wrong approval would break.
       rows: [
-        ["HubSpot company", `${u.company}${u.city ? ` (${u.city})` : ""}, found or created`],
-        ["HubSpot deal", dealName],
         ["Amount", total],
+        ["Seats", String(u.seats)],
         ["Close date", displayValue(closeDate)],
+        ["HubSpot deal", dealName],
+        ["HubSpot company", `${u.company}${u.city ? ` (${u.city})` : ""}, found or created`],
         ["Quote PDF", `${language}, attached to the deal`],
         ["Reply", `${language === "pt-BR" ? "Portuguese" : "English"}, for you to forward`],
       ],
-      foot: "Nothing is written until you approve",
+      // Four writes through the API, none until the rep taps Approve.
+      stub: [
+        ["Writes", "4"],
+        ["Run", "API"],
+        ["Waits for", "Your tap"],
+      ],
     },
   );
 }

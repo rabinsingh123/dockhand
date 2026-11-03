@@ -99,26 +99,26 @@ export async function startCue(o: { port: number; state: CueState; auto: boolean
 const PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Dockhand · cue</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-:root{--bg:#0A0A0A;--card:#171717;--text:#FFFFFF;--muted:#A3A3A3;--ok:#FFFFFF;--warn:#FF4F00;--bad:#FF5C4D;--accent:#FF4F00}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 Archivo,"Segoe UI",system-ui,sans-serif}
+:root{--bg:#000000;--card:#262C28;--text:#FFFFFF;--muted:#A4AEA6;--ok:#FFFFFF;--warn:#F9E76A;--bad:#FA383D;--accent:#F9E76A}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 "Mona Sans","Segoe UI",system-ui,sans-serif}
 .wrap{max-width:980px;margin:0 auto;padding:22px 20px 40px}
 .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;color:var(--muted);font-size:13px}
 .takes{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 18px}
-.pill{padding:3px 10px;background:var(--card);color:var(--muted);font-size:12.5px;border:1px solid #2A2A2A}
-.pill.active{color:#0b0d12;background:var(--accent);border-color:var(--accent);font-weight:700}
+.pill{padding:3px 10px;background:var(--card);color:var(--muted);font-size:12.5px;border:1px solid #353D37}
+.pill.active{color:#000000;background:var(--accent);border-color:var(--accent);font-weight:600}
 .pill.done{color:var(--ok)}.pill.failed{color:var(--bad)}
 .pill.skipped{opacity:.5;text-decoration:line-through}
 .card{background:var(--card);padding:20px 22px}
 h1{margin:0 0 2px;font-size:26px}.shot{color:var(--muted);font-size:14px}
 .dir{margin:12px 0 0;padding:9px 12px;background:var(--bg);color:var(--muted);font-size:14px}
 ol{margin:16px 0 0;padding-left:24px;font-size:19px}li{margin:7px 0}
-.status{margin-top:18px;padding:16px 18px;font-size:24px;font-weight:700;background:var(--bg);border:1px solid #2A2A2A}
+.status{margin-top:18px;padding:16px 18px;font-size:24px;font-weight:600;background:var(--bg);border:1px solid #353D37}
 .status.turn{border-color:var(--warn);color:var(--warn)}.status.tap{border-color:var(--accent);color:var(--accent)}
 .status.done{border-color:var(--ok);color:var(--ok)}.status.failed{border-color:var(--bad);color:var(--bad)}
-.detail{margin-top:6px;font-size:14.5px;font-weight:500;color:var(--muted);white-space:pre-wrap}
+.detail{margin-top:6px;font-size:14.5px;font-weight:400;color:var(--muted);white-space:pre-wrap}
 .row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
-button{font:inherit;font-weight:700;border:0;padding:12px 18px;cursor:pointer}
-.go{background:var(--accent);color:#0A0A0A}.redo{background:#2A2A2A;color:var(--text)}.skip{background:transparent;color:var(--muted);border:1px solid #2A2A2A}
+button{font:inherit;font-weight:600;border:0;padding:12px 18px;cursor:pointer}
+.go{background:var(--accent);color:#000000}.redo{background:#353D37;color:var(--text)}.skip{background:transparent;color:var(--muted);border:1px solid #353D37}
 .notes{margin-top:16px;color:var(--muted);font-size:13px;white-space:pre-wrap}
 </style></head><body><div class="wrap">
 <div class="top"><span id="session"></span><span id="spend"></span></div>

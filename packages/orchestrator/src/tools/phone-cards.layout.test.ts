@@ -1,5 +1,6 @@
 // Every phone card is exactly 4:5 (1080 x 1350 at 2x), what WhatsApp shows uncropped in the bubble: however long
-// the data, nothing runs past the card's bottom line.
+// the data, nothing runs past the card's bottom line. And it keeps the type rules once fitted: nothing under 22 CSS
+// px, at most three sizes and two weights.
 
 import type { SkillDraft, Step } from "@dockhand/core";
 import { type Browser, chromium } from "playwright";
@@ -36,8 +37,10 @@ const field = (id: string, label: string): Step => ({
   },
 });
 
-/** The bottom of the card's last element, and the document's own size. */
-async function measure(html: string): Promise<{ w: number; h: number; bottom: number }> {
+/** The bottom of the card's last element, the document's own size, and the type on the fitted card. */
+async function measure(
+  html: string,
+): Promise<{ w: number; h: number; bottom: number; sizes: number[]; weights: string[] }> {
   const page = await browser.newPage({ viewport: { width: PHONE_CARD_WIDTH, height: PHONE_CARD_HEIGHT } });
   try {
     await page.setContent(html);
@@ -45,10 +48,21 @@ async function measure(html: string): Promise<{ w: number; h: number; bottom: nu
     return await page.evaluate(() => {
       const card = document.querySelector(".dh-card") as HTMLElement;
       const last = card.lastElementChild as HTMLElement;
+      const sizes = new Set<number>();
+      const weights = new Set<string>();
+      const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim() || !n.parentElement) continue;
+        const cs = getComputedStyle(n.parentElement);
+        sizes.add(Number.parseFloat(cs.fontSize));
+        weights.add(cs.fontWeight);
+      }
       return {
         w: document.documentElement.scrollWidth,
         h: document.documentElement.scrollHeight,
         bottom: last.getBoundingClientRect().bottom,
+        sizes: [...sizes],
+        weights: [...weights],
       };
     });
   } finally {
@@ -91,10 +105,12 @@ describe("phone cards fit 4:5", () => {
     plan: planPhoneCardHtml({
       title: "Register Vila Nova Logística Ltda. e Associados Comércio Internacional",
       where: "Caravela Partner Hub",
-      how: "Replay of espocrm_create_lead v1, no model calls if the page is unchanged",
-      figure: { value: "35 values", label: "and 2 documents from the company profile" },
       rows: Array.from({ length: 35 }, (_, i): [string, string] => [`${long} ${i}`, long]),
-      foot: "Nothing is submitted until you approve the filled form",
+      stub: [
+        ["Values", "35"],
+        ["Invite", "ACME-7731-WITH-A-LONG-SUFFIX"],
+        ["Stops at", "Final submit"],
+      ],
     }),
     submit: submitPhoneCardHtml({
       portalName: "Caravela Partner Hub",
@@ -149,11 +165,14 @@ describe("phone cards fit 4:5", () => {
     }),
   };
   for (const [name, html] of Object.entries(cards)) {
-    it(`${name}: nothing runs past the bottom line or the sides`, async () => {
+    it(`${name}: nothing runs past the bottom line or the sides, and the type keeps its rules`, async () => {
       const m = await measure(html);
       expect(m.w).toBeLessThanOrEqual(PHONE_CARD_WIDTH);
       expect(m.h).toBeLessThanOrEqual(PHONE_CARD_HEIGHT);
       expect(m.bottom).toBeLessThanOrEqual(PHONE_CARD_HEIGHT);
+      expect(Math.min(...m.sizes)).toBeGreaterThanOrEqual(22);
+      expect(m.sizes.length).toBeLessThanOrEqual(3);
+      expect(m.weights.length).toBeLessThanOrEqual(2);
     });
   }
 });

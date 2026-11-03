@@ -2,6 +2,7 @@
 // passes each portal's origin and a function that mints session cookies for one browser context.
 
 import type { CookieSpec, Lease, WriteGuardConfig } from "@dockhand/core";
+import { pngPixel, type ShotCrop } from "./tools/phone-cards.ts";
 
 export const CARAVELA = "caravela";
 export const SUPPLIER = "supplier";
@@ -39,6 +40,31 @@ export type PortalDirectory = Record<string, PortalTarget>;
 export const PORTAL_DEFAULTS: Record<string, Omit<PortalInfo, "url">> = {
   [CARAVELA]: { id: CARAVELA, name: "Caravela Partner Hub", startPath: "/deals/new" },
   [SUPPLIER]: { id: SUPPLIER, name: "Supplier Portal", startPath: "/t/{{tenant}}/invite/{{invite_code}}" },
+};
+
+/** What a finished run did on each portal, as the receipt card's status line over the record ID. */
+export const RECEIPT_DONE: Record<string, string> = {
+  [CARAVELA]: "Deal registered",
+  [SUPPLIER]: "Registration submitted",
+  [ESPOCRM]: "Lead created",
+};
+
+/**
+ * The portal's own confirmation panel, as the receipt card crops it from the final screenshot (CSS px of the
+ * 1280 x 800 page, drawn at 0.7): Caravela's "Registration received" panel, the supplier portal's "Registration
+ * submitted" and its ID box, and the head of EspoCRM's lead record. Caravela's first UI has a dark top bar and the
+ * panel at x 132; its later UIs (the self-heal and drift demos) have a sidebar and the panel at x 260.
+ */
+export const RECEIPT_CROP: Record<string, (shot: Uint8Array) => ShotCrop | undefined> = {
+  [CARAVELA]: (shot) => {
+    const bar = pngPixel(shot, 640, 20);
+    if (!bar) return undefined;
+    return bar[0] + bar[1] + bar[2] < 240
+      ? { x: 116, y: 100, scale: 0.7, height: 148 }
+      : { x: 252, y: 104, scale: 0.7, height: 148 };
+  },
+  [SUPPLIER]: () => ({ x: 265, y: 212, scale: 0.7, height: 176 }),
+  [ESPOCRM]: () => ({ x: 56, y: 40, scale: 0.7, height: 152 }),
 };
 
 export const WRITE_GUARD_ALLOW: Record<string, string[]> = {

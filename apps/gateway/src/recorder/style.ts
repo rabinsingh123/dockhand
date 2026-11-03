@@ -1,29 +1,30 @@
 // Flight recorder styles: Dockhand's black ground, white text and hairlines (the palette of packages/design/src/
-// tokens.ts), Archivo for reading, Geist Mono for real code and selectors. Orange marks what Dockhand did (a pick, a
-// patch), once per screen; the error red only a real failure. Status is a word, never a pill. The fonts are served by
-// the recorder itself (fonts/), so a page needs nothing from the network.
+// tokens.ts), Mona Sans for reading (600 for what a section says, 400 for the rest), Geist Mono for real code and
+// selectors. Lemon marks what Dockhand did (a pick, a patch), once per screen, as a solid row with black text; the
+// error red only a real failure. Status is a word, never a pill. No tabular figures (Mona Sans draws them with a
+// slashed zero). The fonts are served by the recorder itself (fonts/), so a page needs nothing from the network.
 
 export const RECORDER_CSS = `
 :root{
-  --ground:#0A0A0A;--surface:#171717;--text:#FFFFFF;--gray:#A3A3A3;--faint:#6F6F6F;--hair:#2A2A2A;--rule:#404040;
-  --accent:#FF4F00;--on-accent:#0A0A0A;--error:#FF5C4D;
+  --ground:#000000;--surface:#262C28;--text:#FFFFFF;--gray:#A4AEA6;--faint:#7C8980;--hair:#262C28;--rule:#353D37;
+  --accent:#F9E76A;--on-accent:#000000;--error:#FA383D;
   --cu:var(--text);--replay:var(--text);--heal:var(--text);--dry:var(--gray);--wait:var(--gray);--ok:var(--text);--bad:var(--error);
   --mono:"Geist Mono",ui-monospace,Consolas,monospace;
-  --sans:"Archivo","Segoe UI",system-ui,sans-serif;
+  --sans:"Mona Sans","Segoe UI",system-ui,sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--ground);color:var(--text)}
-body{font:500 16px/1.4 var(--sans);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+body{font:400 16px/1.4 var(--sans);-webkit-font-smoothing:antialiased;font-kerning:normal;font-variant-ligatures:no-common-ligatures}
 a{color:inherit;text-decoration:none}
 a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 code,pre,.mono{font-family:var(--mono);font-size:13.5px;letter-spacing:-.01em}
 h1,h2,h3,p{margin:0}
 .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:32px;height:64px;padding:0 40px;background:var(--ground);border-bottom:1px solid var(--hair)}
-.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:21px;letter-spacing:-.035em}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:22px}
 .brand:hover{text-decoration:none}
-.brand svg{height:18px;width:auto;fill:currentColor;display:block}
-.brand small{font-weight:500;color:var(--gray);font-size:16px;letter-spacing:-.01em;margin-left:6px}
+.brand svg{height:24px;width:auto;fill:currentColor;display:block}
+.brand small{font-weight:400;color:var(--gray);font-size:16px;margin-left:6px}
 .nav{display:flex;gap:24px}
 .nav a{color:var(--gray);font-size:16px}
 .nav a:hover,.nav a.on{color:var(--text);text-decoration:none}
@@ -32,25 +33,25 @@ h1,h2,h3,p{margin:0}
 .crumbs{color:var(--gray);font-size:14px;margin-bottom:12px}
 .crumbs a{color:var(--text)}
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:32px}
-.title{font-size:48px;font-weight:700;letter-spacing:-.04em;line-height:1.05;display:flex;align-items:baseline;gap:8px 20px;flex-wrap:wrap}
+.title{font-size:48px;font-weight:600;letter-spacing:-.035em;line-height:1.08;display:flex;align-items:baseline;gap:8px 20px;flex-wrap:wrap}
 .sub{margin-top:10px;color:var(--gray);font-size:17px;max-width:900px}
-.chip{font-size:14px;font-weight:500;letter-spacing:-.01em;white-space:nowrap;color:var(--c,var(--text))}
-.chip.lg{font-size:20px;font-weight:500}
+.chip{font-size:14px;font-weight:400;letter-spacing:0;white-space:nowrap;color:var(--c,var(--text))}
+.chip.lg{font-size:20px;font-weight:400}
 .op{font:400 13.5px var(--mono);color:var(--gray)}
 .stats{display:flex;flex-wrap:wrap;gap:20px 56px;padding:20px 0 24px;margin-bottom:32px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
 .stat .k{font-size:14px;color:var(--gray)}
-.stat .v{margin-top:2px;font-size:32px;font-weight:700;letter-spacing:-.04em;line-height:1.1;white-space:nowrap}
-.stat .v small{font-size:17px;font-weight:500;color:var(--gray);margin-left:4px;letter-spacing:-.01em}
+.stat .v{margin-top:2px;font-size:32px;font-weight:600;line-height:1.1;white-space:nowrap}
+.stat .v small{font-size:17px;font-weight:400;color:var(--gray);margin-left:4px}
 .stat .n{margin-top:2px;font-size:13.5px;color:var(--gray);overflow-wrap:anywhere}
 .grid{display:grid;grid-template-columns:minmax(0,1fr) 460px;gap:56px;align-items:start}
 .side{display:flex;flex-direction:column;gap:32px;position:sticky;top:96px}
 .panel{border-top:1px solid var(--text)}
-.panel>h2,.ph{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;font-size:24px;font-weight:700;letter-spacing:-.035em;line-height:1.15}
-.panel>h2 span,.ph span{color:var(--gray);font-weight:500;font-size:15px;letter-spacing:-.01em}
+.panel>h2,.ph{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;font-size:24px;font-weight:600;line-height:1.15}
+.panel>h2 span,.ph span{color:var(--gray);font-weight:400;font-size:15px}
 .pb{padding:4px 0 16px}
 .empty{padding:16px 0;color:var(--gray);font-size:16px}
 table{width:100%;border-collapse:collapse}
-th{text-align:left;font-size:13.5px;font-weight:500;color:var(--gray);padding:8px 16px 8px 0;border-bottom:1px solid var(--hair);white-space:nowrap}
+th{text-align:left;font-size:13.5px;font-weight:400;color:var(--gray);padding:8px 16px 8px 0;border-bottom:1px solid var(--hair);white-space:nowrap}
 td{padding:10px 16px 10px 0;border-bottom:1px solid var(--hair);vertical-align:top;font-size:15px}
 td:last-child,th:last-child{padding-right:0}
 tr:last-child td{border-bottom:0}
@@ -65,7 +66,7 @@ tr.link:hover td{background:var(--surface)}
 .shot img{width:100%;height:auto;display:block}
 .shot .bx{position:absolute;border:2px solid var(--ground)}
 .shot .pt{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;background:var(--ground);color:var(--text);font:600 12px/22px var(--sans);text-align:center}
-.shot .cap{position:absolute;left:8px;bottom:8px;padding:3px 8px;background:var(--ground);color:var(--text);font:500 13px/1.3 var(--sans)}
+.shot .cap{position:absolute;left:8px;bottom:8px;padding:3px 8px;background:var(--ground);color:var(--text);font:400 13px/1.3 var(--sans)}
 figure{margin:0}
 .steps{list-style:none;margin:0;padding:0}
 .st{display:grid;grid-template-columns:30px 64px minmax(0,1fr) 236px 90px;gap:0 16px;align-items:start;padding:12px 0;border-top:1px solid var(--hair)}
@@ -83,7 +84,7 @@ figure{margin:0}
 .ms{font-size:14px;text-align:right}
 .batch{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px;padding:20px 0;border-top:1px solid var(--hair)}
 .bh{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:14px;color:var(--gray)}
-.bh b{color:var(--text);font-size:17px;font-weight:700;letter-spacing:-.03em}
+.bh b{color:var(--text);font-size:17px;font-weight:600}
 .acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .act{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px}
 .act .n{color:var(--c,var(--text));font:600 15px/1.4 var(--sans)}
@@ -106,28 +107,28 @@ figure{margin:0}
 .kv dt{color:var(--gray)}
 .kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
 .code{margin:0;padding:16px;overflow:auto;max-height:640px;background:var(--surface);font:14px/1.6 var(--mono);color:var(--text);tab-size:2}
-.code .k,.editor .k{color:var(--gray)}.code .s,.editor .s{color:var(--text)}.code .n,.editor .n{color:var(--text)}.code .c,.editor .c{color:var(--faint)}.code .p,.editor .p{color:var(--gray)}.code .f,.editor .f{color:var(--text);font-weight:500}.code .b,.editor .b{color:var(--gray)}
+.code .k,.editor .k{color:var(--gray)}.code .s,.editor .s{color:var(--text)}.code .n,.editor .n{color:var(--text)}.code .c,.editor .c{color:var(--faint)}.code .p,.editor .p{color:var(--gray)}.code .f,.editor .f{color:var(--text);font-weight:400}.code .b,.editor .b{color:var(--gray)}
 .tabs{display:flex;gap:16px}
 .tabs button{all:unset;cursor:pointer;font-size:15px;color:var(--gray)}
 .tabs button.on{color:var(--text)}
 .diff{list-style:none;margin:0;padding:0 0 8px}
 .diff li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;padding:6px 0;font-size:15px}
-.diff li .m{font:500 15px/1.4 var(--mono)}
+.diff li .m{font:400 15px/1.4 var(--mono)}
 .diff li.add .m{color:var(--text)}.diff li.del .m{color:var(--error)}.diff li.chg .m{color:var(--text)}.diff li.inf .m{color:var(--gray)}
 .pair{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--hair)}
 .pair .side-a,.pair .side-b{padding:10px 12px;background:var(--surface);min-width:0}
 .pair .arrow{text-align:center;color:var(--gray);font-size:15px}
-.pair h4{margin:0 0 4px;font-size:13.5px;color:var(--gray);font-weight:500}
+.pair h4{margin:0 0 4px;font-size:13.5px;color:var(--gray);font-weight:400}
 .versions{display:flex;gap:40px;flex-wrap:wrap}
 .ver{display:flex;flex-direction:column;gap:2px;padding-top:10px;border-top:2px solid var(--hair)}
 .ver:hover{text-decoration:none}
 .ver.on{border-top-color:var(--text)}
-.ver b{font-size:24px;font-weight:700;letter-spacing:-.035em}
+.ver b{font-size:24px;font-weight:600}
 .ver span{font-size:14px;color:var(--gray)}
 .film{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:4px 0 16px}
 .film figure{position:relative}
 .film img{width:100%;display:block}
-.film figcaption{position:absolute;left:6px;top:6px;padding:1px 6px;background:var(--ground);font:500 13px var(--sans)}
+.film figcaption{position:absolute;left:6px;top:6px;padding:1px 6px;background:var(--ground);font:400 13px var(--sans)}
 .dsteps{list-style:none;margin:0;padding:0 0 8px;counter-reset:s}
 .dsteps li{counter-increment:s;display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;padding:8px 0;font-size:16px;border-top:1px solid var(--hair)}
 .dsteps li::before{content:counter(s);color:var(--gray)}
@@ -138,8 +139,8 @@ figure{margin:0}
 @media (max-width:1180px){.grid{grid-template-columns:minmax(0,1fr)}.side{position:static}.batch{grid-template-columns:minmax(0,1fr)}.st{grid-template-columns:30px 56px minmax(0,1fr) 120px}.st .ms-col{display:none}}
 `;
 
-/** @font-face rules for Archivo and Geist Mono, served by the recorder at `<base>fonts/`. */
+/** @font-face rules for Mona Sans and Geist Mono, served by the recorder at `<base>fonts/`. */
 export function fontCss(base: string): string {
-  return `@font-face{font-family:"Archivo";src:url("${base}fonts/archivo.woff2") format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:block}
+  return `@font-face{font-family:"Mona Sans";src:url("${base}fonts/mona.woff2") format("woff2");font-weight:200 900;font-stretch:75% 125%;font-display:block}
 @font-face{font-family:"Geist Mono";src:url("${base}fonts/geist-mono.woff2") format("woff2");font-weight:100 900;font-display:block}`;
 }

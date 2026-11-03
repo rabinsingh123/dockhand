@@ -8,6 +8,7 @@ import {
   money,
   type PhoneRender,
   receiptPhoneCardHtml,
+  type ShotCrop,
   seconds,
   TIER_LABEL,
 } from "./phone-cards.ts";
@@ -28,7 +29,9 @@ export interface ReceiptView {
   title: string;
   tier: Receipt["tier"];
   headline?: string;
-  /** Short lines; the first sits under the title on the card. */
+  /** The status over the ID on the card ("Deal registered"); "Done" when unset. */
+  done?: string;
+  /** Short lines; the first sits under the ID on the card. */
   lines: string[];
   seconds: number;
   execCostUsd: number;
@@ -38,15 +41,18 @@ export interface ReceiptView {
   usedOpenWeights?: boolean;
   /** PNG of the final page. */
   screenshot?: Uint8Array;
+  /** The confirmation panel on that page (RECEIPT_CROP). */
+  crop?: ShotCrop;
 }
 
-/** The receipt card: the record ID big, then fields verified, machine time and both costs, then the portal's page. */
+/** The receipt card: the portal's confirmation, the status and the record ID big, then read back, time and cost. */
 export function receiptHtml(r: ReceiptView): string {
   const line = r.lines[0];
   return receiptPhoneCardHtml({
     title: r.title,
     tier: r.tier,
     ...(r.headline ? { headline: r.headline } : {}),
+    ...(r.done ? { done: r.done } : {}),
     ...(line ? { line } : {}),
     seconds: r.seconds,
     execCostUsd: r.execCostUsd,
@@ -55,6 +61,7 @@ export function receiptHtml(r: ReceiptView): string {
     ...(r.verified ? { verified: r.verified } : {}),
     ...(r.usedOpenWeights ? { usedOpenWeights: true } : {}),
     ...(r.screenshot ? { screenshot: r.screenshot } : {}),
+    ...(r.crop ? { crop: r.crop } : {}),
   });
 }
 
