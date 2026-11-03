@@ -161,7 +161,8 @@ export async function runTeach(
     body: [
       // The same counts as the card (draftCounts): steps written from the video, values typed or picked in it.
       `I learned *${draft.title}*${draft.title.toLowerCase().includes(portalName.toLowerCase()) ? "" : ` on ${portalName}`}: ${n.steps} steps, ${n.values} values, submits with "${draft.commitStep}".`,
-      "Look right? The next real request runs once with computer use, then becomes a skill. Values seen in the video are never reused.",
+      "The next request runs once with computer use, then I save it as a skill that replays in seconds. I never reuse the values typed in the video.",
+      "Look right?",
     ].join("\n"),
     image: card,
     ttlMs: env.gateTtlMs,
@@ -171,7 +172,7 @@ export async function runTeach(
     await sendText(
       env,
       job,
-      `Saved the draft "${draft.name}". Send me a request for ${portalName} when you have one.`,
+      `Saved as "${draft.name}". Forward me the next request for ${portalName} when you have one.`,
     );
     return { ok: true };
   }

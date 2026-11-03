@@ -500,7 +500,7 @@ export const STEPS: Step[] = [
       check(/\d+ steps, \d+ values/.test(card.text ?? ""), "the teach card does not count steps and values");
       await rep.shot("teach-card");
       await rep.tap(card, "Looks right");
-      const saved = await rep.textMsg(/^Saved the draft "[a-z][a-z0-9_]*"/);
+      const saved = await rep.textMsg(/^Saved as "[a-z][a-z0-9_]*"/);
       // The model names the skill (the fixture says register_partner_deal; live Wonder said register_deal).
       w.skill = /"([a-z][a-z0-9_]*)"/.exec(saved.text ?? "")?.[1] ?? w.skill;
       await rep.shot("teach-saved");

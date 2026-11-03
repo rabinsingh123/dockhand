@@ -129,7 +129,7 @@ describe("hero loop through WhatsApp", () => {
     expect(card.headerImagePath).toBeTruthy();
     await tap(card, "a");
     expect(sys.skills.draftForPortal("caravela")?.draft.name).toBe("register_partner_deal");
-    expect(outbox().at(-1)?.body).toContain('Saved the draft "register_partner_deal"');
+    expect(outbox().at(-1)?.body).toContain('Saved as "register_partner_deal"');
   }, 60_000);
 
   it("(b) runs a referral photo once with computer use, then compiles v1", async () => {
