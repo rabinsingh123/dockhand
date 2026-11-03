@@ -33,7 +33,7 @@ const [stubTop, stubSide, stubBottom] = G.stub.padding;
 
 /** Component CSS at the `ui` scale (CSS px). Pair with cssVariables("ui") and fontFaceCss(). */
 export const COMPONENT_CSS = `
-.dh{font:400 ${K.small}px/${L.body} var(--dh-sans);color:var(--dh-text);letter-spacing:0;font-kerning:normal;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+.dh{font:400 ${K.small}px/${L.body} var(--dh-sans);color:var(--dh-text);letter-spacing:0;font-kerning:normal;font-variant-ligatures:no-common-ligatures;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
 .dh *{box-sizing:border-box;margin:0;padding:0}
 .dh-card{--dh-c-bg:var(--dh-ground);--dh-c-muted:var(--dh-gray);--dh-c-stub:var(--dh-surface);width:${G.width}px;height:${G.height}px;background:var(--dh-c-bg);display:flex;flex-direction:column;overflow:hidden}
 .dh-card>*{flex-shrink:0}
@@ -45,6 +45,7 @@ export const COMPONENT_CSS = `
 .dh-stage{flex:1 1 0;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:0 ${G.margin}px;overflow:hidden}
 .dh-state{font-weight:600;font-size:${K.title}px;line-height:${L.title};text-wrap:balance;overflow-wrap:break-word}
 .dh-state.dh-id{font-size:${K.id}px;line-height:${L.id}}
+.dh-state.dh-nowrap{white-space:nowrap}
 .dh-state.dh-display{font-size:${K.display}px;line-height:${L.display};letter-spacing:${TYPE.tracking.display};font-stretch:${TYPE.stretch.display}}
 .dh-accent{color:var(--dh-accent)}
 .signal .dh-accent{color:inherit}
@@ -57,7 +58,7 @@ export const COMPONENT_CSS = `
 .signal .dh-note b{color:inherit}
 .dh-rows{display:flex;flex-direction:column;gap:16px;margin-top:40px}
 .dh-row{display:flex;justify-content:space-between;align-items:baseline;gap:32px}
-.dh-row .k{flex:0 1 auto;min-width:0;font-size:${K.small}px;line-height:${L.body};color:var(--dh-c-muted)}
+.dh-row .k{flex:0 0 auto;max-width:55%;font-size:${K.small}px;line-height:${L.body};color:var(--dh-c-muted);overflow-wrap:anywhere}
 .dh-row .v{flex:0 1 auto;min-width:0;font-size:${K.value}px;line-height:${L.value};text-align:right;overflow-wrap:anywhere}
 .dh-row.more .k{font-size:${K.small}px}
 .dh-rows .was{color:var(--dh-c-muted)}
@@ -84,9 +85,20 @@ export const top = (context: string): string =>
 /** The hero sizes: a statement (48), a record ID or number (56), or the display line (64, expanded). */
 export type StateSize = "title" | "id" | "display";
 
-/** The one thing the card says. FIT_SCRIPT steps it down a token size at a time when long data needs room. */
-export function state(html: string, o: { size?: StateSize; accent?: boolean } = {}): string {
-  const cls = ["dh-state", o.size && o.size !== "title" ? `dh-${o.size}` : "", o.accent ? "dh-accent" : ""]
+/**
+ * The one thing the card says. FIT_SCRIPT steps it down a token size at a time when long data needs room.
+ * `nowrap` keeps a record ID on one line ("SG-GLOBEX-000311" never breaks at a hyphen): it steps down instead.
+ */
+export function state(
+  html: string,
+  o: { size?: StateSize; accent?: boolean; nowrap?: boolean } = {},
+): string {
+  const cls = [
+    "dh-state",
+    o.size && o.size !== "title" ? `dh-${o.size}` : "",
+    o.accent ? "dh-accent" : "",
+    o.nowrap ? "dh-nowrap" : "",
+  ]
     .filter(Boolean)
     .join(" ");
   return `<h1 class="${cls}">${html}</h1>`;
@@ -122,7 +134,9 @@ export function rows(list: [string, string][], o: { html?: boolean; max?: number
 }
 
 /** One stub field: a label over its value. An empty label shows the value alone. `wrap` lets a long value wrap. */
-export type StubField = [label: string, value: string] | [label: string, value: string, o: { wrap?: boolean }];
+export type StubField =
+  | [label: string, value: string]
+  | [label: string, value: string, o: { wrap?: boolean }];
 
 /**
  * The stub: the band every card ends in, with the mark's dock slot cut into its top-left corner (from the edge to

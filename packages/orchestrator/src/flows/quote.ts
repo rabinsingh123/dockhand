@@ -119,6 +119,7 @@ export async function runQuote(
     title: `Quote for ${request.company}`,
     tier: "api",
     headline: quote.number,
+    done: "Quote attached to the deal",
     lines: [
       ...(company ? [`HubSpot company ${request.company} ${company.created ? "created" : "found"}`] : []),
       ...(deal ? [`HubSpot deal "${dealName}", ${total}`] : []),

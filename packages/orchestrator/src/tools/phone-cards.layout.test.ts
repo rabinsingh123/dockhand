@@ -91,10 +91,12 @@ describe("phone cards fit 4:5", () => {
     plan: planPhoneCardHtml({
       title: "Register Vila Nova Logística Ltda. e Associados Comércio Internacional",
       where: "Caravela Partner Hub",
-      how: "register_partner_deal v1, no model calls",
-      figure: { value: "35 values", label: "and 2 documents from the company profile" },
       rows: Array.from({ length: 35 }, (_, i): [string, string] => [`${long} ${i}`, long]),
-      foot: "Nothing is submitted until you approve the filled form",
+      stub: [
+        ["Values", "35"],
+        ["Invite", "ACME-7731-WITH-A-LONG-SUFFIX"],
+        ["Stops at", "Final submit"],
+      ],
     }),
     submit: submitPhoneCardHtml({
       portalName: "Caravela Partner Hub",

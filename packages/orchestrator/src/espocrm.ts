@@ -266,19 +266,16 @@ export function planLead(l: LeadUnderstanding, ctx: BuildPlanContext): PlanOutco
       card: {
         title: `Create a lead${leadSubject(actionParams(actions[0])) ? ` for ${leadSubject(actionParams(actions[0]))}` : ""}`,
         where: "EspoCRM",
-        how:
-          actions[0]?.kind === "skill_replay"
-            ? `Replay of ${actions[0].skill} v${actions[0].version}, no model calls`
-            : "First run with computer use",
-        figure: {
-          value: `${Object.keys(actionParams(actions[0])).length} values`,
-          label: "from your message",
-        },
         rows: Object.entries(actionParams(actions[0])).map(([k, v]): [string, string] => [
           humanize(k).replace(/^./, (c) => c.toUpperCase()),
           displayValue(v),
         ]),
-        foot: "Nothing is saved until you approve the filled form",
+        // How many values, how it runs, and that nothing is saved before the filled form is approved.
+        stub: [
+          ["Values", String(Object.keys(actionParams(actions[0])).length)],
+          actions[0]?.kind === "skill_replay" ? ["Model calls", "0"] : ["Run", "Computer use"],
+          ["Stops at", "Save"],
+        ],
       },
     }) satisfies PlanOutcome;
   if (skill) {

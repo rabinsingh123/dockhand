@@ -2,12 +2,14 @@
 // drift watch). Drawn with @dockhand/design (docs/DESIGN.md): a 4:5 card, 540 x 675 CSS px at 2x, so the PNG is
 // 1080 x 1350, exactly what WhatsApp shows uncropped in the chat bubble.
 //
-// A card is seen about 290 px wide, so it is a poster: one statement, one real picture from the run, one line of
-// proof, and nothing under 20 CSS px. Full detail goes in the WhatsApp message under it, where text is always sharp.
-// Black is Dockhand speaking; a whole orange card is reserved for work it finished by itself.
+// A card is seen about 290 px wide, so it is a poster: one hero, one real picture from the run, and the proof in the
+// stub at its foot. What must be read is 28 CSS px or more; only labels and incidental lines are 22. Full detail goes
+// in the WhatsApp message under it, where text is always sharp. Black is Dockhand speaking; a whole lemon card is
+// reserved for work it finished by itself.
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { inflateSync } from "node:zlib";
 import type {
   ArtifactRef,
   ArtifactStore,
@@ -26,12 +28,13 @@ import {
   changes,
   esc,
   FIT_SCRIPT,
-  facts,
-  foot,
   kicker,
-  proof,
+  note,
+  rows,
+  type StubField,
   stage,
   state,
+  stub,
   sub,
   top,
   uiCss,
@@ -138,13 +141,16 @@ export function skillCounts(s: Pick<Skill, "steps" | "params">): {
 
 // ---------- the card ----------
 
-/** A whole card document: the top line, then the body. `signal` is the orange ground of a job finished alone. */
+/**
+ * A whole card document: the top line, then the body, which ends in the stub. `signal` is the lemon ground of a job
+ * finished alone.
+ */
 export function cardHtml(context: string, body: string, o: { signal?: boolean } = {}): string {
   const ground = o.signal ? COLOR.accent : COLOR.ground;
   return `<!doctype html><html><head><meta charset="utf-8"><style>${uiCss()}html,body{margin:0;background:${ground}}</style></head><body class="dh"><main class="dh-card${o.signal ? " signal" : ""}">${top(context)}${body}</main>${FIT_SCRIPT}</body></html>`;
 }
 
-/** The generic card (tests and one-off notices): a statement, an optional line and proof. */
+/** The generic card (tests and one-off notices): a statement, an optional line, and the summary in the stub. */
 export interface PhoneCardSpec {
   context: string;
   title: string;
@@ -156,7 +162,7 @@ export function phoneCardHtml(c: PhoneCardSpec): string {
   return cardHtml(
     c.context,
     stage(state(esc(c.title)) + (c.line ? sub(esc(c.line)) : "")) +
-      (c.summary ? foot(proof(esc(c.summary))) : ""),
+      stub(c.summary ? [["", c.summary, { wrap: true }]] : []),
   );
 }
 
@@ -170,26 +176,105 @@ export function pngSize(b: Uint8Array): { w: number; h: number } | undefined {
   return { w: v.getUint32(16), h: v.getUint32(20) };
 }
 
+/**
+ * One pixel of an 8-bit RGB or RGBA PNG (what Playwright's screenshots are), or undefined for anything else. Lets a
+ * card tell a portal's page layouts apart without a decoder dependency.
+ */
+export function pngPixel(b: Uint8Array, x: number, y: number): [number, number, number] | undefined {
+  const size = pngSize(b);
+  if (!size || x < 0 || y < 0 || x >= size.w || y >= size.h) return undefined;
+  const depth = b[24];
+  const type = b[25];
+  if (depth !== 8 || (type !== 2 && type !== 6) || b[28] !== 0) return undefined;
+  const bpp = type === 6 ? 4 : 3;
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  const idat: Uint8Array[] = [];
+  for (let p = 8; p + 12 <= b.length; ) {
+    const len = v.getUint32(p);
+    const kind = String.fromCharCode(b[p + 4] ?? 0, b[p + 5] ?? 0, b[p + 6] ?? 0, b[p + 7] ?? 0);
+    if (kind === "IDAT") idat.push(b.subarray(p + 8, p + 8 + len));
+    if (kind === "IEND") break;
+    p += 12 + len;
+  }
+  let raw: Buffer;
+  try {
+    raw = inflateSync(Buffer.concat(idat));
+  } catch {
+    return undefined;
+  }
+  const stride = size.w * bpp;
+  let prev = new Uint8Array(stride);
+  let cur = new Uint8Array(stride);
+  for (let row = 0; row <= y; row++) {
+    const off = row * (stride + 1);
+    const filter = raw[off];
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? (cur[i - bpp] ?? 0) : 0;
+      const up = prev[i] ?? 0;
+      const c = i >= bpp ? (prev[i - bpp] ?? 0) : 0;
+      let pred = 0;
+      if (filter === 1) pred = a;
+      else if (filter === 2) pred = up;
+      else if (filter === 3) pred = (a + up) >> 1;
+      else if (filter === 4) {
+        const q = a + up - c;
+        const pa = Math.abs(q - a);
+        const pb = Math.abs(q - up);
+        const pc = Math.abs(q - c);
+        pred = pa <= pb && pa <= pc ? a : pb <= pc ? up : c;
+      }
+      cur[i] = ((raw[off + 1 + i] ?? 0) + pred) & 255;
+    }
+    [prev, cur] = [cur, prev];
+  }
+  const i = x * bpp;
+  return [prev[i] ?? 0, prev[i + 1] ?? 0, prev[i + 2] ?? 0];
+}
+
 /** Portal pages keep navigation down the left; a card shows the working area, at a size that can be read. */
 const SHOT_SOURCE_WIDTH = 1120;
+/** Every run's browser is 1280 CSS px wide (packages/browser), so a crop box is set in those px. */
+const PAGE_WIDTH = 1280;
 
 /**
- * A real screenshot of the page, edge to edge and cropped to `height` CSS px around `focusY` (0..1 of the image).
- * `highlight` outlines the control Dockhand will act on, in the accent.
+ * A part of the page to show on a card, in CSS px of the 1280 px page: its top-left corner, the scale it is drawn
+ * at, and the height it takes on the card. The receipt crops the portal's own confirmation panel this way.
+ */
+export interface ShotCrop {
+  x: number;
+  y: number;
+  scale: number;
+  height: number;
+}
+
+/**
+ * A real screenshot of the page, edge to edge and cropped to `height` CSS px around `focusY` (0..1 of the image),
+ * or to `crop`. `highlight` marks the control Dockhand will act on: a black line inside a lemon band, which reads on
+ * a white page where a lemon line alone would not.
  */
 export function shotHtml(
   bytes: Uint8Array,
-  o: { height: number; focusY?: number; highlight?: BBox },
+  o: { height: number; focusY?: number; highlight?: BBox; crop?: Omit<ShotCrop, "height"> },
 ): string {
   const size = pngSize(bytes);
   if (!size) return `<div class="dh-bleed" style="height:${o.height}px"><img src="${png(bytes)}"></div>`;
-  const shown = Math.min(SHOT_SOURCE_WIDTH, size.w);
-  const scale = PHONE_CARD_WIDTH / shown;
-  const fullH = size.h * scale;
-  const left = (size.w - shown) * scale;
-  const y = Math.max(0, Math.min(fullH - o.height, (o.focusY ?? 0) * fullH - o.height / 2));
+  let scale: number;
+  let left: number;
+  let y: number;
+  if (o.crop) {
+    // The shot may be taken at a device scale above 1: crop boxes are in page px.
+    scale = (o.crop.scale * PAGE_WIDTH) / size.w;
+    left = o.crop.x * o.crop.scale;
+    y = o.crop.y * o.crop.scale;
+  } else {
+    const shown = Math.min(SHOT_SOURCE_WIDTH, size.w);
+    scale = PHONE_CARD_WIDTH / shown;
+    const fullH = size.h * scale;
+    left = (size.w - shown) * scale;
+    y = Math.max(0, Math.min(fullH - o.height, (o.focusY ?? 0) * fullH - o.height / 2));
+  }
   const hl = o.highlight
-    ? `<span class="hl" style="left:${(o.highlight.x * scale - left - 5).toFixed(1)}px;top:${(o.highlight.y * scale - y - 5).toFixed(1)}px;width:${(o.highlight.w * scale + 10).toFixed(1)}px;height:${(o.highlight.h * scale + 10).toFixed(1)}px"></span>`
+    ? `<span class="hl" style="left:${(o.highlight.x * scale - left - 6).toFixed(1)}px;top:${(o.highlight.y * scale - y - 6).toFixed(1)}px;width:${(o.highlight.w * scale + 12).toFixed(1)}px;height:${(o.highlight.h * scale + 12).toFixed(1)}px"></span>`
     : "";
   return `<div class="dh-bleed" style="height:${o.height}px"><img src="${png(bytes)}" style="width:${(size.w * scale).toFixed(1)}px;left:${(-left).toFixed(1)}px;top:${(-y).toFixed(1)}px">${hl}</div>`;
 }
@@ -264,20 +349,20 @@ export function withParams(text: string): string {
     .join("");
 }
 
-/** Two columns of value names, required ones first, in a hairline table. */
+/** The value names on one line, required ones first; past `max`, "N more". */
 function valueNames(params: { name: string; required: boolean }[], max: number): string {
   const ordered = [...params.filter((p) => p.required), ...params.filter((p) => !p.required)];
   const shown = ordered.length > max ? ordered.slice(0, max - 1) : ordered;
-  const cells = shown.map(
+  const names = shown.map(
     (p) => `${esc(label(p.name))}${p.required ? "" : ' <span class="was">(optional)</span>'}`,
   );
-  if (ordered.length > shown.length)
-    cells.push(`<span class="was">${ordered.length - shown.length} more</span>`);
-  const rows: string[] = [];
-  for (let i = 0; i < cells.length; i += 2)
-    rows.push(`<tr><td>${cells[i]}</td><td>${cells[i + 1] ?? ""}</td></tr>`);
-  return `<table class="dh-table"><tbody>${rows.join("")}</tbody></table>`;
+  if (ordered.length > shown.length) names.push(`${ordered.length - shown.length} more`);
+  return names.join(", ");
 }
+
+/** True when a title already names the portal ("Register a partner deal on Caravela Partner Hub"). */
+const namesPortal = (title: string, portalName: string) =>
+  title.toLowerCase().includes(portalName.toLowerCase());
 
 // ---------- teach: what Muse saw ----------
 
@@ -294,18 +379,23 @@ export function teachPhoneCardHtml(d: SkillDraft, o: TeachCardOptions): string {
   const frames = o.frames ?? [];
   const frame = frames[Math.floor(frames.length / 2)];
   const picture = frame
-    ? `<div class="dh-bleed" style="height:232px"><img src="${jpeg(frame)}" style="width:100%;left:0;top:0"></div>`
+    ? `<div class="dh-bleed" style="height:200px"><img src="${jpeg(frame)}" style="width:100%;left:0;top:0"></div>`
     : "";
   const video = o.durationS ? `your ${Math.round(o.durationS)} s recording` : "your recording";
   return cardHtml(
     "Learned",
     picture +
       stage(
-        state(esc(d.title), { size: 52 }) +
-          sub(`${plural(n.values, "value")}, ${plural(n.steps, "step")}, on ${esc(o.portalName)}`) +
-          valueNames(d.params, 6),
+        state(esc(d.title)) +
+          (namesPortal(d.title, o.portalName) ? "" : sub(`On ${esc(o.portalName)}`)) +
+          note(valueNames(d.params, 6)) +
+          note(`Seen in ${esc(video)}.`),
       ) +
-      foot(proof(`Seen in ${esc(video)}. It submits with “${esc(d.commitStep)}”, only after your tap.`)),
+      stub([
+        ["Values", String(n.values)],
+        ["Steps", String(n.steps)],
+        ["Submits with", d.commitStep, { wrap: true }],
+      ]),
   );
 }
 
@@ -316,23 +406,14 @@ export interface PlanCardView {
   title: string;
   /** "Caravela Partner Hub", "HubSpot". */
   where: string;
-  /** "Replay of register_partner_deal v1, no model calls". */
-  how: string;
-  figure: { value: string; label: string };
+  /** Every value, labelled, the ones a wrong approval would break first: the card shows the first three. */
   rows: [string, string][];
-  /** The safety fact ("Nothing is submitted until you approve the filled form"). */
-  foot: string;
+  /** The proof, in the stub: how many values, how it runs, where it stops ("Stops at", "Final submit"). */
+  stub: StubField[];
 }
 
 export function planPhoneCardHtml(v: PlanCardView): string {
-  return cardHtml(
-    "Plan",
-    stage(
-      state(esc(v.title), { size: 56 }) +
-        sub(`${esc(v.figure.value)} on ${esc(v.where)}`) +
-        facts(v.rows, { max: 6 }),
-    ) + foot(proof(`${esc(v.how)}. ${esc(v.foot)}.`)),
-  );
+  return cardHtml("Plan", stage(state(esc(v.title)) + rows(v.rows.slice(0, 3))) + stub(v.stub));
 }
 
 // ---------- submit: the filled form, before the tap ----------
@@ -341,7 +422,7 @@ export interface SubmitCardView {
   portalName: string;
   /** The filled form, as the approval screenshot shows it. */
   screenshot?: Uint8Array;
-  /** The submit control Dockhand will click (outlined in the accent). */
+  /** The submit control Dockhand will click (marked in the accent). */
   highlight?: BBox;
   /** Values read back from the page right now. */
   readback: { label: string; value: string }[];
@@ -352,29 +433,23 @@ export function submitPhoneCardHtml(v: SubmitCardView): string {
   const size = v.screenshot ? pngSize(v.screenshot) : undefined;
   const shot = v.screenshot
     ? shotHtml(v.screenshot, {
-        height: 340,
+        height: 304,
         focusY: v.highlight && size ? (v.highlight.y + v.highlight.h / 2) / size.h : 0.5,
         ...(v.highlight ? { highlight: v.highlight } : {}),
       })
     : "";
+  const tap: StubField = ["Nothing is sent until", "You tap Approve"];
   return cardHtml(
     "Your approval",
     shot +
       stage(
-        state("Ready to submit", { size: 56 }) +
-          sub(
-            lines.length
-              ? `${plural(lines.length, "field")} filled on ${esc(v.portalName)}`
-              : `Review page on ${esc(v.portalName)}`,
-          ),
+        state("Ready to submit") +
+          (lines.length
+            ? sub(`${plural(lines.length, "field")} filled on ${esc(v.portalName)}`)
+            : sub(`Review page on ${esc(v.portalName)}`) +
+              note("A wizard’s last page has nothing to read back: check it here.")),
       ) +
-      foot(
-        proof(
-          lines.length
-            ? "Read back from the page just now. Nothing is sent until you tap Approve."
-            : "A wizard’s last page has nothing to read back: check it here. Nothing is sent until you tap Approve.",
-        ),
-      ),
+      stub(lines.length ? [["Read back", "Just now"], tap] : [tap]),
   );
 }
 
@@ -394,11 +469,16 @@ export function askPhoneCardHtml(v: AskCardView): string {
     opts.length > 1 ? `${opts.slice(0, -1).join(", ")} or ${opts.at(-1)}` : (opts[0] ?? "any value you type");
   return cardHtml(
     "Question",
-    stage(state(esc(v.label), { size: 84 }) + sub(`${esc(v.portalName)} now requires a new field.`)) +
-      (v.screenshot ? shotHtml(v.screenshot, { height: 220, focusY: 0.55 }) : "") +
-      foot(
-        `<div style="height:20px"></div>${proof(`Which should I use: ${esc(list)}? I’ll remember your answer and use it from now on. Nothing has been submitted.`)}`,
-      ),
+    stage(
+      state(esc(v.label), { size: "id" }) +
+        sub(`Which should I use: ${esc(list)}?`) +
+        note(`${esc(v.portalName)} now requires a new field.`),
+    ) +
+      (v.screenshot ? shotHtml(v.screenshot, { height: 200, focusY: 0.55 }) : "") +
+      stub([
+        ["Your answer", "Kept from now on"],
+        ["Submitted", "Nothing yet"],
+      ]),
   );
 }
 
@@ -409,9 +489,11 @@ export type ReceiptTier = "api" | "replay" | "agentic" | "repair";
 export interface ReceiptCardView {
   title: string;
   tier: ReceiptTier;
-  /** The record ID ("NW-REG-48221"), set big in Geist Mono. */
+  /** The record ID ("NW-REG-48221"), set big. */
   headline?: string;
-  /** One short line under the title. */
+  /** The status over it ("Deal registered"); "Done" when the flow names none. */
+  done?: string;
+  /** One short line under the ID. */
   line?: string;
   seconds: number;
   execCostUsd: number;
@@ -421,6 +503,8 @@ export interface ReceiptCardView {
   usedOpenWeights?: boolean;
   /** The portal's own confirmation page. */
   screenshot?: Uint8Array;
+  /** The confirmation panel on that page; without it the card shows the top of the page. */
+  crop?: ShotCrop;
 }
 
 export const TIER_LABEL: Record<ReceiptTier, string> = {
@@ -430,35 +514,30 @@ export const TIER_LABEL: Record<ReceiptTier, string> = {
   repair: "Replay · repaired",
 };
 
-const TIER_WORDS: Record<ReceiptTier, string> = {
-  api: "Done through the API",
-  replay: "Replayed the compiled skill, no model calls",
-  agentic: "First run with computer use",
-  repair: "Replayed, and repaired on the way",
-};
-
 export function receiptPhoneCardHtml(r: ReceiptCardView): string {
   const looksLikeId =
     r.headline !== undefined && /^[A-Z0-9][A-Z0-9-]{4,}$/.test(r.headline) && /\d/.test(r.headline);
-  const how = [
-    r.verified ? `${r.verified.matched} of ${r.verified.checked} fields verified` : TIER_WORDS[r.tier],
-    seconds(r.seconds),
-    `${money(r.execCostUsd)} to run`,
-  ].join(". ");
-  const shot = r.screenshot ? shotHtml(r.screenshot, { height: 300, focusY: 0.3 }) : "";
+  const shot = r.screenshot
+    ? r.crop
+      ? shotHtml(r.screenshot, { height: r.crop.height, crop: r.crop })
+      : shotHtml(r.screenshot, { height: 200, focusY: 0.2 })
+    : "";
   const big = r.headline ?? r.title;
+  const proof: StubField[] = [
+    ...(r.verified ? [["Read back", `${r.verified.matched} of ${r.verified.checked}`] as StubField] : []),
+    ["Time", seconds(r.seconds)],
+    ["Cost", money(r.execCostUsd)],
+  ];
   return cardHtml(
-    "Receipt",
+    TIER_LABEL[r.tier],
     shot +
       stage(
-        state(esc(big), { size: shot ? 60 : looksLikeId ? 72 : 84, accent: true }) +
-          (r.headline ? sub(esc(r.title)) : ""),
+        kicker(esc(r.done ?? "Done")) +
+          state(esc(big), looksLikeId ? { size: "id", nowrap: true } : {}) +
+          (r.line ? note(esc(r.line)) : "") +
+          (r.usedOpenWeights ? note("Built with Muse Spark Open") : ""),
       ) +
-      foot(
-        (r.line ? proof(esc(r.line)) : "") +
-          proof(`${esc(how)}.`) +
-          (r.usedOpenWeights ? proof("Built with Muse Spark Open") : ""),
-      ),
+      stub(proof),
   );
 }
 
@@ -477,14 +556,14 @@ export function skillPhoneCardHtml(v: SkillCardView): string {
   return cardHtml(
     "New skill",
     stage(
-      state("0 model calls", { size: 88, accent: true }) +
+      state("0 model calls", { size: "id", accent: true }) +
         sub(`each time ${esc(v.skill.title)} replays on ${esc(v.portalName)}.`),
     ) +
-      foot(
-        proof(
-          `${plural(n.steps, "program step")}, ${plural(n.values, "value")}. ${v.verified.passed} of ${v.verified.total} dry runs passed.`,
-        ),
-      ),
+      stub([
+        ["Program", plural(n.steps, "step")],
+        ["Values", String(n.values)],
+        ["Dry runs", `${v.verified.passed} of ${v.verified.total}`],
+      ]),
   );
 }
 
@@ -582,30 +661,33 @@ export function repairChanges(v: Pick<DiffCardInput, "parent" | "saved" | "steps
 }
 
 export function diffPhoneCardHtml(v: DiffCardInput): string {
-  const { rows, free } = repairChanges(v);
+  const { rows: changed, free } = repairChanges(v);
   const added = v.saved.params.filter((p) => !v.parent.params.some((q) => q.name === p.name));
   const cost = repairCost(v);
-  const repaired = `${plural(rows.length + free, "step")} repaired${cost ? ` for ${cost}` : ""}`;
-  const credit = v.usedOpenWeights ? proof("Built with Muse Spark Open") : "";
+  const credit = v.usedOpenWeights ? note("Built with Muse Spark Open") : "";
   const value = added.length ? ` New value: ${esc(added.map((p) => label(p.name)).join(", "))}.` : "";
+  // The proof, in the stub: steps repaired, dry runs, and the ledger's cost (no figure when none was recorded).
+  const proof: StubField[] = [
+    ["Repaired", plural(changed.length + free, "step")],
+    ["Dry runs", `${v.canary.passed} of ${v.canary.total}`],
+    ...(cost ? [["Cost", cost] as StubField] : []),
+  ];
   if (v.watch)
     return cardHtml(
       cap(v.watch.when ?? "Drift watch"),
-      stage(state("Nothing<br>to do.", { size: 112 })) +
-        foot(
+      stage(
+        state("Nothing<br>to do.", { size: "display" }) +
           sub(`${esc(v.portalName)} changed${v.watch.when === "overnight" ? " overnight" : ""}.${value}`) +
-            proof(repaired) +
-            proof(`${v.canary.passed} of ${v.canary.total} dry runs passed`) +
-            credit,
-        ),
+          credit,
+      ) + stub(proof),
       { signal: true },
     );
   const leadAt = Math.max(
-    rows.findIndex((r) => r.accent),
+    changed.findIndex((r) => r.accent),
     0,
   );
-  const lead = rows[leadAt];
-  const rest = rows.filter((_, i) => i !== leadAt);
+  const lead = changed[leadAt];
+  const rest = changed.filter((_, i) => i !== leadAt);
   const was = lead
     ? lead.was === "(new field)"
       ? "New field"
@@ -617,18 +699,13 @@ export function diffPhoneCardHtml(v: DiffCardInput): string {
   return cardHtml(
     "Repaired",
     stage(
-      lead
+      (lead
         ? kicker(was) +
-            state(esc(lead.now), { size: 64 }) +
-            (rest.length || more ? changes(rest, { max: 3, ...(more ? { more } : {}) }) : "")
-        : state("Repaired", { size: 84 }) + sub("The page changed; stored selectors found every step again."),
-    ) +
-      foot(
-        sub(`Version ${v.saved.version} is live.${value}`) +
-          proof(
-            `${repaired}. ${v.canary.passed} of ${v.canary.total} dry runs passed. Version ${v.parent.version} is kept.`,
-          ) +
-          credit,
-      ),
+          state(esc(lead.now)) +
+          (rest.length || more ? changes(rest, { max: 3, ...(more ? { more } : {}) }) : "")
+        : state("Repaired") + sub("The page changed; stored selectors found every step again.")) +
+        note(`Version ${v.saved.version} is live. Version ${v.parent.version} is kept.${value}`) +
+        credit,
+    ) + stub(proof),
   );
 }
