@@ -480,7 +480,7 @@ export function runView(
     ${canaryPanel(canaries, run.id)}
     ${
       picks.length
-        ? html`<section class="panel"><h2>Open-weights picks <span>heal rung 2, text only</span></h2><table><tbody>${picks.map(
+        ? html`<section class="panel"><h2>Open-weights picks <span>text only</span></h2><table><tbody>${picks.map(
             (p) =>
               html`<tr class="link" data-href="${base}picks/${p.id}"><td>Step ${p.doc.stepIdx + 1}<div class="muted" style="font-size:12px">${p.doc.chosen ? `now '${p.doc.chosen}'` : (p.doc.reason ?? "")}</div></td><td>${p.doc.ok ? chip("accepted", COLORS.ok) : chip("rejected", COLORS.bad)}</td><td class="num">${p.call ? latency(p.call.latencyMs, p.call.provider) : ms(p.doc.ms)}<div class="muted">${usd(p.doc.costUsd)}</div></td></tr>`,
           )}</tbody></table></section>`

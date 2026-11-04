@@ -374,7 +374,7 @@ export function pickView(base: string, doc: PickDoc, call?: PickCall, focus = fa
     const chosen =
       doc.chosen ?? (picked === null ? null : nameOfEl(doc.list.find((e) => e.index === picked) ?? {}));
     const body = html`<style>${raw(PICK_CSS)}</style>
-    <div class="fk">Step ${doc.stepIdx + 1}: ‘${nameOfEl(doc.before)}’ is no longer on the page. Heal rung 2, text only.</div>
+    <div class="fk">Step ${doc.stepIdx + 1}: ‘${nameOfEl(doc.before)}’ is no longer on the page. The repair reads the page as text, no screenshot.</div>
     <h1 class="fh">${doc.ok ? html`Muse Spark Open picked ‘${chosen ?? "the element"}’` : html`Muse Spark Open’s pick was rejected`}</h1>
     <div class="fcols">
       <div class="fcol"><div class="fk">The list it got: ${doc.list.length} ${doc.kind} elements of ${doc.listedOf}</div>
@@ -395,7 +395,7 @@ export function pickView(base: string, doc: PickDoc, call?: PickCall, focus = fa
   <div class="crumbs"><a href="${base.slice(0, -1)}">Runs</a> / <a href="${base}runs/${doc.runId}" class="mono">${doc.runId}</a> / open-weights pick</div>
   <div class="head"><div><h1 class="title">Muse Spark Open picks the element
     ${doc.ok ? chip("accepted", COLORS.ok, { lg: true }) : chip("rejected", COLORS.bad, { lg: true })}</h1>
-    <p class="sub">Heal, rung 2 · step ${doc.stepIdx + 1}: ${doc.intent} · text only, no screenshot · ${doc.model}</p></div></div>
+    <p class="sub">Repair · step ${doc.stepIdx + 1}: ${doc.intent} · text only, no screenshot · ${doc.model}</p></div></div>
   <div class="stats">
     <div class="stat"><div class="k">Latency</div><div class="v">${lat}</div><div class="n">${call ? "from the ledger" : "measured by the repairer"}</div></div>
     <div class="stat"><div class="k">Cost</div><div class="v">${cost}</div><div class="n">Standard list price</div></div>
