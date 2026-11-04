@@ -60,3 +60,16 @@ Read-back alone: with the heal ladder off, no case wrote a wrong value even with
 | ui v2 | 3 | 3 stopped (s13 Product ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 stopped (s2 Go to deal registrations ×3) | 3 correct |
 
 ![recorded script vs Dockhand](baseline-vs-dockhand.png)
+
+Why Dockhand paid for a model on `button_rename` where the exported script clicked for free: after a rename only the button's test id still matches, and Dockhand does not accept one matching attribute on its own, because a test id moved onto another control would pass the same check (`fingerprintCheck` in `packages/browser/src/helpers/resolve.ts`). A model confirms the renamed button first. The exported script clicks whatever carries the id.
+
+## 5. Runs not counted, and why
+
+Three files in `live/` hold first runs that the tables leave out. Counting them, 14 of the 15 video-guided first runs submitted all 13 fields correctly.
+
+| File | Runs | Result | Why it is not in the tables above |
+|---|---|---|---|
+| `discarded-shared-portal-firstrun-caravela-video-2026-10-28.jsonl` | 3 | 2 at 13/13, 1 at 0/13 | The runs shared one portal session, so they were not independent. The second run opened on the first run's confirmation page (NW-REG-48213), reported it after 2 actions and was graded 0/13. |
+| `discarded-orphan-process-firstrun-caravela-video-2026-10-28.jsonl` | 1 | 13/13 | Made while a stray process from an interrupted run was still running. |
+| `prefix-commitclick-firstrun-caravela-video-2026-10-28.jsonl` | 3 | 3 at 13/13 | An earlier build of the computer-use loop, before the harness-click fix (5b2164a). Section 2 compiles from the first of these. |
+

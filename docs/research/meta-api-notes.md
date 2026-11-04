@@ -113,6 +113,8 @@ First live runs against api.meta.ai and Baseten with our keys. Raw evidence: `sc
 | 50-image cap | Not reached: the stateless window keeps requests at ≤13 images | Rollover code kept for chained mode |
 
 ### Results (Standard list prices)
+
+The first live runs, each with the fixes it led to. Where a later measurement exists, it supersedes these rows: the heal numbers in [`evals/results/live-headline.md`](../../evals/results/live-headline.md) (Oct 28, after these fixes) have `combobox_to_radio` at 6/6.
 | Job | Model, effort | Live result |
 |---|---|---|
 | Understand (voice text, photo, PDF) | Spark, low | All graded fields right except `buyerName` from the Acme PDF ("Laura Bennett", want "Acme Group": prompt issue); 3-5 s, ~$0.005 |

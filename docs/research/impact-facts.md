@@ -293,31 +293,3 @@ https://www.gartner.com/en/newsroom/press-releases/2025-11-18-gartner-predicts-b
 | "Reps spend 5.5 hours a week on CRM data entry" (Introhive); "17% of the week" (Forrester Activity Study) | Seen only via blog summaries; original survey, date and method not found. |
 | Computer-use cost per task ($0.20-0.40) vs Playwright ($0.02-0.10) and similar | Vendor and blog estimates, no shared benchmark. Use our own eval. |
 | SAP Business Network "5.5 million organizations" | 2021 launch figure; SAP's Nov 2025 wording is "millions of companies" (3.2). |
-
----
-
-## Best 5 for the opening 15 seconds
-
-About 3 seconds per line. Each line maps to a fact above; the small source tag goes on screen with it.
-
-1. **"3B+ people use WhatsApp every month."**
-   Tag: Meta, Q1 2025 earnings call. Fact 1.1.
-2. **"India: 91% of online adults chat with businesses every week."**
-   Tag: Kantar 2025, cited by Meta. Fact 1.4.
-3. **"Brazil: voice notes are now WhatsApp's most-used feature (80%)."**
-   Tag: Opinion Box, 2026. Fact 1.12.
-4. **"Sales reps spend 60% of their week not selling. 13% goes to manual data entry, 17% to building quotes."**
-   Tag: Salesforce State of Sales, 7th ed. (2026). Fact 2.1.
-5. **"38% of suppliers log in to 10+ systems to serve their main customer."**
-   Tag: HICX supplier survey, 2022. Fact 3.3.
-
-Why these: lines 1 to 3 establish where the work arrives (WhatsApp, voice, in the target markets), line 4 the rep's cost, line 5 the portal burden on the receiving side. Lines 1 to 4 are primary or Meta-cited sources from 2025-2026. Line 5 is a 2022 vendor survey (HICX), the best supplier-side number we could open; swap it out if a vendor source is a problem.
-
-Alternates:
-- "77% of Brazilian WhatsApp users already talk to brands in the app." (Opinion Box, 2026. Fact 1.7.)
-- "WhatsApp users send 7B voice messages a day." (WhatsApp, 2022. Fact 1.11. Show the year.)
-- "85% of sales pros work late at least once a week on manual admin." (Pipedrive, 2026. Fact 2.4. US sample only.)
-
-For later in the video:
-- Self-heal moment: "45% of firms deal with RPA bot breakage every week or more." (Forrester Consulting for Tricentis, 2020. Fact 5.1.) Confirm the Business Wire page in a browser first.
-- Close (adoption): "1M+ businesses already use a Meta Business Agent on WhatsApp and Messenger." (Meta, Jun 2026. Fact 1.6.)

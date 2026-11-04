@@ -2,7 +2,11 @@
 
 **Automation that maintains itself.** Meta's computer use writes the program, every write is proven before it is submitted, and when the app changes the program repairs itself with the cheapest model that can, often before anyone notices.
 
-Show Dockhand a web workflow once, as a plain screen recording or just a goal. Muse computer use does it the first time and records exactly what it touched. That run compiles into a program that replays in seconds with no model calls. When the app's UI changes, a repair ladder fixes the broken step, verifies it, and saves a new version of the skill; a nightly drift watch does the same with dry runs, so the rep gets "Caravela changed overnight. I repaired 2 steps and checked them with 5 dry runs. Nothing to do." When the app needs information the program doesn't have, Dockhand asks the rep once and remembers the answer. Sales reps trigger, teach and approve everything from WhatsApp.
+<p align="center"><img src="assets/readme/overnight.png" width="560" alt="An iPhone lock screen with two Dockhand notifications at 3:13 AM, and the WhatsApp chat they open: a yellow card that reads Nothing to do, Caravela Partner Hub changed overnight, 4 steps repaired, 5 of 5 dry runs, $0.0058"></p>
+
+<p align="center"><sub>3:13 AM, Nov 3: a scheduled change hit our partner portal overnight, and Dockhand repaired itself with nobody watching. Real phone, real WhatsApp, real model calls.</sub></p>
+
+Show Dockhand a web workflow once, as a plain screen recording or just a goal. Muse computer use does it the first time and records exactly what it touched. That run compiles into a program that replays in seconds with no model calls. When the app's UI changes, a repair ladder fixes the broken step, verifies it, and saves a new version of the skill. A drift watch does the same with dry runs on a schedule, so the rep wakes up to "Caravela Partner Hub changed overnight. I repaired 4 steps (1 free, 3 with Muse Spark Open, $0.0058) and checked it with 5 dry runs. v4 is active, v3 is kept. Nothing to do." When the app needs information the program doesn't have, Dockhand asks the rep once and remembers the answer. Sales reps trigger, teach and approve everything from WhatsApp.
 
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"). Everything in this repository was built during the event, Oct 27 to Nov 4, 2026.
 
@@ -54,6 +58,16 @@ Every call is recorded in a ledger with tokens, images, latency and cost at Stan
 
 Built with Muse Spark Open.
 
+### What we found
+
+Measured live; details and the full list in [`docs/research/meta-api-notes.md`](docs/research/meta-api-notes.md).
+
+- **A screen recording is enough to teach a job.** From a 45-second recording, Muse Wonder wrote a draft with the steps, typed parameters (a country field became an enum of the 7 options visible in the video, the consent box a required boolean), the submit control and what success looks like: 20 s, $0.09.
+- **Open weights do most of the repair work.** Muse Spark Open never sees a screenshot: it gets a pruned, text-only list of the page's elements and picks the new one in about 3 s for about $0.003. With the free fixes before it, 100 of 102 repairs needed no closed model.
+- **Stateless computer use is 3 to 4 times faster.** The same turn took 9 to 11 s chained with `previous_response_id` and 2.4 to 3.2 s sent stateless with the receipts kept, so Dockhand replays a short window of turns itself.
+- **Every acting computer call asks for confirmation.** Each one carries `computer_action_requires_confirmation`, even a scroll. Dockhand answers that one with its own gates (the rep's Approve tap, the commit and write guards) and sends any other safety check to the rep.
+- **Computer use runs on Muse Spark 1.3.** On our key, Muse Wonder rejects the computer tool (HTTP 400), so first runs and repairs use Spark, and the ledger records the model that actually ran.
+
 ## Results
 
 All live numbers are real Meta and Baseten calls at Standard list prices, measured Oct 28, 2026 on the mock portals, graded field by field against each portal's stored submission. Scripted and recorded (cassette) runs are never counted. Full summary: [`evals/results/live-headline.md`](evals/results/live-headline.md); raw rows in [`evals/results/live/`](evals/results/live/).
@@ -79,7 +93,7 @@ All live numbers are real Meta and Baseten calls at Standard list prices, measur
 |---|---|---|---|
 | First run, supplier onboarding from a procurement PDF (multi-step, about 40 fields, 2 uploads), zero-shot | muse-spark-1.3, low effort | 3 | 3/3 correct, 40/40 fields each; 85–98 actions; 249–310 s; $0.32–$0.49 per run |
 | That compiled skill replayed for a second buyer | none | 1 | 40/40 fields, 0 model calls, 4.8 s |
-| First run guided by the teach video vs goal only (13-field form) | muse-spark-1.3, low effort | 8 and 3 | 8/8 and 3/3 correct; 34.6 vs 32.3 actions; $0.111 vs $0.118. No measurable advantage from the video on a form this size. |
+| First run guided by the teach video vs goal only (13-field form) | muse-spark-1.3, low effort | 8 and 3 | 8/8 and 3/3 correct; 34.6 vs 32.3 actions; $0.111 vs $0.118. No speed or cost advantage from the video on a form this size; what the video adds is the draft's named, typed parameters and its success check. |
 | **Real software:** first run creating a lead in EspoCRM 10.0.11, unmodified (9 fields; then 11 with two dropdowns) | muse-spark-1.3, low effort | 3 and 1 | 3/3 at 9/9 fields, $0.02–$0.03 and 26–30 s each; 1/1 at 11/11, $0.087 |
 | EspoCRM replay of the compiled skill | none | 1 | 11/11 fields, 0 model calls, 6.2 s |
 | EspoCRM changed through its own admin screens (label renamed, layout reordered, new required field) | free rungs, then Muse Spark Open | 1 per change | Reorder healed free; rename + reorder healed by Muse Spark Open for $0.002; the new required field went to the rep; the healed version then replays the changed app with 0 heals in 8.3 s |
@@ -90,7 +104,7 @@ All live numbers are real Meta and Baseten calls at Standard list prices, measur
 |---|---|
 | Every Meta model call (Responses API, native computer tool, Voice Transcribe, Muse Spark Open on Baseten) | The two portals: "Caravela Partner Hub" and a multi-tenant supplier portal, built for this project with fictional companies |
 | WhatsApp Cloud API in the demo | All data: companies, people, documents (sample W-9 and insurance certificate in our own layouts) |
-| HubSpot test portal writes | The WhatsApp emulator, used only in development and tests |
+| HubSpot test portal writes | The WhatsApp emulator: development, tests, and the supplier shot in the film (its models were live) |
 | EspoCRM 10.0.11, unmodified open-source CRM, changed only through its own admin screens | |
 | The compiler, runner, heal ladder and evals | The scripted computer-use model, used only in CI; its runs never appear in reported model numbers |
 
@@ -141,6 +155,7 @@ Design: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 |---|---|---|---|
 | [EspoCRM](https://github.com/espocrm/espocrm) | 10.0.11 | AGPLv3 | The real third-party app Dockhand drives, unmodified. `apps/oss/espocrm/setup.ps1` downloads the official release into `var/oss/` (git-ignored); it is never committed. |
 | PHP (Windows build) and MariaDB | 8.4.27, 11.4.13 | PHP License 3.01, GPLv2 | Portable runtimes for EspoCRM, downloaded by the same script, never committed. |
+| [Mona Sans](https://github.com/github/mona-sans) and [Geist Mono](https://github.com/vercel/geist-font) | variable | SIL OFL 1.1 | The type in the WhatsApp cards, the on-screen overlay and the film; license in `packages/design/fonts/OFL.txt`. |
 
 ## Prior art
 

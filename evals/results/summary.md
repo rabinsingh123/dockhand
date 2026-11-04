@@ -1,4 +1,6 @@
-# Dockhand eval results
+# Zero-model regression runs (Nov 3, 2026)
+
+No model calls: repairs stop at the free fixes (`--repair none`), so a change that needs a model (`button_rename`) fails safely instead of healing. This is the regression check run after code changes. The live results, with Meta and Baseten models, are in [`live-headline.md`](live-headline.md).
 
 **Silent wrong: 0 of 105 runs** (a submission with any wrong field; the number that must stay at 0).
 
@@ -29,4 +31,3 @@ Generated 2026-11-03T08:38:09.358Z. Ground truth is each portal's own submission
 
 ![mutation-caravela.png](mutation-caravela.png)
 ![replay-caravela.png](replay-caravela.png)
-![cost-per-run.png](cost-per-run.png)
