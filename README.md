@@ -43,12 +43,12 @@ drift watch (nightly, or /watch): dry run each skill, never submitting ─► br
 
 ## Meta models, one job each
 
-| Model | Job |
-|---|---|
-| Muse Voice Transcribe | Code-switched Portuguese/English voice notes |
-| Muse Spark 1.3 | Reading photos and PDFs, understanding requests, annotating compiled skills, computer use (first runs and repairs) |
-| Muse Wonder | Turning a screen recording into a skill draft |
-| Muse Spark Open (via Baseten) | Heal rung: picks the replacement element from the page's accessibility list, text only |
+| Model | ID | Job |
+|---|---|---|
+| Muse Voice Transcribe | `muse-voice-transcribe-1.0` | Code-switched Portuguese/English voice notes |
+| Muse Spark 1.3 | `muse-spark-1.3` | Reading photos and PDFs, understanding requests, annotating compiled skills, computer use (first runs and repairs) |
+| Muse Wonder | `muse-wonder-1.0` | Turning a screen recording into a skill draft |
+| Muse Spark Open | `meta-models/muse-spark-open` on Baseten Model APIs | Heal rung: picks the replacement element from the page's accessibility list, text only |
 
 Every call is recorded in a ledger with tokens, images, latency and cost at Standard list prices. Receipts split intake cost (transcribing, reading) from execution cost.
 
