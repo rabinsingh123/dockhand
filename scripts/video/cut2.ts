@@ -13,8 +13,9 @@
 //
 //   --vo is a folder of Rabin's voiceover, one clip per beat: beat<n>.<wav|m4a|mp3|aac|ogg|flac> starts at the
 //   beat's first spoken caption group, and beat<n>-<k> at group k (from 1) for a line with a silence in it (beat 3
-//   waits for the replay). Each is leveled and runs at most up to the next clip or the beat's end; its captions
-//   follow its real length.
+//   waits for the replay). Each is leveled and loses its lead-in and tail silence. A part comes in on its cue, or a
+//   breath after the part before when that one runs long; a line that still overruns its room plays up to 7% faster
+//   instead of being cut, and past that the cut names the clip to record again. Captions follow the voice.
 //
 // One subject full-bleed per beat (the phone at full height, or the browser filling the frame); a split screen
 // only for the race. Idle stretches (an unchanged page or chat) are cut; whatever is still too long is sped up,
@@ -33,7 +34,7 @@ import { join, relative } from "node:path";
 import { workspaceRoot } from "../../packages/core/src/index.ts";
 import { COLOR } from "../../packages/design/src/index.ts";
 import { activeRanges, mapTime, span } from "./lib/activity.ts";
-import { countFrames, ffmpeg, hasAudio, probe } from "./lib/media.ts";
+import { countFrames, ffmpeg, hasAudio, probe, speechOf } from "./lib/media.ts";
 import {
   type CaptionPos,
   captionChunks,
@@ -865,6 +866,7 @@ async function buildBeats(): Promise<Beat[]> {
           lowerThirdHtml(
             "SAP Ariba redesigned a supplier profile screen.",
             "SAP Ariba release 2602, Feb 2026",
+            { beside: "phone" },
           ),
         ),
         from: 1,
@@ -1013,19 +1015,29 @@ interface VoClip {
   file: string;
   /** Seconds into the film. */
   at: number;
-  /** Seconds it may play: up to the next clip or the beat's end. */
+  /** Seconds into the file where the voice starts: its lead-in silence is skipped. */
+  from: number;
+  /** Seconds on film it plays: up to the next silence the picture holds, or the beat's end. */
   slot: number;
+  /** Above 1 when the line runs a little past its room: played that much faster, the pitch kept, rather than cut. */
+  tempo: number;
 }
 const VO_EXT = ["wav", "m4a", "mp3", "aac", "ogg", "flac"];
+/** The most a line is sped up to fit; past it, the line is recorded again. */
+const VO_MAX_TEMPO = 1.07;
+/** The breath between two parts of a line when the first runs past the second's cue. */
+const VO_BREATH = 0.15;
 const voDir = opt("--vo");
 const vo: VoClip[] = [];
-/** Per beat, the caption groups a clip covers alone: they end when the voice does. */
+/** Per beat, the caption groups a clip covers alone: they start and end with the voice. */
+const voStarts = new Map<number, Map<number, number>>();
 const voEnds = new Map<number, Map<number, number>>();
 if (!voDir) notFinal.push("no voiceover: --vo <dir>");
 {
   let beatAt = 0;
   for (const b of beats) {
     const groups = b.captions ?? [{ first: /./, at: 0.15, to: b.dur - 0.15 }];
+    const group = (k: number) => groups[k] as CaptionGroup;
     const from = b.voFrom ?? 0;
     const find = (name: string) =>
       voDir ? VO_EXT.map((e) => join(voDir, `${name}.${e}`)).find((f) => existsSync(f)) : undefined;
@@ -1041,28 +1053,76 @@ if (!voDir) notFinal.push("no voiceover: --vo <dir>");
     // A whole clip would talk through the line's silence (beat 3's replay): it has to come in parts.
     if (whole)
       for (let k = from; k + 1 < groups.length; k++)
-        if ((groups[k + 1] as CaptionGroup).at - (groups[k] as CaptionGroup).to > 1.5)
+        if (group(k + 1).at - group(k).to > 1.5)
           notFinal.push(
             `--vo: beat ${b.n} has a silence before group ${k + 2}; split it into beat${b.n}-<k> clips`,
           );
-    const ends = new Map<number, number>();
+    const speech = await Promise.all(placed.map((c) => speechOf(c.file)));
+    // Parts run in chains. Each comes in on its cue, or a breath after the one before when that runs long; a chain
+    // ends at a silence the picture holds (a gap of over 1.5 s between groups), or at the beat's end.
+    const chains: number[][] = [];
     for (const [j, c] of placed.entries()) {
-      const g = groups[c.group] as CaptionGroup;
-      const next = placed[j + 1];
-      const until = next ? (groups[next.group] as CaptionGroup).at - 0.05 : b.dur - 0.05;
-      const dur = (await probe(c.file)).duration;
-      if (dur > until - g.at + 0.05)
-        notFinal.push(
-          `--vo: ${relative(root, c.file)} is ${dur.toFixed(1)} s, ${(dur - (until - g.at)).toFixed(1)} s past its slot in beat ${b.n}`,
-        );
-      vo.push({ file: c.file, at: beatAt + g.at, slot: until - g.at });
-      // A part, or a whole clip for a single group, sets that group's captions to the voice's real length.
-      const covers = whole ? groups.length - from : 1;
-      if (covers === 1) ends.set(c.group, Math.min(until, g.at + dur));
+      const prev = placed[j - 1];
+      if (prev && group(c.group).at - group(prev.group).to <= 1.5) chains.at(-1)?.push(j);
+      else chains.push([j]);
     }
+    const starts = new Map<number, number>();
+    const ends = new Map<number, number>();
+    for (const [ci, chain] of chains.entries()) {
+      const lastGroup = group((placed[chain.at(-1) as number] as { group: number }).group);
+      const limit = chains[ci + 1] ? lastGroup.to : b.dur - 0.05;
+      const lay = (tempo: number) => {
+        let end = Number.NEGATIVE_INFINITY;
+        return chain.map((j) => {
+          const s = speech[j] as { from: number; to: number };
+          const at = Math.max(group((placed[j] as { group: number }).group).at, end + VO_BREATH);
+          end = at + (s.to - s.from) / tempo;
+          return { j, at, end };
+        });
+      };
+      const over = (tempo: number) => (lay(tempo).at(-1)?.end ?? 0) - limit;
+      let tempo = 1;
+      if (over(1) > 0) {
+        if (over(VO_MAX_TEMPO) > 0) {
+          tempo = VO_MAX_TEMPO;
+          notFinal.push(
+            `--vo: beat ${b.n} runs ${over(tempo).toFixed(1)} s past its room even ${VO_MAX_TEMPO}x faster: record ${chain.map((j) => relative(root, (placed[j] as { file: string }).file)).join(", ")} shorter`,
+          );
+        } else {
+          let lo = 1;
+          let hi = VO_MAX_TEMPO;
+          for (let k = 0; k < 24; k++) {
+            const mid = (lo + hi) / 2;
+            if (over(mid) > 0) lo = mid;
+            else hi = mid;
+          }
+          tempo = hi;
+          say(`--vo: beat ${b.n} plays ${tempo.toFixed(3)}x to fit`);
+        }
+      }
+      for (const { j, at, end } of lay(tempo)) {
+        const c = placed[j] as { file: string; group: number };
+        const until = Math.min(end, limit);
+        vo.push({
+          file: c.file,
+          at: beatAt + at,
+          from: (speech[j] as { from: number }).from,
+          slot: until - at,
+          tempo,
+        });
+        // A part, or a whole clip for a single group, sets that group's captions to the voice.
+        if (!whole || groups.length - from === 1) {
+          starts.set(c.group, at);
+          ends.set(c.group, until);
+        }
+      }
+    }
+    voStarts.set(b.n, starts);
     voEnds.set(b.n, ends);
     beatAt += b.dur;
   }
+  // A draft shows what the voice still needs at once: which clip to record again, not only a refusal at --final.
+  for (const m of new Set(notFinal)) if (m.startsWith("--vo:")) say(m);
 }
 // captions: each beat's line in chunks of at most two lines, timed by words
 /** Chunks spread over [from, to] by their words; a word or two still stays up long enough to read. */
@@ -1093,7 +1153,7 @@ const captionPlan = beats.map((b) => {
     timed(
       b,
       chunks.slice(starts[i] as number, starts[i + 1] ?? chunks.length),
-      g.at,
+      voStarts.get(b.n)?.get(i) ?? g.at,
       voEnds.get(b.n)?.get(i) ?? g.to,
     ),
   );
@@ -1166,7 +1226,8 @@ const voChains = vo.map(
   (v, j) =>
     `[${sounds.length + j + 2}:a]aresample=48000,aformat=channel_layouts=mono,highpass=f=80,` +
     `loudnorm=I=-19:TP=-2:LRA=11,aresample=48000,pan=stereo|c0=c0|c1=c0,` +
-    `atrim=0:${v.slot.toFixed(3)},asetpts=PTS-STARTPTS,afade=t=out:st=${Math.max(0, v.slot - 0.1).toFixed(3)}:d=0.1,` +
+    `atrim=start=${v.from.toFixed(3)}:end=${(v.from + v.slot * v.tempo).toFixed(3)},asetpts=PTS-STARTPTS,` +
+    `atempo=${v.tempo.toFixed(4)},afade=t=out:st=${Math.max(0, v.slot - 0.1).toFixed(3)}:d=0.1,` +
     `adelay=delays=${Math.round(v.at * 1000)}:all=1[v${j}]`,
 );
 const labelsIn = [...sounds.map((_, i) => `[s${i}]`), ...vo.map((_, j) => `[v${j}]`)];

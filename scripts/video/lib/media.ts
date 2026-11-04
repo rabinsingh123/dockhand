@@ -99,6 +99,30 @@ export async function countFrames(file: string): Promise<number> {
   return Number(out.trim());
 }
 
+/**
+ * Where the voice in a clip starts and ends, in seconds of the file: a lead-in or a tail quieter than -40 dB for
+ * 0.2 s is not the line. A clip with no such silence is all voice.
+ */
+export async function speechOf(file: string): Promise<{ from: number; to: number }> {
+  const { duration } = await probe(file);
+  const log = await run(
+    "ffmpeg",
+    ["-hide_banner", "-nostats", "-i", file, "-af", "silencedetect=noise=-40dB:d=0.2", "-f", "null", "-"],
+    { stderr: true },
+  );
+  const starts = [...log.matchAll(/silence_start: (-?[\d.]+)/g)].map((m) => Number(m[1]));
+  const ends = [...log.matchAll(/silence_end: ([\d.]+)/g)].map((m) => Number(m[1]));
+  const from = (starts[0] ?? 1) <= 0.05 ? (ends[0] ?? 0) : 0;
+  const last = starts.at(-1);
+  // The tail: the last silence runs out the file, unclosed or closed at its very end.
+  const tail =
+    last !== undefined &&
+    last > from &&
+    (ends.length < starts.length || (ends.at(-1) ?? 0) >= duration - 0.05);
+  const to = tail ? (last as number) : duration;
+  return { from: Math.max(0, from - 0.05), to: Math.min(duration, to + 0.08) };
+}
+
 /** Whether the file carries a sound track. */
 export async function hasAudio(file: string): Promise<boolean> {
   const out = await run("ffprobe", [

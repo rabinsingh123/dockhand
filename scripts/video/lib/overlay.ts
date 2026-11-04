@@ -70,9 +70,16 @@ color:${o.accent ? COLOR.onAccent : TEXT};padding:8px 24px 10px;font-size:${TYPE
 </style><div class="l">${esc(text)}</div>`;
 }
 
-/** A sourced stat as a lower third (bottom left, beside the phone and above the caption). */
-export function lowerThirdHtml(stat: string, source: string): string {
-  return `<style>${BASE}.t{position:absolute;left:${LEFT - 24}px;bottom:220px;width:760px;background:${GROUND};
+/** The phone's left edge: a 1320 x 2868 screen recording at full height (1000 px) sits 460 px wide, centered. */
+const PHONE_LEFT = (1920 - 460) / 2;
+
+/**
+ * A sourced stat as a lower third (bottom left, above the caption). Over the phone it stops a gutter short of the
+ * screen, so it never covers what the shot is about.
+ */
+export function lowerThirdHtml(stat: string, source: string, o: { beside?: "phone" } = {}): string {
+  const width = o.beside === "phone" ? PHONE_LEFT - GRID.film.gutter - (LEFT - 24) : 760;
+  return `<style>${BASE}.t{position:absolute;left:${LEFT - 24}px;bottom:220px;width:${width}px;background:${GROUND};
 padding:24px 24px 24px}.s{font-size:${TYPE.film.lead}px;line-height:1.1;font-weight:${W.semibold};text-wrap:balance}
 .r{margin-top:16px;font-size:${TYPE.film.label}px;color:${GRAY};line-height:1.2}</style>
 <div class="t"><div class="s">${esc(stat)}</div><div class="r">${esc(source)}</div></div>`;
