@@ -8,7 +8,7 @@
 
 Show Dockhand a web workflow once, as a plain screen recording or just a goal. Muse computer use does it the first time and records exactly what it touched. That run compiles into a program that replays in seconds with no model calls. When the app's UI changes, a repair ladder fixes the broken step, verifies it, and saves a new version of the skill. A drift watch does the same with dry runs on a schedule, so the rep wakes up to "Caravela Partner Hub changed overnight. I repaired 4 steps (1 free, 3 with Muse Spark Open, $0.0058) and checked it with 5 dry runs. v4 is active, v3 is kept. Nothing to do." When the app needs information the program doesn't have, Dockhand asks the rep once and remembers the answer. Sales reps trigger, teach and approve everything from WhatsApp.
 
-Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"). Everything in this repository was built during the event, Oct 27 to Nov 4, 2026.
+Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"). Everything in this repository was built during the event, Oct 27 to Nov 4, 2026. Engineered solo by Rabin with [Claude Code](https://claude.com/claude-code); the large first-day commits are whole packages built against the contracts frozen in the first hour (`93cea02`). MIT licensed.
 
 ## Why
 
