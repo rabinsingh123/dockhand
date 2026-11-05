@@ -6,7 +6,7 @@
 
 <p align="center"><sub>3:13 AM, Nov 3: a scheduled change hit our partner portal overnight, and Dockhand repaired itself with nobody watching. Real phone, real WhatsApp, real model calls.</sub></p>
 
-**Demo video (3:00):** https://youtu.be/3803TecST20
+**Demo video (3:00):** https://youtu.be/GgCGXzVEkE8
 
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"). Everything in this repository was built during the event, Oct 27 to Nov 4, 2026. Engineered solo by Rabin with [Claude Code](https://claude.com/claude-code); the large first-day commits are whole packages built against the contracts frozen in the first hour (`93cea02`). MIT licensed.
 
