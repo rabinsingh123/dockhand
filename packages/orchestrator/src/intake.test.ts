@@ -66,4 +66,12 @@ describe("transcriptionKeywords", () => {
     expect(k.filter((x) => x === "Caravela")).toHaveLength(1);
     expect(k).not.toContain("42");
   });
+
+  it("leaves out anything over Voice Transcribe's 30-character keyword limit", () => {
+    const long = "Rua Augusta 1500, São Paulo, SP, 01304-001";
+    const k = transcriptionKeywords({ companies: [], skillExamples: [long, "Julia Prado"] });
+    expect(k).not.toContain(long);
+    expect(k).toContain("Julia Prado");
+    expect(k.every((x) => x.length <= 30)).toBe(true);
+  });
 });

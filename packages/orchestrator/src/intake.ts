@@ -174,6 +174,9 @@ function run(file: string, args: string[]): Promise<{ code: number; stderr: stri
 }
 
 /** ASR keyword hints: names Dockhand already knows (companies, portals, products, skill param examples). */
+/** Voice Transcribe refuses the whole request when one keyword runs over 30 characters (HTTP 400). */
+const ASR_KEYWORD_MAX = 30;
+
 export function transcriptionKeywords(o: { companies: string[]; skillExamples: string[] }): string[] {
   const fixed = [
     "Tidewater Cloud",
@@ -187,7 +190,7 @@ export function transcriptionKeywords(o: { companies: string[]; skillExamples: s
   const out: string[] = [];
   for (const k of [...fixed, ...o.companies, ...o.skillExamples]) {
     const t = k.trim();
-    if (t.length >= 3 && t.length <= 60 && /[A-Za-zÀ-ÿ]/.test(t) && !out.includes(t)) out.push(t);
+    if (t.length >= 3 && t.length <= ASR_KEYWORD_MAX && /[A-Za-zÀ-ÿ]/.test(t) && !out.includes(t)) out.push(t);
     if (out.length >= 50) break;
   }
   return out;

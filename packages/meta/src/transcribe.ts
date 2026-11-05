@@ -57,7 +57,8 @@ export async function transcribeWav(
   assertTranscribable(info, bytes.byteLength);
 
   const languageBias = cleanList(opts.languageBias);
-  const keywords = cleanList(opts.keywords);
+  // The API refuses the whole request over one keyword longer than 30 characters: drop it instead.
+  const keywords = cleanList(opts.keywords).filter((k) => k.length <= 30);
   const request = {
     model: ASR_MODEL,
     audioEncoding: "WAV",
