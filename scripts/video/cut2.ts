@@ -623,8 +623,11 @@ async function buildBeats(): Promise<Beat[]> {
   const voices = loadVoices();
   // Up to seven seconds of quote cards, shared between them.
   const eachVoice = voices.length ? onFrame(Math.min(3.5, 7 / voices.length)) : 0;
+  // The founder clip is five seconds when filmed; without it, the by-hand shot has the whole beat and the voice
+  // says the first line over it.
+  const introEnd = founder ? 5 : 0;
   const voicesEnd = 5 + eachVoice * voices.length;
-  const byHandTarget = onFrame(18 - voicesEnd);
+  const byHandTarget = onFrame(18 - introEnd - eachVoice * voices.length);
   // The voice turns from the login to the typing here: on the by-hand shot, a little into it if it has the beat alone.
   const typed = Math.max(10, voicesEnd);
   // The rules, sourced, over the by-hand shot: Dell's while the voice says them, then Microsoft's.
@@ -636,9 +639,7 @@ async function buildBeats(): Promise<Beat[]> {
     dur: 18,
     voFrom: founder ? 1 : 0,
     pieces: [
-      founder
-        ? await clipPiece(founder, 5, "camera", 1)
-        : slate("Rabin to camera", "five seconds, his own sound", 5, "placeholder: --founder <clip>"),
+      ...(founder ? [await clipPiece(founder, 5, "camera", 1)] : []),
       ...(await Promise.all(voices.map((v) => voicePiece(v, eachVoice)))),
       byHand && handSeconds > 0
         ? await byHandPiece(byHand, handSeconds, byHandTarget)
@@ -670,7 +671,7 @@ async function buildBeats(): Promise<Beat[]> {
     ],
     captions: [
       { first: /^I'm Rabin/, at: 0.15, to: 4.9 },
-      { first: /^Big companies/, at: 5.1, to: typed - 0.05 },
+      { first: /^Partners deliver/, at: 5.1, to: typed - 0.05 },
       { first: /^By hand/, at: typed, to: 17.85 },
     ],
   });
@@ -680,11 +681,13 @@ async function buildBeats(): Promise<Beat[]> {
   const use = takeIn(sessions, "use");
   const usePieces: Piece[] = [];
   let silent = 4;
-  const receiptFor = 4;
+  const receiptFor = 5;
   if (use) {
     const m = msgs(use.a);
     const approve = m.find((x) => x.dir === "in" && x.kind === "button");
-    const from = (use.a.readyAt ?? use.a.startedAt) - 500;
+    // From the moment the forward lands: the forward sheet before it lists the rep's other chats by name.
+    const sent = m.find((x) => x.dir === "in" && x.kind !== "button");
+    const from = (sent?.at ?? use.a.readyAt ?? use.a.startedAt) + 300;
     const run = mainRun(use.a);
     const clip = run ? clipOfRun(use.s, run.id) : undefined;
     let replay: Piece | null = null;
@@ -735,7 +738,9 @@ async function buildBeats(): Promise<Beat[]> {
     const m = msgs(teach.a);
     const card = m.find((x) => x.dir === "out" && x.kind === "interactive" && /^I learned/.test(x.text));
     const tapped = card ? m.find((x) => x.dir === "in" && x.kind === "button" && x.at > card.at) : undefined;
-    const from = (teach.a.readyAt ?? teach.a.startedAt) - 500;
+    // From the moment the recording lands, for the same reason as the use take: no forward sheet.
+    const sent = m.find((x) => x.dir === "in" && x.kind !== "button");
+    const from = (sent?.at ?? teach.a.readyAt ?? teach.a.startedAt) + 300;
     teachPieces.push(await phonePiece(teach.s, from, (tapped?.at ?? from + 8000) + 1500, 6));
     // what Muse Wonder drafted from the recording (the recorder's teach view, focus mode)
     teachPieces.push(cameraPiece(teach.s, "__teach", 5, { still: true }));
@@ -939,7 +944,7 @@ async function buildBeats(): Promise<Beat[]> {
     dur: 24,
     pieces: dayPieces,
     captions: [
-      { first: /^It works on real software/, at: 0.15, to: 2.4 },
+      { first: /^It handles real software/, at: 0.15, to: 2.4 },
       { first: /^This is EspoCRM/, at: 2.5, to: 6.4 },
       { first: /^I renamed a field/, at: 6.5, to: 9.9 },
       { first: /^A forty-field/, at: 10, to: 14.9 },
@@ -1024,7 +1029,7 @@ interface VoClip {
 }
 const VO_EXT = ["wav", "m4a", "mp3", "aac", "ogg", "flac"];
 /** The most a line is sped up to fit; past it, the line is recorded again. */
-const VO_MAX_TEMPO = 1.07;
+const VO_MAX_TEMPO = 1.15;
 /** The breath between two parts of a line when the first runs past the second's cue. */
 const VO_BREATH = 0.15;
 const voDir = opt("--vo");
