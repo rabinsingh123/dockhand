@@ -759,8 +759,8 @@ async function buildBeats(): Promise<Beat[]> {
     dur: 28,
     pieces: teachPieces,
     captions: [
-      { first: /^How did it learn/, at: 0.15, to: 10.9 },
-      { first: /^Muse Spark's computer use/, at: 11, to: 19.9 },
+      { first: /^Here is the engine/, at: 0.15, to: 10.9 },
+      { first: /^Then Muse Spark's/, at: 11, to: 19.9 },
       { first: /^That one run/, at: 20, to: 27.85 },
     ],
   });
@@ -881,7 +881,7 @@ async function buildBeats(): Promise<Beat[]> {
     captions: [
       { first: /^Here's what kills/, at: 0.15, to: LOCK - 0.1 },
       { first: /^A recorded script/, at: LOCK + 0.1, to: LOCK + 5.3 },
-      { first: /^Dockhand repairs/, at: LOCK + 5.4, to: pickAt - 0.1 },
+      { first: /^Dockhand heals/, at: LOCK + 5.4, to: pickAt - 0.1 },
       { first: /^then Meta's/, at: pickAt, to: cardAt - 0.1 },
       { first: /^You wake up/, at: cardAt, to: 30 },
     ],
@@ -944,7 +944,7 @@ async function buildBeats(): Promise<Beat[]> {
     dur: 24,
     pieces: dayPieces,
     captions: [
-      { first: /^It handles real software/, at: 0.15, to: 2.4 },
+      { first: /^It's not just our portals/, at: 0.15, to: 2.4 },
       { first: /^This is EspoCRM/, at: 2.5, to: 6.4 },
       { first: /^I renamed a field/, at: 6.5, to: 9.9 },
       { first: /^A forty-field/, at: 10, to: 14.9 },
@@ -990,7 +990,7 @@ async function buildBeats(): Promise<Beat[]> {
     name: "end",
     dur: 16,
     pieces: await endPieces(join(assets, "endcard.mp4"), 10.5, 5.5),
-    captions: [{ first: /^Next/, at: 0.15, to: 10.4 }],
+    captions: [{ first: /^Dockhand learns/, at: 0.15, to: 10.4 }],
     captionsStop: /^Dockhand:/,
   });
   return beats;
