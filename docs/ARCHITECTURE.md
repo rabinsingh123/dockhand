@@ -22,7 +22,7 @@ flowchart LR
     br["Browser pool<br/>computer-use loop · trace capture<br/>commit guard · write guard"]
     db[("SQLite<br/>+ artifacts")]
   end
-  portals["Web portals with no API"]
+  portals["Web portals with no usable API"]
   crm["HubSpot"]
   rep <--> wa
   wa <--> gw

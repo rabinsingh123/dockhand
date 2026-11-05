@@ -1,20 +1,35 @@
 # Dockhand
 
-**Automation that maintains itself.** Meta's computer use writes the program, every write is proven before it is submitted, and when the app changes the program repairs itself with the cheapest model that can, often before anyone notices.
+**Automation that maintains itself.** Forward a WhatsApp message, tap Approve, and the portal form is filed in seconds for a fraction of a cent. Teach it a new portal with one screen recording. When the portal changes, it repairs itself: 42 of 42 changes it had never seen, zero wrong writes.
 
 <p align="center"><img src="assets/readme/overnight.png" width="560" alt="An iPhone lock screen with two Dockhand notifications at 3:13 AM, and the WhatsApp chat they open: a yellow card that reads Nothing to do, Caravela Partner Hub changed overnight, 4 steps repaired, 5 of 5 dry runs, $0.0058"></p>
 
 <p align="center"><sub>3:13 AM, Nov 3: a scheduled change hit our partner portal overnight, and Dockhand repaired itself with nobody watching. Real phone, real WhatsApp, real model calls.</sub></p>
 
-Show Dockhand a web workflow once, as a plain screen recording or just a goal. Muse computer use does it the first time and records exactly what it touched. That run compiles into a program that replays in seconds with no model calls. When the app's UI changes, a repair ladder fixes the broken step, verifies it, and saves a new version of the skill. A drift watch does the same with dry runs on a schedule, so the rep wakes up to "Caravela Partner Hub changed overnight. I repaired 4 steps (1 free, 3 with Muse Spark Open, $0.0058) and checked it with 5 dry runs. v4 is active, v3 is kept. Nothing to do." When the app needs information the program doesn't have, Dockhand asks the rep once and remembers the answer. Sales reps trigger, teach and approve everything from WhatsApp.
-
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World"). Everything in this repository was built during the event, Oct 27 to Nov 4, 2026. Engineered solo by Rabin with [Claude Code](https://claude.com/claude-code); the large first-day commits are whole packages built against the contracts frozen in the first hour (`93cea02`). MIT licensed.
 
 ## Why
 
-In Brazil, India and much of LatAm and Southeast Asia, B2B deals move through WhatsApp: voice notes, photos of signed forms, PDFs from procurement. The follow-up work lands in web portals that give partners and suppliers a login, not an API: distributor deal registration, buyer supplier-onboarding portals, legacy CPQ. Reps retype the same data at night. Dockhand lets them forward the message instead.
+Partners deliver more than 70% of the world's IT spending, US$3.4 trillion a year ([Canalys, 2023](https://www.dqchannels.com/channel-partners-will-drive-more-than-70-of-it-spending-in-2023)). Those deals are agreed in chats; WhatsApp alone carries 7 billion voice messages a day ([WhatsApp, 2022](https://blog.whatsapp.com/making-voice-messages-better)). The paperwork that turns a chat into money lives somewhere else: the big company's portal. Dell's terms say the partner must be the first to submit a deal, with complete information, and a registered deal earns better than Dell's standard pricing ([Dell, 2025](https://www.delltechnologies.com/asset/en-pa/solutions/business-solutions/legal-pricing/Deal-Registration-Terms.pdf)). Since November 2, Microsoft gives a partner five days to answer a small-business referral before it can be rerouted to another partner ([Microsoft, Oct 2026](https://learn.microsoft.com/en-us/partner-center/announcements/2026-october)). One supplier told the UK Small Business Commissioner it took 2.5 months to get "onboarded" by a corporate customer ([link](https://www.smallbusinesscommissioner.gov.uk/?p=4782)).
+
+Big companies have integration teams for this. Their partners and suppliers have a login. Where a vendor offers an API, it covers one system, needs setup work, and only some partners qualify. So the person who closed the deal retypes it at night, and the bot the firm once paid for died the first time the portal changed. I lead GTM engineering and watch this every week.
+
+Dockhand is built for that firm. Forward the message, tap Approve, done. And it stays done when the portal changes.
+
+## What it does that a recorded bot can't
+
+Every number here is a live measurement; the detail is under [Results](#results) and in [`evals/results/live-headline.md`](evals/results/live-headline.md).
+
+- **Learns a portal from an ordinary screen recording.** Muse Wonder watched a 45-second recording and wrote the steps, the typed parameters and what success looks like: 20 s, $0.09. No developer, no recorder plugin.
+- **Repairs itself when the portal changes.** On 42 UI changes it had never seen, it handled 42: 39 submitted correctly after repair, 3 stopped safely to ask about a new required field, 0 wrong writes. A recorded script with one selector per step broke on 21 of the same 42; with five stored selectors per step, on 9.
+- **Gets cheaper the more it is used.** A replay makes 0 model calls and takes about 4 s. Over 93 runs it cost $0.26, against $10.30 for running computer use every time.
+- **Does its repairs on open weights.** 100 of 102 repairs needed no closed model: 84 were free, and 16 were Muse Spark Open reading the page as text, about $0.003 each.
+- **Never submits a wrong field.** Every value is read back from the page and compared with what the skill meant to write before the Approve tap. Nothing is submitted without that tap, and the harness enforces it, not the model.
+- **Runs real software.** EspoCRM, unmodified, changed through its own admin screens: repaired the same way, then replayed with 0 model calls.
 
 ## How it works
+
+Show Dockhand a web workflow once, as a plain screen recording or just a goal. Muse computer use does it the first time and records exactly what it touched. That run compiles into a program that replays in seconds with no model calls. When the app's UI changes, a repair ladder fixes the broken step, verifies it, and saves a new version of the skill. A drift watch does the same with dry runs on a schedule, so the rep wakes up to "Caravela Partner Hub changed overnight. I repaired 4 steps (1 free, 3 with Muse Spark Open, $0.0058) and checked it with 5 dry runs. v4 is active, v3 is kept. Nothing to do." When the app needs information the program doesn't have, Dockhand asks the rep once and remembers the answer. Sales reps trigger, teach and approve everything from WhatsApp.
 
 ```
 teach (video or goal) ─► draft ─► first run: Muse computer use ─► trace ─► compile + Muse Spark annotation ─► skill v1
@@ -157,6 +172,8 @@ Design: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | PHP (Windows build) and MariaDB | 8.4.27, 11.4.13 | PHP License 3.01, GPLv2 | Portable runtimes for EspoCRM, downloaded by the same script, never committed. |
 | [Mona Sans](https://github.com/github/mona-sans) and [Geist Mono](https://github.com/vercel/geist-font) | variable | SIL OFL 1.1 | The type in the WhatsApp cards, the on-screen overlay and the film; license in `packages/design/fonts/OFL.txt`. |
 
-## Prior art
+## Where it stands
 
-Record-and-replay with an agent fallback exists: browser-use's workflow-use records through its own recorder and falls back to an agent, and UiPath sells a Healing Agent for enterprise RPA. Dockhand's focus is different: teaching from an ordinary screen recording, a heal ladder measured per rung against UI changes it did not design, read-back verification so a heal can never silently write a wrong field, and asking the human when the app needs new information.
+Record-and-replay with an agent fallback exists: browser-use's workflow-use records through its own recorder and falls back to an agent, and UiPath sells a Healing Agent for enterprise RPA. Dockhand starts where those stop. It is taught from a screen recording anyone can make, with nothing installed. Every repair is measured against UI changes it did not design. Every value is read back, so a repair can never silently write a wrong field. When the app needs something new, it asks the person instead of guessing. And it runs from WhatsApp, where the work arrives, for firms that have never had an automation team.
+
+Next, not built yet: one firm's repair reaches every firm on that portal, before it breaks for them.
